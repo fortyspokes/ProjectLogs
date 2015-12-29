@@ -1,0 +1,1 @@
+These modules are included for server callback functions.  It is very important that there are no extraneous characters that might find their way into the output buffer.  The most common is a NL char at the end of one of the modules.  Actually, any included module could do the same thing so all library modules should scrupulously adhere to no NL at the end.

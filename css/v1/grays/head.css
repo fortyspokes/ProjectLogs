@@ -1,0 +1,28 @@
+body, html {
+	margin: 0px;
+	padding: 0px;
+	color: black;
+	background-color: #D0D0D0;
+	text-align: center;
+}
+
+body, input, textarea, select, option {
+	font-family: verdana, arial, helvetica, sans-serif;
+}
+
+button {
+	font-weight: bold;
+	font-size: 84%;
+/*	background-color:#A8D418;*/
+	background-color: #C0E0C0;
+	border:1px solid;
+	border-color: #793 #360 #360 #793;
+	border-radius: .5em;
+}
+
+.pagehead {
+	font-size: 16pt;
+	color: #DF0101;
+	font-weight: bold;
+}
+

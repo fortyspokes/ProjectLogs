@@ -1,0 +1,142 @@
+body, html {
+	margin: 0px;
+	padding: 0px;
+	color: black;
+	background-color: white;
+	text-align: center;
+}
+
+body, input, textarea, select, option, button {
+	font-family: verdana, arial, helvetica, sans-serif;
+	font-size: 80%;
+}
+
+table {
+	border-collapse: collapse;
+	table-layout: fixed;
+	font-size: 80%;
+}
+
+th {
+	text-align: center;
+}
+
+td.group {
+	color: red;
+}
+
+.pagehead {
+	font-size: 16pt;
+	color: red;
+	font-weight: bold;
+}
+
+.greet {
+	font-size: 12pt;
+	font-weight: bold;
+	color: #A8D418;
+}
+
+.status {
+	font-size: 12pt;
+	font-weight: bold;
+	color: #A8D418;
+}
+
+.number {
+	text-align: right;
+}
+
+.date {
+	text-align: center;
+}
+
+.required {
+	color: red;
+	text-align: right;
+}
+
+.label {
+	text-align: right;
+}
+
+button, select, .seq {
+	font-weight: bold;
+	font-size: 10pt;
+	background-color:#A8D418;
+	border:1px solid;
+	border-color: #793 #360 #360 #793;
+}
+
+.list {
+	background-color: #A8D418;
+	text-align: left;
+}
+
+.popopen {
+	visibility:hidden;
+	position:fixed;
+	right:10px;
+	top:50px;
+	background-color:lightyellow;
+	border:1px solid black;
+	padding:10px;
+}
+
+.closed {
+	background-color: pink;
+}
+
+.weekend {
+	background-color: #87CEFA;
+}
+
+.tabs {
+/*	border-bottom: .5em double #000000;*/
+	border-bottom: 2px solid #000000;
+	margin: 0;
+	padding: 0;
+}
+.tabs li { 
+	display:inline; 
+	border-top: .1em solid #000;
+	border-left: .1em solid #000;
+	border-right: .1em solid #000;
+	padding: 2px;
+	min-width: 200px;
+	width: 200px;
+	max-width: 200px;
+	border-top-left-radius: .5em;
+	border-top-right-radius: .5em;
+}
+.tabs li a {
+	text-decoration: none;
+/*	padding: 0.25em 1em;*/
+	color: #000;
+}
+
+table.calendar {
+}
+table.calendar_month {
+	width: 140px;
+	align-self: stretch;
+}
+caption.calendar {
+}
+div.calendar {
+	display: flex;
+	align-self: stretch;
+	width: 140px;
+}
+tr.calendar {
+}
+td.calendar {
+	background-color: beige;
+	display: flex;
+	justify-content: center;
+}
+td.calendar_day {
+	border: 1px solid;
+	padding: 2px;
+}
+

@@ -1,0 +1,590 @@
+-- Create PostgreSql tables:
+-- note: the "DROP" statement must be a comment with two dashes + one space + "DROP" in order to be activated by
+-- the creation script, ie. the script will change "-- DROP" to "DROP" if the option to drop is selected.
+
+-- Table: <PREFIX>a00_organization
+-- DROP TABLE <PREFIX>a00_organization;
+
+CREATE TABLE <PREFIX>a00_organization (
+  organization_id serial NOT NULL,
+  "name" character varying(64) NOT NULL DEFAULT 'new organization'::character varying,
+  description character varying(256) NOT NULL DEFAULT 'new organization'::character varying,
+  logo oid NOT NULL DEFAULT 0,
+  logo_type character varying(8) NOT NULL DEFAULT 'jpeg'::character varying,
+  currency_idref integer NOT NULL DEFAULT 1,
+  timezone smallint NOT NULL DEFAULT (-8), -- TimeZoneOffset from Greenwich, in hours; west is negative
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>organization_Key PRIMARY KEY (organization_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>a00_organization OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>a00_organization TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>a00_organization TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>a00_organization TO <DBREADER>;
+COMMENT ON COLUMN <PREFIX>a00_organization."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+COMMENT ON COLUMN <PREFIX>a00_organization.timezone IS 'TimeZoneOffset from Greenwich, in hours; west is negative';
+GRANT UPDATE ON TABLE <PREFIX>a00_organization_organization_ID_seq TO <DBEDITOR>;
+
+-- Table: <PREFIX>a10_project
+-- DROP TABLE <PREFIX>a10_project;
+
+CREATE TABLE <PREFIX>a10_project (
+  project_id serial NOT NULL,
+  organization_idref integer NOT NULL DEFAULT 0,
+  accounting_idref integer NOT NULL DEFAULT 0,
+  "name" character varying(64) NOT NULL DEFAULT 'new project'::character varying,
+  description character varying(256) NOT NULL DEFAULT 'new project'::character varying,
+  "comment" text,
+  budget numeric NOT NULL DEFAULT 0.00,
+  budget_exp numeric NOT NULL DEFAULT 0.00,
+  budget_by character(1) NOT NULL DEFAULT 'p',
+  mileage numeric NOT NULL DEFAULT 0.00,
+  inactive_asof date,
+  close_date date NOT NULL DEFAULT now(),
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>project_key PRIMARY KEY (project_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>a10_project OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>a10_project TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>a10_project TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>a10_project TO <DBREADER>;
+COMMENT ON COLUMN <PREFIX>a10_project.budget IS 'budget for labor';
+COMMENT ON COLUMN <PREFIX>a10_project.budget_exp IS 'for non-labor';
+COMMENT ON COLUMN <PREFIX>a10_project.budget_by IS 'p=project, t=task';
+COMMENT ON COLUMN <PREFIX>a10_project.mileage IS 'mileage reimbursement rate';
+COMMENT ON COLUMN <PREFIX>a10_project."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+GRANT UPDATE ON TABLE <PREFIX>a10_project_project_id_seq TO <DBEDITOR>;
+
+-- Table: <PREFIX>a12_task
+-- DROP TABLE <PREFIX>a12_task;
+
+CREATE TABLE <PREFIX>a12_task (
+  task_id serial NOT NULL,
+  project_idref integer NOT NULL DEFAULT 0,
+  "name" character varying(64) NOT NULL DEFAULT 'new task'::character varying,
+  description character varying(256) NOT NULL DEFAULT 'new task'::character varying,
+  budget numeric NOT NULL DEFAULT 0.00,
+  budget_exp numeric NOT NULL DEFAULT 0.00,
+  inactive_asof date,
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>task_Key PRIMARY KEY (task_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>a12_task OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>a12_task TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>a12_task TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>a12_task TO <DBREADER>;
+COMMENT ON COLUMN <PREFIX>a12_task.budget IS 'budget for labor';
+COMMENT ON COLUMN <PREFIX>a12_task.budget_exp IS 'for non-labor';
+COMMENT ON COLUMN <PREFIX>a12_task."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+GRANT UPDATE ON TABLE <PREFIX>a12_task_task_id_seq TO <DBEDITOR>;
+
+-- Table: <PREFIX>a14_subtask
+-- DROP TABLE <PREFIX>a14_subtask;
+
+CREATE TABLE <PREFIX>a14_subtask (
+  subtask_id serial NOT NULL,
+  task_idref integer NOT NULL DEFAULT 0,
+  "name" character varying(64) NOT NULL DEFAULT 'new subtask'::character varying,
+  description character varying(256) NOT NULL DEFAULT 'new subtask'::character varying,
+  extension character varying(64) NULL DEFAULT NULL,
+  inactive_asof date,
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>subtask_Key PRIMARY KEY (subtask_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>a14_subtask OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>a14_subtask TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>a14_subtask TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>a14_subtask TO <DBREADER>;
+COMMENT ON COLUMN <PREFIX>a14_subtask."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+GRANT UPDATE ON TABLE <PREFIX>a14_subtask_subtask_id_seq TO <DBEDITOR>;
+
+-- Table: <PREFIX>a20_accounting
+-- DROP TABLE <PREFIX>a20_accounting;
+
+CREATE TABLE <PREFIX>a20_accounting (
+  accounting_id serial NOT NULL,
+  organization_idref integer NOT NULL DEFAULT 0,
+  "name" character varying(64) NOT NULL DEFAULT 'new task'::character varying,
+  description character varying(256) NOT NULL DEFAULT 'new task'::character varying,
+  "comment" text,
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>accounting_Key PRIMARY KEY (accounting_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>a20_accounting OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>a20_accounting TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>a20_accounting TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>a20_accounting TO <DBREADER>;
+COMMENT ON COLUMN <PREFIX>a20_accounting."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+GRANT UPDATE ON TABLE <PREFIX>a20_accounting_accounting_id_seq TO <DBEDITOR>;
+
+-- Table: <PREFIX>a21_account
+-- DROP TABLE <PREFIX>a21_account;
+
+CREATE TABLE <PREFIX>a21_account (
+  account_id serial NOT NULL,
+  accounting_idref integer NOT NULL DEFAULT 0,
+  "name" character varying(64) NOT NULL DEFAULT 'new task'::character varying,
+  description character varying(256) NOT NULL DEFAULT 'new task'::character varying,
+  inactive_asof date,
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>account_Key PRIMARY KEY (account_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>a21_account OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>a21_account TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>a21_account TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>a21_account TO <DBREADER>;
+COMMENT ON COLUMN <PREFIX>a21_account."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+GRANT UPDATE ON TABLE <PREFIX>a21_account_account_id_seq TO <DBEDITOR>;
+
+-- Table: <PREFIX>a30_event
+-- DROP TABLE <PREFIX>a30_event;
+
+CREATE TABLE <PREFIX>a30_event (
+  event_id serial NOT NULL,
+  project_idref integer NOT NULL DEFAULT 0,
+  "name" character varying(64) NOT NULL DEFAULT 'new task'::character varying,
+  description character varying(256) NOT NULL DEFAULT 'new task'::character varying,
+  budget numeric NOT NULL DEFAULT 0.00,
+  inactive_asof date,
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>event_Key PRIMARY KEY (event_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>a30_event OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>a30_event TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>a30_event TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>a30_event TO <DBREADER>;
+COMMENT ON COLUMN <PREFIX>a30_event."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+GRANT UPDATE ON TABLE <PREFIX>a30_event_event_id_seq TO <DBEDITOR>;
+
+-- Table: <PREFIX>b00_timelog
+-- DROP TABLE <PREFIX>b00_timelog;
+
+CREATE TABLE <PREFIX>b00_timelog (
+  timelog_id serial NOT NULL,
+  activity_idref integer NOT NULL DEFAULT 0,
+  person_idref integer NOT NULL DEFAULT 0,
+  subtask_idref integer NOT NULL DEFAULT 0,
+  account_idref integer NOT NULL DEFAULT 0,
+  "type" character(2) NOT NULL DEFAULT 'hr',
+  logdate date NOT NULL DEFAULT now(),
+  hours numeric(4,2) NOT NULL DEFAULT 0.00,
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>timelog_Key PRIMARY KEY (timelog_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>b00_timelog OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>b00_timelog TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>b00_timelog TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>b00_timelog TO <DBREADER>;
+COMMENT ON COLUMN <PREFIX>b00_timelog.type IS 'hr=hours';
+COMMENT ON COLUMN <PREFIX>b00_timelog."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+GRANT UPDATE ON TABLE <PREFIX>b00_timelog_timelog_id_seq TO <DBEDITOR>;
+
+-- Table: <PREFIX>b02_activity
+-- DROP TABLE <PREFIX>b02_activity;
+
+CREATE TABLE <PREFIX>b02_activity (
+  activity_id serial NOT NULL,
+  description text,
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>activity_Key PRIMARY KEY (activity_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>b02_activity OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>b02_activity TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>b02_activity TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>b02_activity TO <DBREADER>;
+COMMENT ON COLUMN <PREFIX>b02_activity."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+GRANT UPDATE ON TABLE <PREFIX>b02_activity_activity_id_seq TO <DBEDITOR>;
+
+-- Table: <PREFIX>b10_eventlog
+-- DROP TABLE <PREFIX>b10_eventlog;
+
+CREATE TABLE <PREFIX>b10_eventlog (
+  eventlog_id serial NOT NULL,
+  event_idref integer NOT NULL DEFAULT 0,
+  person_idref integer NOT NULL DEFAULT 0,
+  account_idref integer NOT NULL DEFAULT 0,
+  session_count integer NOT NULL DEFAULT 0,
+  attendance integer NOT NULL DEFAULT 0,
+  logdate date NOT NULL DEFAULT now(),
+  "comments" character varying(256) NOT NULL DEFAULT ''::character varying,
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>eventlog_Key PRIMARY KEY (eventlog_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>b10_eventlog OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>b10_eventlog TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>b10_eventlog TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>b10_eventlog TO <DBREADER>;
+COMMENT ON COLUMN <PREFIX>b10_eventlog."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+GRANT UPDATE ON TABLE <PREFIX>b10_eventlog_eventlog_id_seq TO <DBEDITOR>;
+
+-- Table: <PREFIX>b20_expenselog
+-- DROP TABLE <PREFIX>b20_expenselog;
+
+CREATE TABLE <PREFIX>b20_expenselog (
+  expenselog_id serial NOT NULL,
+  activity_idref integer NOT NULL DEFAULT 0,
+  person_idref integer NOT NULL DEFAULT 0,
+  subtask_idref integer NOT NULL DEFAULT 0,
+  account_idref integer NOT NULL DEFAULT 0,
+  "type" character(2) NOT NULL DEFAULT 'ca',
+  logdate date NOT NULL DEFAULT now(),
+  amount numeric NOT NULL DEFAULT 0.00,
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>expenselog_Key PRIMARY KEY (expenselog_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>b20_expenselog OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>b20_expenselog TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>b20_expenselog TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>b20_expenselog TO <DBREADER>;
+COMMENT ON COLUMN <PREFIX>b20_expenselog.type IS 'ca=cash, mi=mileage, bi=billed';
+COMMENT ON COLUMN <PREFIX>b20_expenselog."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+GRANT UPDATE ON TABLE <PREFIX>b20_expenselog_expenselog_id_seq TO <DBEDITOR>;
+
+-- Table: <PREFIX>c00_person
+-- DROP TABLE <PREFIX>c00_person;
+
+CREATE TABLE <PREFIX>c00_person (
+  person_id serial NOT NULL,
+  lastname character varying(64) NOT NULL DEFAULT 'who?'::character varying,
+  lastsoundex character varying(64) NOT NULL DEFAULT '??'::character varying,
+  firstname character varying(64) NOT NULL DEFAULT 'who?'::character varying,
+  loginname character varying(64),
+  "password" character varying(255),
+  email character varying(64),
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>person_KEY PRIMARY KEY (person_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>c00_person OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>c00_person TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>c00_person TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>c00_person TO <DBREADER>;
+COMMENT ON COLUMN <PREFIX>c00_person."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+GRANT UPDATE ON TABLE <PREFIX>c00_person_person_id_seq TO <DBEDITOR>;
+
+-- Table: <PREFIX>c02_rate
+-- DROP TABLE <PREFIX>c02_rate;
+
+CREATE TABLE <PREFIX>c02_rate (
+  rate_id serial NOT NULL,
+  person_idref integer NOT NULL DEFAULT 0,
+  project_idref integer NOT NULL DEFAULT 0,
+  rate numeric NOT NULL DEFAULT 0.00,
+  effective_asof date NOT NULL DEFAULT (now() - '2 years'::interval),
+  expire_after date,
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>rate_Key PRIMARY KEY (rate_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>c02_rate OWNER TO <DBADMIN>;
+COMMENT ON COLUMN <PREFIX>c02_rate.expire_after IS 'De-normalized: one day less than next up effective_asof';
+COMMENT ON COLUMN <PREFIX>c02_rate."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+GRANT ALL ON TABLE <PREFIX>c02_rate TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>c02_rate TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>c02_rate TO <DBREADER>;
+GRANT UPDATE ON TABLE <PREFIX>c02_rate_rate_id_seq TO <DBEDITOR>;
+
+-- Table: <PREFIX>c10_person_organization
+-- DROP TABLE <PREFIX>c10_person_organization;
+
+CREATE TABLE <PREFIX>c10_person_organization (
+  person_organization_id serial NOT NULL,
+  person_idref integer NOT NULL DEFAULT 0,
+  organization_idref integer NOT NULL DEFAULT 0,
+  inactive_asof date,
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>person_organization_KEY PRIMARY KEY (person_organization_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>c10_person_organization OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>c10_person_organization TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>c10_person_organization TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>c10_person_organization TO <DBREADER>;
+COMMENT ON TABLE <PREFIX>c10_person_organization IS 'Connect a person to an organization - many-to-many - 
+the connecting point for person properties that are organization specific';
+COMMENT ON COLUMN <PREFIX>c10_person_organization."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+GRANT UPDATE ON TABLE <PREFIX>c10_person_organization_person_organization_id_seq TO <DBEDITOR>;
+
+-- Table: <PREFIX>c20_person_permit
+-- DROP TABLE <PREFIX>c20_person_permit;
+
+CREATE TABLE <PREFIX>c20_person_permit (
+  person_permit_id serial NOT NULL,
+  person_idref integer NOT NULL DEFAULT 0,
+  permit_idref integer NOT NULL DEFAULT 0,
+  organization_idref integer NOT NULL DEFAULT 0,
+  project_idref integer NOT NULL DEFAULT 0,
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>person_permit_KEY PRIMARY KEY (person_permit_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>c20_person_permit OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>c20_person_permit TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>c20_person_permit TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>c20_person_permit TO <DBREADER>;
+GRANT UPDATE ON TABLE <PREFIX>c20_person_permit_person_permit_id_seq TO <DBEDITOR>;
+COMMENT ON TABLE <PREFIX>c20_person_permit IS 'connect a person to a permission - many-to-many';
+COMMENT ON COLUMN <PREFIX>c20_person_permit."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+
+-- Table: <PREFIX>d01_permit
+-- DROP TABLE <PREFIX>d01_permit;
+
+CREATE TABLE <PREFIX>d01_permit (
+  permit_id serial NOT NULL,
+  "name" character varying(16) NOT NULL DEFAULT 'new permit'::character varying,
+  description character varying(128) NOT NULL DEFAULT 'new permit'::character varying,
+  "comment" text,
+  grade smallint NOT NULL DEFAULT 10, -- Security grade: 1 = system wide, 10 = organization specific, 100 = project specific
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>permit_KEY PRIMARY KEY (permit_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>d01_permit OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>d01_permit TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>d01_permit TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>d01_permit TO <DBREADER>;
+GRANT UPDATE ON TABLE <PREFIX>d01_permit_permit_id_seq TO <DBEDITOR>;
+COMMENT ON TABLE <PREFIX>d01_permit IS 'List the possible user permissions';
+COMMENT ON COLUMN <PREFIX>d01_permit."grade" IS 'Security grade: 0 = system wide, 10 = organization specific, 100 = project specific';
+COMMENT ON COLUMN <PREFIX>d01_permit."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+
+-- Table: <PREFIX>d02_currency
+-- DROP TABLE <PREFIX>d02_currency;
+
+CREATE TABLE <PREFIX>d02_currency (
+  currency_id serial NOT NULL,
+  "name" character varying(32) NOT NULL DEFAULT 'US dollar'::character varying,
+  "symbol" character varying(8) NOT NULL DEFAULT '$'::character varying,
+  "decimal_cnt" integer NOT NULL DEFAULT 2,
+  CONSTRAINT <PREFIX>currency_Key PRIMARY KEY (currency_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>d02_currency OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>d02_currency TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>d02_currency TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>d02_currency TO <DBREADER>;
+GRANT UPDATE ON TABLE <PREFIX>d02_currency_currency_id_seq TO <DBEDITOR>;
+
+-- Table: <PREFIX>d10_preferences
+-- DROP TABLE <PREFIX>d10_preferences;
+
+CREATE TABLE <PREFIX>d10_preferences (
+  preferences_id serial NOT NULL,
+  organization_idref integer NOT NULL DEFAULT 0,
+  project_idref integer NOT NULL DEFAULT 0,
+  person_idref integer NOT NULL DEFAULT 0,
+  "theme" character varying(64) NOT NULL DEFAULT ''::character varying,
+  "menu" character varying(512) NOT NULL DEFAULT ''::character varying,
+  "date" character varying(16) NOT NULL DEFAULT ''::character varying,
+  currency_idref integer NOT NULL DEFAULT 1,
+  "decimal_char" character(1) NOT NULL DEFAULT'.',
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>preferences_Key PRIMARY KEY (preferences_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>d10_preferences OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>d10_preferences TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>d10_preferences TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>d10_preferences TO <DBREADER>;
+COMMENT ON COLUMN <PREFIX>d10_preferences."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+GRANT UPDATE ON TABLE <PREFIX>d10_preferences_preferences_id_seq TO <DBEDITOR>;
+
+-- View: <PREFIX>v00_timelog
+-- DROP VIEW <PREFIX>v00_timelog;
+
+CREATE OR REPLACE VIEW <PREFIX>v00_timelog AS 
+  SELECT b00.timelog_id, b00.logdate, b00.hours,
+         b02.activity_id, b02.description AS activity,
+         a14.subtask_id, a14.name AS subtask, a14.description AS subtask_desc,
+         a14.extension, a14.inactive_asof AS subtask_inactive_asof,
+         a12.task_id, a12.name AS task, a12.description AS task_desc,
+         a12.inactive_asof AS task_inactive_asof,
+         a10.project_id, a10.name AS project, a10.description AS project_desc,
+         a21.account_id, a21.name AS account, a21.description AS account_desc,
+         a21.inactive_asof AS account_inactive_asof,
+         a00.organization_id,
+         c00.person_id
+    FROM <PREFIX>b00_timelog AS b00
+    JOIN <PREFIX>b02_activity AS b02
+      ON b02.activity_id = b00.activity_idref
+    JOIN <PREFIX>a14_subtask AS a14
+      ON a14.subtask_id = b00.subtask_idref
+    JOIN <PREFIX>a12_task AS a12
+      ON a12.task_id = a14.task_idref
+    JOIN <PREFIX>a10_project AS a10
+      ON a10.project_id = a12.project_idref
+    JOIN <PREFIX>a00_organization AS a00
+      ON a00.organization_id = a10.organization_idref
+    JOIN <PREFIX>c00_person AS c00
+      ON c00.person_id = b00.person_idref
+    JOIN <PREFIX>a21_account AS a21
+      ON a21.account_id = b00.account_idref
+   ORDER BY b00.logdate;
+
+ALTER TABLE <PREFIX>v00_timelog OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>v00_timelog TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>v00_timelog TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>v00_timelog TO <DBREADER>;
+
+-- View: <PREFIX>v01_expenselog
+-- DROP VIEW <PREFIX>v01_expenselog;
+
+CREATE OR REPLACE VIEW <PREFIX>v01_expenselog AS 
+  SELECT b20.expenselog_id, b20.logdate, b20.amount, b20.type,
+         b02.activity_id, b02.description AS activity,
+         a14.subtask_id, a14.name AS subtask, a14.description AS subtask_desc,
+         a14.inactive_asof AS subtask_inactive_asof,
+         a12.task_id, a12.name AS task, a12.description AS task_desc,
+         a12.inactive_asof AS task_inactive_asof,
+         a10.project_id, a10.name AS project, a10.description AS project_desc,
+         a21.account_id, a21.name AS account, a21.description AS account_desc,
+         a21.inactive_asof AS account_inactive_asof,
+         a00.organization_id,
+         c00.person_id
+    FROM <PREFIX>b20_expenselog AS b20
+    JOIN <PREFIX>b02_activity AS b02
+      ON b02.activity_id = b20.activity_idref
+    JOIN <PREFIX>a14_subtask AS a14
+      ON a14.subtask_id = b20.subtask_idref
+    JOIN <PREFIX>a12_task AS a12
+      ON a12.task_id = a14.task_idref
+    JOIN <PREFIX>a10_project AS a10
+      ON a10.project_id = a12.project_idref
+    JOIN <PREFIX>a00_organization AS a00
+      ON a00.organization_id = a10.organization_idref
+    JOIN <PREFIX>c00_person AS c00
+      ON c00.person_id = b20.person_idref
+    JOIN <PREFIX>a21_account AS a21
+      ON a21.account_id = b20.account_idref
+   ORDER BY b20.logdate;
+
+ALTER TABLE <PREFIX>v01_expenselog OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>v01_expenselog TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>v01_expenselog TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>v01_expenselog TO <DBREADER>;
+
+-- View: <PREFIX>v10_timereport
+-- DROP VIEW <PREFIX>v10_timereport;
+
+CREATE OR REPLACE VIEW <PREFIX>v10_timereport AS 
+  SELECT a12.project_idref AS project_id,
+         b00.logdate, b00.hours AS amount, b00.type, b00.person_idref AS person_id,
+         b02.description AS activity, b02.activity_id,
+         a14.name AS subtask, a14.description AS subtask_desc,
+         a12.name AS task, a12.description AS task_desc,
+         a21.name AS account, a21.description AS account_desc,
+         c02.rate
+  FROM <PREFIX>b00_timelog AS b00
+  JOIN <PREFIX>b02_activity AS b02
+    ON b02.activity_id = b00.activity_idref
+  JOIN <PREFIX>a14_subtask AS a14
+    ON a14.subtask_id = b00.subtask_idref
+  JOIN <PREFIX>a12_task AS a12
+    ON a12.task_id = a14.task_idref
+  JOIN <PREFIX>a21_account AS a21
+    ON a21.account_id = b00.account_idref
+  JOIN <PREFIX>c02_rate AS c02
+    ON c02.person_idref = b00.person_idref AND c02.project_idref = a12.project_idref
+  WHERE logdate >= c02.effective_asof AND (c02.expire_after IS NULL OR logdate <= c02.expire_after)
+  ORDER BY b00.logdate;
+
+ALTER TABLE <PREFIX>v10_timereport OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>v10_timereport TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>v10_timereport TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>v10_timereport TO <DBREADER>;
+
+--Note: V10 and V11 have identical field layouts
+
+-- View: <PREFIX>v11_expensereport
+-- DROP VIEW <PREFIX>v11_expensereport;
+
+CREATE OR REPLACE VIEW <PREFIX>v11_expensereport AS 
+  SELECT a12.project_idref AS project_id,
+         b20.logdate, b20.amount, b20.type, b20.person_idref AS person_id,
+         b02.description AS activity, b02.activity_id,
+         a14.name AS subtask, a14.description AS subtask_desc,
+         a12.name AS task, a12.description AS task_desc,
+         a21.name AS account, a21.description AS account_desc,
+		 1 AS rate
+  FROM <PREFIX>b20_expenselog AS b20
+  JOIN <PREFIX>b02_activity AS b02
+    ON b02.activity_id = b20.activity_idref
+  JOIN <PREFIX>a14_subtask AS a14
+    ON a14.subtask_id = b20.subtask_idref
+  JOIN <PREFIX>a12_task AS a12
+    ON a12.task_id = a14.task_idref
+  JOIN <PREFIX>a21_account AS a21
+    ON a21.account_id = b20.account_idref
+  ORDER BY b20.logdate;
+
+ALTER TABLE <PREFIX>v11_expensereport OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>v11_expensereport TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>v11_expensereport TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>v11_expensereport TO <DBREADER>;
+
+-- View: <PREFIX>v12_taskreport
+-- DROP VIEW <PREFIX>v12_taskreport;
+
+CREATE OR REPLACE VIEW <PREFIX>v12_taskreport AS 
+  SELECT a12.project_idref AS project_id, a12.task_id, a14.subtask_id,
+         a12.name AS taskname, a12.description AS task_desc, a12.budget AS task_budget,
+         a12.budget_exp AS task_budget_exp, a12.inactive_asof AS task_inactive_asof,
+         a14.name AS subtaskname, a14.description AS subtask_desc,
+         a14.inactive_asof AS subtask_inactive_asof
+  FROM <PREFIX>a10_project AS a10
+  JOIN <PREFIX>a12_task AS a12
+    ON a12.project_idref = a10.project_id
+  JOIN <PREFIX>a14_subtask AS a14
+    ON a14.task_idref = a12.task_id;
+
+ALTER TABLE <PREFIX>v12_taskreport OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>v12_taskreport TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>v12_taskreport TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>v12_taskreport TO <DBREADER>;
+

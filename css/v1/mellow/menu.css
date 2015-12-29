@@ -1,0 +1,30 @@
+body, html {
+	margin: 0px;
+	padding: 0px;
+	color: black;
+	background-color: #EBD409;
+	text-align: center;
+}
+
+body, input, textarea, select, option {
+	font-family: verdana, arial, helvetica, sans-serif;
+}
+
+li {
+	text-align: left;
+	font-size: 80%;
+}
+
+a:link {
+	color: #000000;
+}
+a:visited {
+	color: #00FF00;
+}
+a:active {
+	color: red;
+}
+a:hover {
+	color: #ff00ff;
+}
+

@@ -1,0 +1,525 @@
+-- to create triggers, must put DB name before trigger and table names...
+
+-- Create MySql tables:
+-- note: the "DROP" statement must be a comment with two dashes + one space + "DROP" in order to be activated by
+-- the creation script, ie. the script will change "-- DROP" to "DROP" if the option to drop is selected.
+
+-- Table: <PREFIX>a00_organization
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>a00_timestamp`;
+-- DROP TABLE `<PREFIX>a00_organization`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>a00_organization` (
+  `organization_id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR( 64 ) NOT NULL DEFAULT 'new organization',
+  `description` VARCHAR( 256 ) NOT NULL DEFAULT 'new organization',
+  `logo` MEDIUMBLOB,
+  `logo_type` VARCHAR( 8 ) NOT NULL DEFAULT 'jpeg',
+  `currency_idref` INT NOT NULL DEFAULT '1',
+  `timezone` SMALLINT NOT NULL DEFAULT '-8' COMMENT 'TimeZoneOffset from Greenwich, in hours; west is negative',
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB ;
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>a00_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>a00_organization`
+FOR EACH ROW
+  SET NEW.timestamp = UTC_TIMESTAMP()
+//
+delimiter ;
+
+-- Table: <PREFIX>a10_project
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>a10_timestamp`;
+-- DROP TABLE `<PREFIX>a10_project`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>a10_project` (
+  `project_id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `organization_idref` INT NOT NULL DEFAULT '0',
+  `accounting_idref` INT NOT NULL DEFAULT '0',
+  `name` VARCHAR( 64 ) NOT NULL DEFAULT 'new project',
+  `description` VARCHAR( 256 ) NOT NULL DEFAULT 'new project',
+  `comment` TEXT NULL ,
+  `budget` DOUBLE NOT NULL DEFAULT 0.00 COMMENT 'budget for labor',
+  `budget_exp` DOUBLE NOT NULL DEFAULT 0.00 COMMENT 'for non-labor',
+  `budget_by` CHAR(1) NOT NULL DEFAULT 'p' COMMENT 'p=project, t=task',
+  `mileage` DOUBLE NOT NULL DEFAULT 0.00 COMMENT 'mileage reimbursement rate',
+  `inactive_asof` DATE NULL,
+  `close_date` DATE NOT NULL,
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB ;
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>a10_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>a10_project`
+FOR EACH ROW
+BEGIN
+  SET NEW.timestamp = UTC_TIMESTAMP();
+  IF (NEW.close_date = 0) THEN
+    SET NEW.close_date = CURDATE();
+  END IF;
+END
+//
+delimiter ;
+
+-- Table: <PREFIX>a12_task
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>a12_timestamp`;
+-- DROP TABLE `<DBNAME>`.`<PREFIX>a12_task`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>a12_task` (
+  `task_id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `project_idref` INT NOT NULL DEFAULT '0',
+  `name` VARCHAR( 64 ) NOT NULL DEFAULT 'new task',
+  `description` VARCHAR( 256 ) NOT NULL DEFAULT 'new task',
+  `budget` DOUBLE NOT NULL DEFAULT 0.00 COMMENT 'budget for labor',
+  `budget_exp` DOUBLE NOT NULL DEFAULT 0.00 COMMENT 'for non-labor',
+  `inactive_asof` DATE NULL,
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB ;
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>a12_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>a12_task`
+FOR EACH ROW
+  SET NEW.timestamp = UTC_TIMESTAMP()
+//
+delimiter ;
+
+-- Table: <PREFIX>a14_subtask
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>a14_timestamp`;
+-- DROP TABLE `<DBNAME>`.`<PREFIX>a14_subtask`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>a14_subtask` (
+  `subtask_id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `task_idref` INT NOT NULL DEFAULT '0',
+  `name` VARCHAR( 64 ) NOT NULL DEFAULT 'new subtask',
+  `description` VARCHAR( 256 ) NOT NULL DEFAULT 'new subtask',
+  `extension` VARCHAR( 64 ) NULL DEFAULT NULL,
+  `inactive_asof` DATE NULL,
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB ;
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>a14_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>a14_subtask`
+FOR EACH ROW
+  SET NEW.timestamp = UTC_TIMESTAMP()
+//
+delimiter ;
+
+-- Table: <PREFIX>a20_accounting
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>a20_timestamp`;
+-- DROP TABLE `<DBNAME>`.`<PREFIX>a20_accounting`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>a20_accounting` (
+  `accounting_id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `organization_idref` INT NOT NULL DEFAULT '0',
+  `name` VARCHAR( 64 ) NOT NULL DEFAULT 'new accounting',
+  `description` VARCHAR( 256 ) NOT NULL DEFAULT 'new accounting',
+  `comment` TEXT NULL,
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB ;
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>a20_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>a20_accounting`
+FOR EACH ROW
+  SET NEW.timestamp = UTC_TIMESTAMP()
+//
+delimiter ;
+
+-- Table: <PREFIX>a21_account
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>a21_timestamp`;
+-- DROP TABLE `<DBNAME>`.`<PREFIX>a21_account`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>a21_account` (
+  `account_id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `accounting_idref` INT NOT NULL DEFAULT '0',
+  `name` VARCHAR( 64 ) NOT NULL DEFAULT 'new account',
+  `description` VARCHAR( 256 ) NOT NULL DEFAULT 'new account',
+  `inactive_asof` DATE NULL,
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB ;
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>a21_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>a21_account`
+FOR EACH ROW
+  SET NEW.timestamp = UTC_TIMESTAMP()
+//
+delimiter ;
+
+-- Table: <PREFIX>a30_event
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>a30_timestamp`;
+-- DROP TABLE `<DBNAME>`.`<PREFIX>a30_event`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>a30_event` (
+  `event_id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `project_idref` INT NOT NULL DEFAULT '0',
+  `name` VARCHAR( 64 ) NOT NULL DEFAULT 'new event',
+  `description` VARCHAR( 256 ) NOT NULL DEFAULT 'new event',
+  `budget` DOUBLE NOT NULL DEFAULT 0.00,
+  `inactive_asof` DATE NULL,
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB ;
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>a30_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>a30_event`
+FOR EACH ROW
+  SET NEW.timestamp = UTC_TIMESTAMP()
+//
+delimiter ;
+
+-- Table: <PREFIX>b00_timelog
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>b00_timestamp`;
+-- DROP TABLE `<DBNAME>`.`<PREFIX>b00_timelog`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>b00_timelog` (
+  `timelog_id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `activity_idref` INT NOT NULL DEFAULT '0',
+  `person_idref` INT NOT NULL DEFAULT '0',
+  `subtask_idref` INT NOT NULL DEFAULT '0',
+  `account_idref` INT NOT NULL DEFAULT '0',
+  `type` CHAR(2) NOT NULL DEFAULT 'hr' COMMENT 'hr=hours',
+  `logdate` DATE NOT NULL,
+  `hours` DOUBLE NOT NULL DEFAULT 0.00,
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB ;
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>b00_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>b00_timelog`
+FOR EACH ROW
+BEGIN
+  SET NEW.timestamp = UTC_TIMESTAMP();
+  IF (NEW.logdate = 0) THEN
+    SET NEW.logdate = CURDATE();
+  END IF;
+END
+//
+delimiter ;
+
+-- Table: <PREFIX>b02_activity
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>b02_timestamp`;
+-- DROP TABLE `<DBNAME>`.`<PREFIX>b02_activity`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>b02_activity` (
+  `activity_id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `description` TEXT,
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB ;
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>b02_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>b02_activity`
+FOR EACH ROW
+  SET NEW.timestamp = UTC_TIMESTAMP()
+//
+delimiter ;
+
+-- Table: <PREFIX>b10_eventlog
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>b10_timestamp`;
+-- DROP TABLE `<DBNAME>`.`<PREFIX>b10_eventlog`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>b10_eventlog` (
+  `eventlog_id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `event_idref` INT NOT NULL DEFAULT '0',
+  `person_idref` INT NOT NULL DEFAULT '0',
+  `account_idref` INT NOT NULL DEFAULT '0',
+  `session_count` INT NOT NULL DEFAULT '0',
+  `attendance` INT NOT NULL DEFAULT '0',
+  `logdate` DATE NOT NULL,
+  `comments` VARCHAR( 256 ) NOT NULL DEFAULT '',
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB ;
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>b10_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>b10_eventlog`
+FOR EACH ROW
+  SET NEW.timestamp = UTC_TIMESTAMP()
+//
+delimiter ;
+
+-- Table: <PREFIX>b20_expenselog
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>b20_timestamp`;
+-- DROP TABLE `<DBNAME>`.`<PREFIX>b20_expenselog`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>b20_expenselog` (
+  `expenselog_id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `activity_idref` INT NOT NULL DEFAULT '0',
+  `person_idref` INT NOT NULL DEFAULT '0',
+  `subtask_idref` INT NOT NULL DEFAULT '0',
+  `account_idref` INT NOT NULL DEFAULT '0',
+  `type` CHAR(2) NOT NULL DEFAULT 'ca' COMMENT 'ca=cash, mi=mileage, bi=billed',
+  `logdate` DATE NOT NULL,
+  `amount` DOUBLE NOT NULL DEFAULT 0.00,
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB ;
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>b20_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>b20_expenselog`
+FOR EACH ROW
+  SET NEW.timestamp = UTC_TIMESTAMP()
+//
+delimiter ;
+
+-- Table: <PREFIX>c00_person
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>c00_timestamp`;
+-- DROP TABLE `<DBNAME>`.`<PREFIX>c00_person`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>c00_person` (
+  `person_id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `lastname` VARCHAR( 64 ) NOT NULL DEFAULT 'who?',
+  `lastsoundex` VARCHAR( 64 ) NOT NULL DEFAULT '??',
+  `firstname` VARCHAR( 64 ) NOT NULL DEFAULT 'who?',
+  `loginname` VARCHAR( 64 ) NULL,
+  `password` VARCHAR( 255 ) NULL,
+  `email` VARCHAR( 64 ) NULL,
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB ;
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>c00_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>c00_person`
+FOR EACH ROW
+  SET NEW.timestamp = UTC_TIMESTAMP()
+//
+delimiter ;
+
+-- Table: <PREFIX>c02_rate
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>c02_timestamp`;
+-- DROP TABLE `<DBNAME>`.`<PREFIX>c02_rate`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>c02_rate` (
+  `rate_id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `person_idref` INT NOT NULL DEFAULT '0',
+  `project_idref` INT NOT NULL DEFAULT '0',
+  `rate` DOUBLE NOT NULL DEFAULT 0.00,
+  `effective_asof` DATE NOT NULL,
+  `expire_after` DATE NULL COMMENT 'De-normalized: one day less than next up effective_asof',
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB ;
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>c02_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>c02_rate`
+FOR EACH ROW
+BEGIN
+  SET NEW.timestamp = UTC_TIMESTAMP();
+  IF (NEW.effective_asof = 0) THEN
+    SET NEW.effective_asof = DATE_SUB(CURDATE(), INTERVAL 2 YEAR);
+  END IF;
+END
+//
+delimiter ;
+
+-- Table: <PREFIX>c10_person_organization
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>c10_timestamp`;
+-- DROP TABLE `<DBNAME>`.`<PREFIX>c10_person_organization`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>c10_person_organization` (
+  `person_organization_id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `person_idref` INT NOT NULL DEFAULT '0',
+  `organization_idref` INT NOT NULL DEFAULT '0',
+  `inactive_asof` DATE NULL,
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB COMMENT = 'Connect a person to an organization - many-to-many - 
+the connecting point for person properties that are organization specific';
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>c10_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>c10_person_organization`
+FOR EACH ROW
+  SET NEW.timestamp = UTC_TIMESTAMP()
+//
+delimiter ;
+
+-- Table: <PREFIX>c20_person_permit
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>c20_timestamp`;
+-- DROP TABLE `<DBNAME>`.`<PREFIX>c20_person_permit`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>c20_person_permit` (
+  `person_permit_id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `person_idref` INT NOT NULL DEFAULT '0',
+  `permit_idref` INT NOT NULL DEFAULT '0',
+  `organization_idref` INT NOT NULL DEFAULT '0',
+  `project_idref` INT NOT NULL DEFAULT '0',
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB COMMENT = 'connect a person to a permission - many-to-many';
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>c20_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>c20_person_permit`
+FOR EACH ROW
+  SET NEW.timestamp = UTC_TIMESTAMP()
+//
+delimiter ;
+
+-- Table: <PREFIX>d01_permit
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>d01_timestamp`;
+-- DROP TABLE `<DBNAME>`.`<PREFIX>d01_permit`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>d01_permit` (
+  `permit_id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR( 16 ) NOT NULL DEFAULT 'new permit',
+  `description` VARCHAR( 128 ) NOT NULL DEFAULT 'new permit',
+  `comment` TEXT NULL,
+  `grade` SMALLINT NOT NULL DEFAULT '10' COMMENT 'Security grade: 1 = system wide, 10 = organization specific, 100 = project specific',
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB ;
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>d01_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>d01_permit`
+FOR EACH ROW
+  SET NEW.timestamp = UTC_TIMESTAMP()
+//
+delimiter ;
+
+-- Table: <PREFIX>d02_currency
+-- DROP TABLE `<DBNAME>`.`<PREFIX>d02_currency`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>d02_currency` (
+  `currency_id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR( 32 ) NOT NULL DEFAULT 'US dollar',
+  `symbol` VARCHAR( 8 ) NOT NULL DEFAULT '$',
+  `decimal_cnt` INT NOT NULL DEFAULT '2'
+) ENGINE = INNODB ;
+
+-- Table: <PREFIX>d10_preferences
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>d10_timestamp`;
+-- DROP TABLE `<DBNAME>`.`<PREFIX>d10_preferences`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>d10_preferences` (
+  `preferences_id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `organization_idref` INT NOT NULL DEFAULT '0',
+  `project_idref` INT NOT NULL DEFAULT '0',
+  `person_idref` INT NOT NULL DEFAULT '0',
+  `theme` VARCHAR( 64 ) NOT NULL DEFAULT '',
+  `menu` VARCHAR( 512 ) NOT NULL DEFAULT '',
+  `date` VARCHAR( 16 ) NOT NULL DEFAULT '',
+  `currency_idref` INT NOT NULL DEFAULT '1',
+  `decimal_char` CHAR(1) NOT NULL DEFAULT '.',
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB ;
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>d10_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>d10_preferences`
+FOR EACH ROW
+  SET NEW.timestamp = UTC_TIMESTAMP()
+//
+delimiter ;
+
+-- View: <PREFIX>v00_timelog
+-- DROP VIEW `<DBNAME>`.`<PREFIX>v00_timelog`;
+
+CREATE OR REPLACE VIEW `<DBNAME>`.`<PREFIX>v00_timelog` AS 
+  SELECT b00.timelog_id, b00.logdate, b00.hours,
+         b02.activity_id, b02.description AS activity,
+         a14.subtask_id, a14.name AS subtask, a14.description AS subtask_desc,
+         a14.extension, a14.inactive_asof AS subtask_inactive_asof,
+         a12.task_id, a12.name AS task, a12.description AS task_desc,
+         a12.inactive_asof AS task_inactive_asof,
+         a10.project_id, a10.name AS project, a10.description AS project_desc,
+         a21.account_id, a21.name AS account, a21.description AS account_desc,
+         a21.inactive_asof AS account_inactive_asof,
+         a00.organization_id,
+         c00.person_id
+    FROM <PREFIX>b00_timelog AS b00
+    JOIN <PREFIX>b02_activity AS b02
+      ON b02.activity_id = b00.activity_idref
+    JOIN <PREFIX>a14_subtask AS a14
+      ON a14.subtask_id = b00.subtask_idref
+    JOIN <PREFIX>a12_task AS a12
+      ON a12.task_id = a14.task_idref
+    JOIN <PREFIX>a10_project AS a10
+      ON a10.project_id = a12.project_idref
+    JOIN <PREFIX>a00_organization AS a00
+      ON a00.organization_id = a10.organization_idref
+    JOIN <PREFIX>c00_person AS c00
+      ON c00.person_id = b00.person_idref
+    JOIN <PREFIX>a21_account AS a21
+      ON a21.account_id = b00.account_idref
+   ORDER BY b00.logdate;
+
+-- View: <PREFIX>v01_expenselog
+-- DROP VIEW `<DBNAME>`.`<PREFIX>v01_expenselog`;
+
+CREATE OR REPLACE VIEW `<DBNAME>`.`<PREFIX>v01_expenselog` AS 
+  SELECT b20.expenselog_id, b20.logdate, b20.amount, b20.type,
+         b02.activity_id, b02.description AS activity,
+         a14.subtask_id, a14.name AS subtask, a14.description AS subtask_desc,
+         a14.inactive_asof AS subtask_inactive_asof,
+         a12.task_id, a12.name AS task, a12.description AS task_desc,
+         a12.inactive_asof AS task_inactive_asof,
+         a10.project_id, a10.name AS project, a10.description AS project_desc,
+         a21.account_id, a21.name AS account, a21.description AS account_desc,
+         a21.inactive_asof AS account_inactive_asof,
+         a00.organization_id,
+         c00.person_id
+    FROM <PREFIX>b20_expenselog AS b20
+    JOIN <PREFIX>b02_activity AS b02
+      ON b02.activity_id = b20.activity_idref
+    JOIN <PREFIX>a14_subtask AS a14
+      ON a14.subtask_id = b20.subtask_idref
+    JOIN <PREFIX>a12_task AS a12
+      ON a12.task_id = a14.task_idref
+    JOIN <PREFIX>a10_project AS a10
+      ON a10.project_id = a12.project_idref
+    JOIN <PREFIX>a00_organization AS a00
+      ON a00.organization_id = a10.organization_idref
+    JOIN <PREFIX>c00_person AS c00
+      ON c00.person_id = b20.person_idref
+    JOIN <PREFIX>a21_account AS a21
+      ON a21.account_id = b20.account_idref
+   ORDER BY b20.logdate;
+
+-- View: <PREFIX>v10_timereport
+-- DROP VIEW `<DBNAME>`.`<PREFIX>v10_timereport`;
+
+CREATE OR REPLACE VIEW `<DBNAME>`.`<PREFIX>v10_timereport` AS 
+  SELECT a12.project_idref AS project_id,
+         b00.logdate, b00.hours AS amount, b00.type, b00.person_idref AS person_id,
+         b02.description AS activity, b02.activity_id,
+         a14.name AS subtask, a14.description AS subtask_desc,
+         a12.name AS task, a12.description AS task_desc,
+         a21.name AS account, a21.description AS account_desc,
+         c02.rate
+  FROM <PREFIX>b00_timelog AS b00
+  JOIN <PREFIX>b02_activity AS b02
+    ON b02.activity_id = b00.activity_idref
+  JOIN <PREFIX>a14_subtask AS a14
+    ON a14.subtask_id = b00.subtask_idref
+  JOIN <PREFIX>a12_task AS a12
+    ON a12.task_id = a14.task_idref
+  JOIN <PREFIX>a21_account AS a21
+    ON a21.account_id = b00.account_idref
+  JOIN <PREFIX>c02_rate AS c02
+    ON c02.person_idref = b00.person_idref AND c02.project_idref = a12.project_idref
+  WHERE logdate >= c02.effective_asof AND (c02.expire_after IS NULL OR logdate <= c02.expire_after)
+  ORDER BY b00.logdate;
+
+--Note: V10 and V11 have identical field layouts
+
+-- View: <PREFIX>v11_expensereport
+-- DROP VIEW `<DBNAME>`.`<PREFIX>v11_expensereport`;
+
+CREATE OR REPLACE VIEW `<DBNAME>`.`<PREFIX>v11_expensereport` AS 
+  SELECT a12.project_idref AS project_id,
+         b20.logdate, b20.amount, b20.type, b20.person_idref AS person_id,
+         b02.description AS activity, b02.activity_id,
+         a14.name AS subtask, a14.description AS subtask_desc,
+         a12.name AS task, a12.description AS task_desc,
+         a21.name AS account, a21.description AS account_desc,
+		 1 AS rate
+  FROM <PREFIX>b20_expenselog AS b20
+  JOIN <PREFIX>b02_activity AS b02
+    ON b02.activity_id = b20.activity_idref
+  JOIN <PREFIX>a14_subtask AS a14
+    ON a14.subtask_id = b20.subtask_idref
+  JOIN <PREFIX>a12_task AS a12
+    ON a12.task_id = a14.task_idref
+  JOIN <PREFIX>a21_account AS a21
+    ON a21.account_id = b20.account_idref
+  ORDER BY b20.logdate;
+
+-- View: <PREFIX>v12_taskreport
+-- DROP VIEW `<DBNAME>`.`<PREFIX>v12_taskreport`;
+
+CREATE OR REPLACE VIEW `<DBNAME>`.`<PREFIX>v12_taskreport` AS 
+  SELECT a12.project_idref AS project_id, a12.task_id, a14.subtask_id,
+         a12.name AS taskname, a12.description AS task_desc, a12.budget AS task_budget,
+         a12.budget_exp AS task_budget_exp, a12.inactive_asof AS task_inactive_asof,
+         a14.name AS subtaskname, a14.description AS subtask_desc,
+         a14.inactive_asof AS subtask_inactive_asof
+  FROM <PREFIX>a10_project AS a10
+  JOIN <PREFIX>a12_task AS a12
+    ON a12.project_idref = a10.project_id
+  JOIN <PREFIX>a14_subtask AS a14
+    ON a14.task_idref = a12.task_id;
+
