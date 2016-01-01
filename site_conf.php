@@ -1,5 +1,5 @@
 ; <?php header("Location: https://".$_SERVER["HTTP_HOST"]); ?> prevents hacking
-;copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+;copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 ;See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 ;                          The site specific configuration file
@@ -36,17 +36,17 @@ _MORE[] = ../offline/evenmore_conf.php
 ;    levels the ".." in _REDIRECT lopped off.
 
 ;                 The following parms will typically be defined in a _MORE file:
+;Note that "[ROOT]" prepended to any parm will be replaced with OUR_ROOT.
 
-_INCLUDE[] = ../offline/lib
-_INCLUDE[] = ../offline/main
+_INCLUDE[] = [ROOT]../offline/lib
+_INCLUDE[] = [ROOT]../offline/main
 ;The _INCLUDE paths will be added to the include path.
-;Relative (ie. not starting with "/") paths get OUR_ROOT prepended.
 ;Note that these files must be specified after any _REDIRECT and can be an array of files.
 
-_EXTENSIONS = ../extension/
+_EXTENSIONS = [ROOT]../extension/
 ;directory of subtask extension modules - needs ending backslash
 
-_REFRESH = /../csvData/
+_REFRESH = [ROOT]../csvData/
 ;save backup .csv files here; see tables_list.php for more info
 
 PAGETITLE = "Project Logs (development)"

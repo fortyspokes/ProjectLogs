@@ -1,5 +1,5 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 //must have a copy (or link) in every directory with a loadable page
 
@@ -47,35 +47,33 @@ function SiteConfig() {
 		}
 		unset($config["_MORE"]);
 	}
-	if (isset($config["_EXTENSIONS"])) {
-		$extension = explode("/",$config["_EXTENSIONS"]);
-		$root = explode("/",$_SESSION["OUR_ROOT"]);
-		while ($extension[0] == "..") {
-			array_pop($root);
-			array_shift($extension);
-		}
-		$extension = array_merge($root,$extension);
-		$config["_EXTENSIONS"] = implode("/",$extension);
-	}
-	if (isset($config["_INCLUDE"])) {
-		foreach($config["_INCLUDE"] as &$value) {
-			if (substr($value,0,1) != "/") { //add OUR_ROOT to "naked" includes
-				$include = explode("/",$value);
-				$root = explode("/",$_SESSION["OUR_ROOT"]);
-				while ($include[0] == "..") {
-					array_pop($root);
-					array_shift($include);
-				}
-				$include = array_merge($root,$include);
-				$value = implode("/",$include);
+	//Append OUR_ROOT to directory parms (those with "[ROOT]" prepended):
+	foreach ($config as $name=>$parm) {
+		if (is_array($parm)) {
+			foreach ($parm as $key=>$subparm) {
+				$parm[$key] = addROOT($subparm);
 			}
+			$config[$name] = $parm;
+		} else {
+			$config[$name] = addROOT($parm);
 		}
 	}
 	$_SESSION["_SITE_CONF"] = $config;
 	$_SESSION["UserPermits"] = array();
-//	$_SESSION["STATE"] = array("_MAIN"=>"dummy");
 	$_SESSION["STATE"] = array();
 }
+function addROOT($parm) {
+	if (substr($parm,0,6) != "[ROOT]") return $parm;
+	$root = explode("/",$_SESSION["OUR_ROOT"]);
+	$dir = explode("/",substr($parm,6));
+	while ($dir[0] == "..") {
+		array_pop($root);
+		array_shift($dir);
+	}
+	$dir = array_merge($root,$dir);
+	return implode("/",$dir);
+}
+
 function throw_the_bum_out($publicmsg=NULL, $privatemsg=NULL, $script=false) {
 	ob_clean(); //remove any previous headers
 	if (!is_null($privatemsg)) error_log($privatemsg.": ".$_SERVER['SCRIPT_NAME']);
