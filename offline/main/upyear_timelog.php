@@ -1,5 +1,5 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 /*For testing purposes.  When saved test data is loaded to a test DB, the dates will probably be too old to be used.  This page allows those dates to be changed to be more recent.
 */
@@ -8,6 +8,37 @@ if (($_SESSION["_SITE_CONF"]["RUNLEVEL"] < 1) || (!$_PERMITS->can_pass(PERMITS::
 
 require_once "field_edit.php";
 require_once "tables_list.php";
+
+//Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
+while (1==1) { switch ($_STATE->status) {
+case STATE::INIT:
+	tables_list();
+	$_STATE->msgGreet = "Enter the new date";
+	$_STATE->status = STATE::SELECT; //prepare a 'goback'
+//	break 1; //do a re-switch
+case STATE::SELECT:
+	$_STATE->old_date = "";
+	$new_date = new DATE_FIELD("txtNew","",TRUE,TRUE,TRUE,0,FALSE,"now");
+	old_date();
+	$_STATE->status = STATE::UPDATE;
+	break 2;
+case STATE::UPDATE:
+	$_STATE->msgGreet = "";
+	$new_date = new DATE_FIELD("txtNew","",TRUE,TRUE,TRUE,0,FALSE,"now");
+	$msg = $new_date->audit();
+	if ($msg === true) {
+		upgrade($new_date);
+	} else {
+		$_STATE->msgStatus = $msg;
+		$_STATE->status = STATE::INIT;
+		break;
+	}
+	$_STATE->status = STATE::DONE;
+	break 2;
+default:
+	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+} } //while & switch
+//End Main State Gate
 
 function old_date() {
 	global $_DB, $_STATE;
@@ -104,36 +135,6 @@ function upgrade(&$new_date) {
 	exit;
 }
 
-//Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
-while (1==1) { switch ($_STATE->status) {
-case STATE::INIT:
-	tables_list();
-	$_STATE->msgGreet = "Enter the new date";
-	$_STATE->status = STATE::SELECT; //prepare a 'goback'
-//	break 1; //do a re-switch
-case STATE::SELECT:
-	$_STATE->old_date = "";
-	$new_date = new DATE_FIELD("txtNew","",TRUE,TRUE,TRUE,0,FALSE,"now");
-	old_date();
-	$_STATE->status = STATE::UPDATE;
-	break 2;
-case STATE::UPDATE:
-	$_STATE->msgGreet = "";
-	$new_date = new DATE_FIELD("txtNew","",TRUE,TRUE,TRUE,0,FALSE,"now");
-	$msg = $new_date->audit();
-	if ($msg === true) {
-		upgrade($new_date);
-	} else {
-		$_STATE->msgStatus = $msg;
-		$_STATE->status = STATE::INIT;
-		break;
-	}
-	$_STATE->status = STATE::DONE;
-	break 2;
-default:
-	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
-} } //while & switch
-
 EX_pageStart(); //standard HTML page start stuff - insert scripts here
 EX_pageHead(); //standard page headings - after any scripts
 ?>
@@ -151,6 +152,7 @@ EX_pageHead(); //standard page headings - after any scripts
   <tr><td colspan='2'>Select the dates to upgrade:</td><tr>
 <?php
 	foreach ($_STATE->records as $ID=>$table) {
+		if ($table->type != "t") continue; //tables only
 		foreach ($table->fields as $name=>$field) {
 			if ($field->editor == "date") {
 				$label = $ID.":".$name;

@@ -1,24 +1,16 @@
 <?php
 
-//Define _REFRESH_PATH here since refresh_csv.php and save_csv.php (along with upyear_timelog.php)
-//are only modules using tables_list:
-$_REFRESH_PATH = $_SESSION["OUR_ROOT"];
-if (isset($_SESSION["_SITE_CONF"]["_REFRESH"])) {
-	$_REFRESH_PATH .= $_SESSION["_SITE_CONF"]["_REFRESH"];
-	if (substr($_REFRESH_PATH,-1) != "/") $_REFRESH_PATH .= "/";
-} else {
-	$_REFRESH_PATH .= "/../DB/csvData/";
-}
-
 class TABLE {
 	public $name;
 	public $idname;
 	public $fields;
+	public $type; //'t'=table; 'v'=view
 
-	function __construct($iname, $iidname, $ifields="") {
+	function __construct($iname, $iidname, $ifields, $itype="t") {
 		$this->name = $iname;
 		$this->idname = $iidname;
 		$this->fields = $ifields;
+		$this->type = $itype;
 	}
 }
 class TFIELD {

@@ -46,8 +46,8 @@ _INCLUDE[] = [ROOT]../offline/main
 _EXTENSIONS = [ROOT]../extension/
 ;directory of subtask extension modules - needs ending backslash
 
-_REFRESH = [ROOT]../csvData/
-;save backup .csv files here; see tables_list.php for more info
+_STASH = [ROOT]../stash
+;Save/Refresh puts saved.csv files here under ./refresh/
 
 PAGETITLE = "Project Logs (development)"
 
