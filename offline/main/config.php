@@ -1,5 +1,5 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 if (!$_PERMITS->can_pass(PERMITS::_SUPERUSER))  throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
@@ -110,6 +110,7 @@ function show_array($list) {
 			show_array($value);
 			echo "  </table></td></tr>\n";
 		} else {
+			if (($ID == "DBADMIN") || ($ID == "DBEDITOR") || ($ID == "DBREADER")) $value = "*";
 			echo "    <td>".$value."</td>";
 			echo "  </tr>\n";
 		}
