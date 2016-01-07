@@ -47,6 +47,7 @@ _EXTENSIONS = [ROOT]../extension/
 ;directory of subtask extension modules - needs ending backslash
 
 _STASH = [ROOT]../stash
+;Logs_Prune puts backup files here under ./prunings/
 ;Save/Refresh puts saved.csv files here under ./refresh/
 
 PAGETITLE = "Project Logs (development)"

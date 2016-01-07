@@ -1,5 +1,5 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 define ('MENU', 0);
 define ('PAGE', 1);
@@ -14,6 +14,7 @@ $EX_staff = array(
 "EL" => array('Event Log Entry',		"eventlog.php",			'',					'$_EDIT=false;'),
 "EV" => array('Event Edit',				"event_edit.php",		'event_edit',		""			),
 //"EX" => 'experiment.php' but is loaded directly without going through the executive
+"LC" => array('Prune Logs',				"logs_prune.php",		'logs_prune',		""			),//or Logs Cut?
 "LP" => array('Download Logs',			"logs_put.php",			'project_logs',		""			),
 "OE" => array('Org Edit',				"org_edit.php",			'org_edit',			""			),
 "OS" => array('Org Select',				"org_select.php",		'',					""			),

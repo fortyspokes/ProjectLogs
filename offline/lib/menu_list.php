@@ -1,5 +1,5 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 	$sql = "SELECT COUNT(*) as org_count FROM ";
@@ -60,6 +60,7 @@
 		"OE", //Org Edit
 		"OS", //Org Select
 		"CF", //Site Config
+		"LC", //Logs Prune (Cut)
 		);
 	if ($_SESSION["_SITE_CONF"]["RUNLEVEL"] > 0) { //can't do this stuff in production
 		$MENU_LIST = array_merge($MENU_LIST, array(
