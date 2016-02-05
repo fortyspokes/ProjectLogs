@@ -1,5 +1,5 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015, 2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 require_once "prepend.php";
 require_once "state.php";
@@ -21,13 +21,16 @@ if (isset($_GET["init"])) {
 } else {
 	$_STATE = STATE_pull(); //'pull' the working state
 	if (isset($_GET["goback"])) {
-		$_STATE = $_STATE->goback(2);
+		if ($_STATE->backup < 0) {
+			$_STATE = $_STATE->goback(-$_STATE->backup);
+		} else {
+			$_STATE = $_STATE->loopback($_STATE->backup);
+		}
 	} else if (isset($_GET["servercall"]) || isset($_POST["servercall"])) {
 		$EX_servercall = true;
 		ob_clean(); //server_call wants a clean buffer
 	}
 }
-$EX_status = $_STATE->status; //save for later
 
 require_once "staff.php";
 if (!isset($EX_staff[$_STATE->ID])) {
@@ -42,10 +45,9 @@ if (!isset($EX_staff[$_STATE->ID])) {
 $_STATE->push();
 $_DB = NULL;
 
-function EX_pageStart() {
+function EX_pageStart($scripts=array()) {
 //The standardized HTML stuff at the top of the page:
-	global $_STATE;
-	global $EX_servercall;
+	global $_STATE, $EX_SCRIPTS, $EX_servercall;
 	if ($EX_servercall) {
 		exit(); //server_call wants a clean buffer
 	}
@@ -70,6 +72,9 @@ window.onload = function() {
 }
 </script>
 <?php
+	foreach ($scripts as $script) {
+		echo "<script type='text/javascript' src='".$EX_SCRIPTS."/".$script."'></script>\n";
+	}
 } //end function EX_pageStart
 
 function EX_pageHead() {
@@ -85,16 +90,18 @@ function EX_pageHead() {
 
 function EX_pageEnd() {
 //The standardized stuff at the end of the page:
+//A neg $goback = # of levels to pop; pos is the actual status to return to.
 	global $_STATE;
-	global $EX_status;
 	$redirect = $_SESSION["_SITE_CONF"]["_REDIRECT"];
 ?>
 <div id="msgStatus_ID" class="status"><?php echo $_STATE->msgStatus ?></div>
 <p>
 <button type="button" onclick="window.location.assign('<?php echo $redirect; ?>/main/main.php')">&lt&lt Return to menu</button>
 <?php
-	if ($EX_status != STATE::INIT) { ?>
-<button type="button" onclick="window.location.assign('<?php echo $redirect; ?>/main/executive.php?goback')">&lt Goback</button>
+	$state = STATE_pull(); //the state before changes
+	if ($state->status > $state->init) { ?>
+<button type="button" onclick="window.location.assign('<?php echo $redirect; ?>/main/executive.php?goback')">
+	&lt Goback</button>
 <?php
 	}
 	if ($_SESSION["_SITE_CONF"]["RUNLEVEL"] == 1) { ?>

@@ -1,5 +1,5 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015, 2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 class STATE {
@@ -7,13 +7,16 @@ class STATE {
 	public $position = 0; //the position in the stack array of the serialized state object (SSO)
 	public $thread;
 	public $status;
+	public $init = STATE::INIT; //the 'return to menu' status, ie no 'goback' button
+	public $backup = -2; //Status to return to on a 'goback', ie. this->loopback($backup);
+						//a neg $backup = # of levels to pop, ie. this->goback(-$backup);
+						//initially set to -2 until all processes adopt $backup.
 	public $heading = "";
 	public $record_id = 0;
 	public $records = array();
 	public $fields = array();
 	public $msgGreet = "";
 	public $msgStatus = "";
-	public $pushit = true;
 	public $parent = "";
 	public $child = ""; //an operating subthread (the scion)
 	public $noSleep = array(); //clear out these user created vars when sleeping (to save memory)
@@ -66,7 +69,7 @@ public function __set($key, $value) { //set dynamic vars
 	$this->$key = $value;
 }
 
-private function cleanup($thread) {
+function cleanup($thread) {
 	if ($thread == "") return;
 	if (!isset($_SESSION["STATE"][$thread])) return;
 	$child = unserialize(array_pop($_SESSION["STATE"][$thread]));
@@ -127,17 +130,23 @@ public function goback($levels) {
 	return $pull;
 }
 
+public function loopback($status) { //pop the stack until we find this state
+	do {
+		$state = $this->goback(1);
+	} while(($state->status != $status) && ($state->position > 0));
+	return $state;
+}
+
 public function push() { //push new SSO onto stack
-	if (!$this->pushit) {
-		$this->replace();
-		return;
-	}
 	$clone = clone($this);
 	$clone->position = count($_SESSION["STATE"][$this->thread]);
 	$_SESSION["STATE"][$this->thread][$clone->position] = serialize($clone);
+	return $clone;
 }
 
 public function replace() { //replace SSO with new properties
+//primary use is update the status when 'falling through' the state gate
+//instead of returning to the executive
 	$clone = clone($this);
 	$_SESSION["STATE"][$this->thread][$this->position] = serialize($clone);
 }
