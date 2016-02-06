@@ -22,6 +22,7 @@ $EX_staff = array(
 "PI" => array('phpInfo',				"phpinfo.php",			PERMITS::_SUPERUSER,""			),
 "PJ" => array('Project Edit',			"project_edit.php",		'project_edit',		""			),
 "PM" => array('Grant/revoke permits',	"assign_permits.php",	'assign_permits',	""			),
+"PR" => array('Property Admin',			"property_admin.php",	'property_admin',	""			),
 "RC" => array('Refresh CSV',			"refresh_csv.php",		PERMITS::_SUPERUSER,""			),
 "SC" => array('Save CSV',				"save_csv.php",			PERMITS::_SUPERUSER,""			),
 "SR" => array('Set Rates',				"set_rates.php",		'set_rates',		""			),

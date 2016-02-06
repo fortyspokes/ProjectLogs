@@ -57,6 +57,7 @@
 		"AC", //Account Edit
 		"EV", //Event Edit
 		"PM", //Grant/revoke permits
+		"PR", //Property Admin
 		"OE", //Org Edit
 		"OS", //Org Select
 		"CF", //Site Config

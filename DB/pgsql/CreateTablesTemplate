@@ -435,6 +435,71 @@ GRANT SELECT ON TABLE <PREFIX>d10_preferences TO <DBREADER>;
 COMMENT ON COLUMN <PREFIX>d10_preferences."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
 GRANT UPDATE ON TABLE <PREFIX>d10_preferences_preferences_id_seq TO <DBEDITOR>;
 
+-- Table: <PREFIX>e00_property
+-- DROP TABLE <PREFIX>e00_property;
+
+CREATE TABLE <PREFIX>e00_property (
+  property_id serial NOT NULL,
+  organization_idref integer NOT NULL DEFAULT 0,
+  "name" character varying(64) NOT NULL DEFAULT 'new property'::character varying,
+  description character varying(256) NOT NULL DEFAULT 'new property'::character varying,
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>property_Key PRIMARY KEY (property_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>e00_property OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>e00_property TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>e00_property TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>e00_property TO <DBREADER>;
+COMMENT ON COLUMN <PREFIX>e00_property."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+GRANT UPDATE ON TABLE <PREFIX>e00_property_property_id_seq TO <DBEDITOR>;
+
+-- Table: <PREFIX>e02_prop_value
+-- DROP TABLE <PREFIX>e02_prop_value;
+
+CREATE TABLE <PREFIX>e02_prop_value (
+  prop_value_id serial NOT NULL,
+  property_idref integer NOT NULL DEFAULT 0,
+  "name" character varying(64) NOT NULL DEFAULT 'new property value'::character varying,
+  description character varying(256) NOT NULL DEFAULT 'new property value'::character varying,
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>prop_value_Key PRIMARY KEY (prop_value_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>e02_prop_value OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>e02_prop_value TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>e02_prop_value TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>e02_prop_value TO <DBREADER>;
+COMMENT ON COLUMN <PREFIX>e02_prop_value."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+GRANT UPDATE ON TABLE <PREFIX>e02_prop_value_prop_value_id_seq TO <DBEDITOR>;
+
+-- Table: <PREFIX>e04_prop_element
+-- DROP TABLE <PREFIX>e04_prop_element;
+
+CREATE TABLE <PREFIX>e04_prop_element (
+  prop_element_id serial NOT NULL,
+  prop_value_idref integer NOT NULL DEFAULT 0,
+  element_table character(3) NOT NULL DEFAULT'a00',
+  element_idref integer NOT NULL DEFAULT 0,
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>prop_element_KEY PRIMARY KEY (prop_element_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>e04_prop_element OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>e04_prop_element TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>e04_prop_element TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>e04_prop_element TO <DBREADER>;
+COMMENT ON TABLE <PREFIX>e04_prop_element IS 'Connect an element to a property value - many-to-many';
+COMMENT ON COLUMN <PREFIX>e04_prop_element.element_table IS '3 char collating prefix of element table name';
+COMMENT ON COLUMN <PREFIX>e04_prop_element."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+GRANT UPDATE ON TABLE <PREFIX>e04_prop_element_prop_element_id_seq TO <DBEDITOR>;
+
 -- View: <PREFIX>v00_timelog
 -- DROP VIEW <PREFIX>v00_timelog;
 

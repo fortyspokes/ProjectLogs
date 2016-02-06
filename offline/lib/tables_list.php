@@ -248,5 +248,36 @@ function tables_list() {
 		);
 	$_STATE->records["preferences"] = new TABLE(
 		$DBPREFIX."d10_preferences","preferences_id", $fields);
+
+	$fields = array(
+		"property_id" =>			new TFIELD(PDO::PARAM_INT),
+		"project_idref" =>			new TFIELD(PDO::PARAM_INT),
+		"name" =>					new TFIELD(PDO::PARAM_STR),
+		"description" =>			new TFIELD(PDO::PARAM_STR,"string"),
+		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
+		);
+	$_STATE->records["property"] = new TABLE(
+		$DBPREFIX."e00_property","property_id", $fields);
+
+	$fields = array(
+		"prop_value_id" =>			new TFIELD(PDO::PARAM_INT),
+		"property_idref" =>			new TFIELD(PDO::PARAM_INT),
+		"name" =>					new TFIELD(PDO::PARAM_STR),
+		"description" =>			new TFIELD(PDO::PARAM_STR,"string"),
+		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
+		);
+	$_STATE->records["prop_value"] = new TABLE(
+		$DBPREFIX."e02_prop_value","prop_value_id", $fields);
+
+	$fields = array(
+		"prop_element_id" =>		new TFIELD(PDO::PARAM_INT),
+		"prop_value_idref" =>		new TFIELD(PDO::PARAM_INT),
+		"element_table" =>			new TFIELD(PDO::PARAM_STR),
+		"element_idref" =>			new TFIELD(PDO::PARAM_INT),
+		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
+		);
+	$_STATE->records["prop_element"] = new TABLE(
+		$DBPREFIX."e04_prop_element","prop_element_id", $fields);
+
 }
 ?>

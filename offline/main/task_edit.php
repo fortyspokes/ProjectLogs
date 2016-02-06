@@ -1,15 +1,21 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015, 2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("task_edit")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
 require_once "field_edit.php";
 
-//Define the cases for the Main State Gate that are unique to this module:
-define('SELECT_PROJECT', STATE::SELECT);
-define('SELECTED_PROJECT', STATE::SELECTED);
-define('SELECT_TASK', STATE::SELECT + 1);
-define('SELECTED_TASK', STATE::SELECTED + 1);
+//The Main State Gate cases:
+define('LIST_PROJECTS',		STATE::INIT);
+define('SELECT_PROJECT',		LIST_PROJECTS + 1);
+define('SELECTED_PROJECT',		LIST_PROJECTS + 2);
+define('LIST_TASKS',		STATE::INIT + 10);
+define('SELECT_TASK',			LIST_TASKS + 1);
+define('SELECTED_TASK',			LIST_TASKS + 2);
+define('ADD_TASK',				LIST_TASKS + 3);
+define('UPDATE_TASK',			LIST_TASKS + 4);
+define('PROPERTIES',		STATE::INIT + 20);
+define('PROPERTIES_GOBACK',		PROPERTIES + 1);
 
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
@@ -19,6 +25,7 @@ case STATE::INIT:
 	$projects = new PROJECT_SELECT($_PERMITS->restrict("task_edit"));
 	$_STATE->project_select = serialize(clone($projects));
 	if ($projects->selected) {
+		$_STATE->init = LIST_TASKS;
 		$_STATE->status = SELECTED_PROJECT;
 		break 1; //re-switch to SELECTED_PROJECT
 	}
@@ -30,56 +37,73 @@ case SELECT_PROJECT:
 	$projects = unserialize($_STATE->project_select);
 	$projects->set_state();
 	$_STATE->project_select = serialize(clone($projects));
-	$_STATE->status = SELECTED_PROJECT; //for possible goback
-	$_STATE->replace();
-//	break 1; //re_switch
 case SELECTED_PROJECT:
-	require_once "project_select.php"; //in case of goback
-	$projects = unserialize($_STATE->project_select);
 	$_STATE->project_name = $projects->selected_name();
+
+	$_STATE->status = LIST_TASKS; //our new starting point for goback
+	$_STATE->replace(); //so loopback() can find it
+case LIST_TASKS:
 	list_setup();
 	$_STATE->msgGreet = $_STATE->project_name."<br>Select a task record to edit";
+	$_STATE->backup = LIST_PROJECTS; //set goback
 	$_STATE->status = SELECT_TASK;
 	break 2;
 case SELECT_TASK:
 	record_select();
 	$_STATE->status = SELECTED_TASK; //for possible goback
-	$_STATE->replace();
-//	break 1; //re_switch
+	$_STATE->replace(); //so loopback() can find it
 case SELECTED_TASK:
 	state_fields();
+	$_STATE->backup = LIST_TASKS; //for goback
 	if ($_STATE->record_id == -1) {
 		$_STATE->msgGreet = "New task record";
-		$_STATE->status = STATE::ADD;
+		$_STATE->status = ADD_TASK;
 	} else {
 		record_info();
 		$_STATE->msgGreet = "Edit task record?";
-		$_STATE->status = STATE::UPDATE;
+		$_STATE->status = UPDATE_TASK;
 	}
 	break 2;
-case STATE::ADD:
+case ADD_TASK:
 	state_fields();
 	$_STATE->msgGreet = "New task record";
 	if (isset($_POST["btnReset"])) {
 		break 2;
 	}
 	if (new_audit()) {
-		$_STATE->status = STATE::DONE;
-		$_STATE->goback(1); //setup for goback
+		$record_id = $_STATE->record_id;
+		$_STATE = $_STATE->loopback(SELECTED_TASK);
+		$_STATE->record_id = $record_id;
+		break 1; //re-switch with new record_id
 	}
 	break 2;
-case STATE::UPDATE:
+case UPDATE_TASK:
 	state_fields();
 	$_STATE->msgGreet = "Edit task record";
 	if (isset($_POST["btnReset"])) {
 		record_info();
 		break 2;
 	}
+	if (isset($_POST["btnProperties"])) {
+		$_STATE->status = PROPERTIES;
+		$_STATE->element = "a12"; //required by PROPERTIES
+		$_STATE->backup = PROPERTIES_GOBACK; //required by PROPERTIES
+		break 1; //re-switch to show property values
+	}
 	if (update_audit()) {
-		$_STATE->status = STATE::DONE;
-		$_STATE->goback(1); //setup for goback
+		$_STATE = $_STATE->loopback(SELECTED_TASK);
+		break 1; //re-switch
 	}
 	break 2;
+case PROPERTIES:
+	require_once "prop_set.php";
+	$propset = PROP_SET_exec($_STATE, false);
+	break 2;
+case PROPERTIES_GOBACK:
+	require_once "prop_set.php";
+	PROP_SET_exec($_STATE, true);
+	$_STATE = $_STATE->loopback(SELECTED_TASK);
+	break 1;
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
@@ -113,13 +137,17 @@ function list_setup() {
 }
 
 function record_select() {
-	global $_STATE;
+	global $_DB, $_STATE;
 
 	list_setup(); //restore the record list
 	if (!array_key_exists(strval($_POST["selTask"]), $_STATE->records)) {
 		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid task id ".$_POST["selTask"]); //we're being spoofed
 	}
 	$_STATE->record_id = intval($_POST["selTask"]);
+	$sql = "SELECT name, description FROM ".$_DB->prefix."a12_task
+			WHERE task_id=".$_STATE->record_id.";";
+	$row = $_DB->query($sql)->fetchObject();
+	$_STATE->forwho = $row->name.": ".$row->description; //PROPERTIES wants to see this
 }
 
 function record_info() {
@@ -155,7 +183,7 @@ function field_input_audit() {
 		$field->disabled = true;
 	}
 
-	return TRUE;
+	return true;
 }
 
 function update_db() {
@@ -184,18 +212,18 @@ function update_db() {
 function update_audit() {
 	global $_DB, $_STATE;
 
-	if (!field_input_audit()) return FALSE;
+	if (!field_input_audit()) return false;
 
 	update_db();
 
 	$_STATE->msgStatus = "The task record for \"".$_STATE->fields["Name"]->value()."\" has been updated";
-	return TRUE;
+	return true;
 }
 
 function new_audit() {
 	global $_DB, $_STATE;
 
-	if (!field_input_audit()) return FALSE;
+	if (!field_input_audit()) return false;
 	
 	$hash = md5($_STATE->fields["Name"]->value().$_STATE->fields["Description"]->value());
 	$sql = "INSERT INTO ".$_DB->prefix."a12_task (name, project_idref)
@@ -218,16 +246,19 @@ function new_audit() {
 	$_DB->exec($sql);
 
 	$_STATE->msgStatus = "The task record for \"".$_STATE->fields["Name"]->value()."\" has been added to the project";
-	return TRUE;
+	return true;
 }
-
 //-------end function code; begin HTML------------
 
-EX_pageStart(); //standard HTML page start stuff - insert SCRIPTS here
-
 if ($_STATE->status == SELECT_PROJECT)
-	echo "<script type='text/javascript' src='".$EX_SCRIPTS."/call_server.js'></script>\n";
-
+	$scripts = array("call_server.js");
+elseif ($_STATE->status == PROPERTIES) {
+	$_STATE->msgGreet = $propset->greeting();
+	$scripts = $propset->set_script();
+} else {
+	$scripts = array();
+}
+EX_pageStart($scripts); //standard HTML page start stuff - insert SCRIPTS here
 EX_pageHead(); //standard page headings - after any scripts
 
 //forms and display depend on process state; note, however, that the state was probably changed after entering
@@ -252,7 +283,10 @@ case SELECT_TASK:
   </p>
 <?php //end SELECT_TASK status ----END STATUS PROCESSING----
 	break;
-default:
+
+case SELECTED_TASK:
+case ADD_TASK:
+case UPDATE_TASK:
 ?>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SERVER['SCRIPT_NAME']; ?>">
   <table align="center">
@@ -280,17 +314,22 @@ default:
   </table>
   <p>
  <?php
-	if ($_STATE->status != STATE::DONE) {
-		if ($_STATE->status == STATE::ADD ) {
-			echo FIELD_edit_buttons(FIELD_ADD);
-		} else {
-			echo Field_edit_buttons(FIELD_UPDATE);
-		}
+	if ($_STATE->status == STATE::ADD ) {
+		echo FIELD_edit_buttons(FIELD_ADD);
+	} else {
+		echo Field_edit_buttons(FIELD_UPDATE); ?>
+  <br><button type='submit' name='btnProperties' id='btnProperties_ID' value='values'>Show Properties</button><br>
+<?php
 	} ?>
 </form>
-<?php //end default status ----END STATUS PROCESSING----
-} ?>
-<?php
+<?php //end SELECTED/ADD/UPDATE_TASK status ----END STATUS PROCESSING----
+	break;
+
+case PROPERTIES: //list properties and allow new entry:
+	$propset->set_HTML();
+
+//end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
+}
 EX_pageEnd(); //standard end of page stuff
 ?>
 

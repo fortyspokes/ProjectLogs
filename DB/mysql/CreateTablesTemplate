@@ -395,6 +395,63 @@ FOR EACH ROW
 //
 delimiter ;
 
+-- Table: <PREFIX>e00_property
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>e00_timestamp`;
+-- DROP TABLE `<DBNAME>`.`<PREFIX>e00_property`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>e00_property` (
+  `property_id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `organization_idref` INT NOT NULL DEFAULT '0',
+  `name` VARCHAR( 64 ) NOT NULL DEFAULT 'new property',
+  `description` VARCHAR( 256 ) NOT NULL DEFAULT 'new property',
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB ;
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>e00_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>e00_property`
+FOR EACH ROW
+  SET NEW.timestamp = UTC_TIMESTAMP()
+//
+delimiter ;
+
+-- Table: <PREFIX>e02_prop_value
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>e02_timestamp`;
+-- DROP TABLE `<DBNAME>`.`<PREFIX>e02_prop_value`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>e02_prop_value` (
+  `prop_value_id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `property_idref` INT NOT NULL DEFAULT '0',
+  `name` VARCHAR( 64 ) NOT NULL DEFAULT 'new property value',
+  `description` VARCHAR( 256 ) NOT NULL DEFAULT 'new property value',
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB ;
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>e02_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>e02_prop_value`
+FOR EACH ROW
+  SET NEW.timestamp = UTC_TIMESTAMP()
+//
+delimiter ;
+
+-- Table: <PREFIX>e04_prop_element
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>e04_timestamp`;
+-- DROP TABLE `<DBNAME>`.`<PREFIX>e04_prop_element`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>e04_prop_element` (
+  `prop_element_id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `prop_value_idref` INT NOT NULL DEFAULT '0',
+  `element_table` CHAR(3) NOT NULL DEFAULT 'a00' COMMENT '3 char collating prefix of element table name',
+  `element_idref` INT NOT NULL DEFAULT '0',
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB COMMENT = 'Connect an element to a property value - many-to-many';
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>e04_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>e04_prop_element`
+FOR EACH ROW
+  SET NEW.timestamp = UTC_TIMESTAMP()
+//
+delimiter ;
+
 -- View: <PREFIX>v00_timelog
 -- DROP VIEW `<DBNAME>`.`<PREFIX>v00_timelog`;
 
