@@ -1,27 +1,30 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015, 2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("project_logs")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
 require_once "field_edit.php";
 
-//Define the cases for the Main State Gate that are unique to this module:
-define ('SELECT_PROJECT', STATE::SELECT + 1);
-define ('SELECTED_PROJECT', STATE::SELECTED + 1);
-define ('SELECT_SPECS', STATE::SELECT + 2);
-define ('DOWNLOAD_LOG', STATE::CHANGE);
+//The Main State Gate cases:
+define('LIST_PROJECTS',		STATE::INIT);
+define ('SELECT_PROJECT',		LIST_PROJECTS + 1);
+define ('SELECTED_PROJECT',		LIST_PROJECTS + 2);
+define('SHOW_SPECS',		STATE::INIT + 10);
+define ('SELECT_SPECS',			SHOW_SPECS + 1);
+define ('DOWNLOAD_LOG',		STATE::INIT + 20);
 
-$version = "v2.0"; //downloaded with the file for client verification
+$version = "v2.1"; //downloaded with the file for client verification
 
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
-case STATE::INIT:
+case LIST_PROJECTS:
 	$_STATE->project_id = 0;
 	$_STATE->close_date = COM_NOW();
 	require_once "project_select.php";
 	$projects = new PROJECT_SELECT($_PERMITS->restrict("project_logs"));
 	$_STATE->project_select = serialize(clone($projects));
 	if ($projects->selected) {
+		$_STATE->init = SELECT_SPECS;
 		$_STATE->status = SELECTED_PROJECT;
 		break 1; //re-switch to SELECTED_PROJECT
 	}
@@ -33,13 +36,12 @@ case SELECT_PROJECT: //select the project
 	$projects = unserialize($_STATE->project_select);
 	$projects->set_state();
 	$_STATE->project_select = serialize(clone($projects));
-	$_STATE->status = SELECTED_PROJECT; //for possible goback
-	$_STATE->replace();
-//	break 1; //re_switch
 case SELECTED_PROJECT:
-	require_once "project_select.php"; //in case of goback
-	$projects = unserialize($_STATE->project_select);
 	$_STATE->project_name = $projects->selected_name();
+
+	$_STATE->status = SHOW_SPECS; //our new starting point for goback
+	$_STATE->replace(); //so loopback() can find it
+case SHOW_SPECS:
 	require_once "date_select.php";
 	$dates = new DATE_SELECT("wmp","p"); //within week(w), month(m), period(p), default to period
 	$_STATE->date_select = serialize(clone($dates));
@@ -47,6 +49,7 @@ case SELECTED_PROJECT:
 	$calendar = new CALENDAR(2, "FT"); //2 pages
 	$_STATE->calendar = serialize(clone($calendar));
 	$_STATE->msgGreet = $_STATE->project_name."<br>Select the date range";
+	$_STATE->backup = LIST_PROJECTS; //set goback
 	$_STATE->status = SELECT_SPECS;
 	break 2;
 case SELECT_SPECS: //set the from and to dates
@@ -59,10 +62,15 @@ case SELECT_SPECS: //set the from and to dates
 		break 2;
 	}
 	set_state($dates);
+	require_once "props_send.php"; //routines for sending property values
+	$props_send = new PROPS_SEND(array("a12","a14","a21"));
+	$_STATE->props_send = serialize($props_send);
 	$_STATE->msgGreet = $_STATE->project_name."<br>Download the log";
+	$_STATE->backup = SHOW_SPECS; //set goback
 	$_STATE->status = DOWNLOAD_LOG;
 	break 2;
 case DOWNLOAD_LOG:
+	$props_send = unserialize($_STATE->props_send);
 	put_log();
 	$_STATE->msgGreet .= "Done!";
 	$_STATE->status = STATE::DONE;
@@ -95,10 +103,11 @@ function set_state(&$dates) {
 			WHERE organization_id=".$_SESSION["organization_id"].";";
 	$_STATE->orgname = $_DB->query($sql)->fetchObject()->name;
 
-	$sql = "SELECT name, description, budget, budget_exp, budget_by, mileage
+	$sql = "SELECT project_id, name, description, budget, budget_exp, budget_by, mileage
 			FROM ".$_DB->prefix."a10_project
 			WHERE project_id=".$_STATE->project_id.";";
 	$row = $_DB->query($sql)->fetchObject();
+	$_STATE->project_ids = array($row->project_id);
 	$_STATE->projname = $row->name;
 	$_STATE->projdesc = $row->description;
 	$_STATE->budget = $row->budget;
@@ -129,6 +138,9 @@ function put_log() {
 	global $_DB, $_STATE;
 	global $version;
 
+	require_once "props_send.php"; //routines for sending property values
+	$props_send = unserialize($_STATE->props_send);
+
 	$from = $_STATE->from_date->format('Y-m-d');
 	$to = $_STATE->to_date->format('Y-m-d');
 	$filename = "logs_".$_STATE->orgname."_".$_STATE->projname."_".$from."_to_".$to.".csv"; //for file_put...
@@ -148,44 +160,41 @@ function put_log() {
 	$outline[] = $_STATE->mileage;
 	fputcsv($out, $outline); //ID row
 
-	$outline = array();
-	foreach ($_STATE->headings as $name) {
-		$outline[] = $name;
-	}
-	fputcsv($out, $outline); //header row
+	get_log($props_send,$out);
 
-	$outline = array();
-	$outline[] = "project";
-	$outline[] = $_STATE->projname;
-	$outline[] = $_STATE->projdesc;
-	fputcsv($out, $outline); //project row
-
-	get_log($out);
-
-	$outline = array();
-	$outline[] = "project";
-	$outline[] = "<end>";
-	fputcsv($out, $outline); //project row
+	$props_send->send_all($out);
 
 	fclose($out);
 	FP_end();
 }
 
-function get_log($file=null) {
+function get_log(&$props_send, &$file=null) {
 	global $_DB, $_STATE;
 
 	$fields = "";
-	$type = 3;
+	$type = 3; //offset to these fields
 	$person = 14;
 	$rate = 15;
+	$outline = array();
+	$HTML = "  <tr>";
 	foreach ($_STATE->headings as $key=>$name) {
 		$fields .= $name.",";
 		if ($name == "type") $type = $key;
-		if ($name == "person_id") $person = $key;
-		if ($name == "rate") $rate = $key;
+		elseif ($name == "person_id") $person = $key;
+		elseif ($name == "rate") $rate = $key;
+		$outline[] = $name;
+		$HTML .= "<th>".$name."</th>";
+	}
+	$HTML .= "</tr>\n";
+	if (is_null($file)) { //to online page
+		echo $HTML; //header row
+	} else { //downloading
+		fputcsv($file, $outline); //header row
 	}
 
-	$sql = "(
+	$props_send->init($outline); //set up to get property values
+
+	$sql_logs = "(
 			SELECT ".substr($fields,0,-1)." FROM ".$_DB->prefix."v10_timereport
 			WHERE (project_id = ".$_STATE->project_id.")
 			AND (logdate BETWEEN :from10 AND :to10)
@@ -195,16 +204,26 @@ function get_log($file=null) {
 			AND (logdate BETWEEN :from11 AND :to11)
 			)
 			ORDER BY person_id, logdate;";
-		$stmt = $_DB->prepare($sql);
-		$stmt->bindValue(':from10', $_STATE->from_date->format('Y-m-d'), db_connect::PARAM_DATE);
-		$stmt->bindValue(':to10', $_STATE->to_date->format('Y-m-d'), db_connect::PARAM_DATE);
-		$stmt->bindValue(':from11', $_STATE->from_date->format('Y-m-d'), db_connect::PARAM_DATE);
-		$stmt->bindValue(':to11', $_STATE->to_date->format('Y-m-d'), db_connect::PARAM_DATE);
-		$stmt->execute();
+	$stmt_logs = $_DB->prepare($sql_logs);
+
+	foreach ($_STATE->project_ids as $project_id) {
+		if (!is_null($file)) { //downloading
+			$outline = array();
+			$outline[] = "<project>";
+			$outline[] = $_STATE->projname;
+			$outline[] = $_STATE->projdesc;
+			fputcsv($file, $outline); //project row
+		}
+
+		$stmt_logs->bindValue(':from10', $_STATE->from_date->format('Y-m-d'), db_connect::PARAM_DATE);
+		$stmt_logs->bindValue(':to10', $_STATE->to_date->format('Y-m-d'), db_connect::PARAM_DATE);
+		$stmt_logs->bindValue(':from11', $_STATE->from_date->format('Y-m-d'), db_connect::PARAM_DATE);
+		$stmt_logs->bindValue(':to11', $_STATE->to_date->format('Y-m-d'), db_connect::PARAM_DATE);
+		$stmt_logs->execute();
 		$person_id = 0;
-		while ($row = $stmt->fetch(PDO::FETCH_NUM)) {
-			if ($row[$person] != $person_id) {
-				$person_id = $row[$person];
+		while ($row_logs = $stmt_logs->fetch(PDO::FETCH_NUM)) {
+			if ($row_logs[$person] != $person_id) {
+				$person_id = $row_logs[$person];
 				$sql = "SELECT lastname, firstname FROM ".$_DB->prefix."c00_person
 						WHERE person_id=".$person_id.";";
 				$info = $_DB->query($sql)->fetchObject();
@@ -212,52 +231,60 @@ function get_log($file=null) {
 					echo "<tr><td>person</td><td>".$info->lastname."</td><td>".$info->firstname."</td></tr>\n";
 				} else { //downloading
 					$outline = array();
-					$outline[] = "person";
+					$outline[] = "<person>";
 					$outline[] = $info->lastname;
 					$outline[] = $info->firstname;
 					fputcsv($file, $outline);
 				}
 			}
-			if ($row[$type] == "mi") $row[$rate] = $_STATE->mileage;
+
+			$props_send->add_ids($row_logs); //add property value ids to logs record
+
+			if ($row_logs[$type] == "mi") $row_logs[$rate] = $_STATE->mileage;
 			if (is_null($file)) { //sending to online page
-				echo "<tr>";
-				foreach ($row as $value) {
-					if (is_null($value)) $value = 0;
-					echo "<td>".$value."</td>";
-				}
-				echo "</tr>\n";
+					echo "<tr>";
+					foreach ($row_logs as $value) {
+						if (is_null($value)) $value = 0;
+						echo "<td>".$value."</td>";
+					}
+					echo "</tr>\n";
 			} else { //downloading
-				fputcsv($file, $row);
+					fputcsv($file, $row_logs);
 			}
 		}
-		$stmt->closeCursor();
-		if (!is_null($file)) { //sending to online page
-			$outline = array();
-			$outline[] = "person";
-			$outline[] = "<end>";
-			fputcsv($file, $outline);
-		}
+		$stmt_logs->closeCursor();
+	} //end projects
 
+	if (is_null($file)) return; //to online page
+
+	$outline = array();
+	$outline[] = "<person>";
+	$outline[] = "<end>";
+	fputcsv($file, $outline); //end person row
+
+	$outline = array();
+	$outline[] = "<project>";
+	$outline[] = "<end>";
+	fputcsv($file, $outline); //end project row
 }
 
 //-------end function code; begin HTML------------
 
-EX_pageStart(); //standard HTML page start stuff - insert SCRIPTS here
+$scripts = array("call_server.js");
+if ($_STATE->status == SELECT_SPECS) {
+	$scripts[] = "calendar.js";
+}
+EX_pageStart($scripts); //standard HTML page start stuff - insert SCRIPTS here
 ?>
-<script language="JavaScript">
 <?php	if ($_STATE->status == DOWNLOAD_LOG) { ?>
+<script language="JavaScript">
 function download(me) {
   me.style.visibility = "hidden";
   document.getElementById("msgStatus_ID").innerHTML = "Done!";
   me.form.submit();
 }
-<?php	} ?>
 </script>
-<?php
-echo "<script type='text/javascript' src='".$EX_SCRIPTS."/call_server.js'></script>\n";
-if ($_STATE->status == SELECT_SPECS) {
-	echo "<script type='text/javascript' src='".$EX_SCRIPTS."/calendar.js'></script>\n";
-}
+<?php	}
 EX_pageHead(); //standard page headings - after any scripts
 ?>
 
@@ -308,12 +335,7 @@ case DOWNLOAD_LOG:
 	if ($_STATE->listLog) {
 		echo "<br>\n";
 		echo "<table align='center'' cellpadding='4' border='2'>\n";
-		echo "  <tr>";
-		foreach ($_STATE->headings as $name) {
-			echo "<th>".$name."</th>";
-		}
-		echo "</tr>\n";
-		get_log();
+		get_log($props_send);
 		echo "</table>\n";
 		echo "<br>\n";
 } ?>
@@ -321,9 +343,7 @@ case DOWNLOAD_LOG:
 (check your browser preferences for where the downloaded file will go)
 </form>
 <?php //end DOWNLOAD_LOG status ----END STATUS PROCESSING----
-} ?>
+}
 
-<?php
 EX_pageEnd(); //standard end of page stuff
 ?>
-

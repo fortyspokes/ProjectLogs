@@ -581,9 +581,9 @@ CREATE OR REPLACE VIEW <PREFIX>v10_timereport AS
   SELECT a12.project_idref AS project_id,
          b00.logdate, b00.hours AS amount, b00.type, b00.person_idref AS person_id,
          b02.description AS activity, b02.activity_id,
-         a14.name AS subtask, a14.description AS subtask_desc,
-         a12.name AS task, a12.description AS task_desc,
-         a21.name AS account, a21.description AS account_desc,
+         a14.name AS subtask, a14.description AS subtask_desc, a14.subtask_id AS subtask_props,
+         a12.name AS task, a12.description AS task_desc, a12.task_id AS task_props,
+         a21.name AS account, a21.description AS account_desc, a21.account_id AS account_props,
          c02.rate
   FROM <PREFIX>b00_timelog AS b00
   JOIN <PREFIX>b02_activity AS b02
@@ -604,7 +604,7 @@ GRANT ALL ON TABLE <PREFIX>v10_timereport TO <DBADMIN>;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>v10_timereport TO <DBEDITOR>;
 GRANT SELECT ON TABLE <PREFIX>v10_timereport TO <DBREADER>;
 
---Note: V10 and V11 have identical field layouts
+-- Note: V10 and V11 have identical field layouts
 
 -- View: <PREFIX>v11_expensereport
 -- DROP VIEW <PREFIX>v11_expensereport;
@@ -613,9 +613,9 @@ CREATE OR REPLACE VIEW <PREFIX>v11_expensereport AS
   SELECT a12.project_idref AS project_id,
          b20.logdate, b20.amount, b20.type, b20.person_idref AS person_id,
          b02.description AS activity, b02.activity_id,
-         a14.name AS subtask, a14.description AS subtask_desc,
-         a12.name AS task, a12.description AS task_desc,
-         a21.name AS account, a21.description AS account_desc,
+         a14.name AS subtask, a14.description AS subtask_desc, a14.subtask_id AS subtask_props,
+         a12.name AS task, a12.description AS task_desc, a12.task_id AS task_props,
+         a21.name AS account, a21.description AS account_desc, a21.account_id AS account_props,
 		 1 AS rate
   FROM <PREFIX>b20_expenselog AS b20
   JOIN <PREFIX>b02_activity AS b02
@@ -637,11 +637,12 @@ GRANT SELECT ON TABLE <PREFIX>v11_expensereport TO <DBREADER>;
 -- DROP VIEW <PREFIX>v12_taskreport;
 
 CREATE OR REPLACE VIEW <PREFIX>v12_taskreport AS 
-  SELECT a12.project_idref AS project_id, a12.task_id, a14.subtask_id,
-         a12.name AS taskname, a12.description AS task_desc, a12.budget AS task_budget,
+  SELECT a12.project_idref AS project_id, a12.task_id, a12.name AS taskname,
+         a12.description AS task_desc, a12.budget AS task_budget,
          a12.budget_exp AS task_budget_exp, a12.inactive_asof AS task_inactive_asof,
-         a14.name AS subtaskname, a14.description AS subtask_desc,
-         a14.inactive_asof AS subtask_inactive_asof
+		 a12.task_id AS task_props,
+         a14.subtask_id, a14.name AS subtaskname, a14.description AS subtask_desc,
+         a14.inactive_asof AS subtask_inactive_asof, a14.subtask_id AS subtask_props
   FROM <PREFIX>a10_project AS a10
   JOIN <PREFIX>a12_task AS a12
     ON a12.project_idref = a10.project_id

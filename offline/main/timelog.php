@@ -1,30 +1,33 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015, 2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 require_once "field_edit.php";
 
-//Define the cases for the Main State Gate that are unique to this module:
-define ('SELECT_PERSON', STATE::SELECT);
-define ('SELECTED_PERSON', STATE::SELECTED);
-define ('SELECT_PROJECT', STATE::SELECT + 1);
-define ('SELECTED_PROJECT', STATE::SELECTED + 1);
-define ('SELECT_SPECS', STATE::SELECT + 2);
-define ('SELECTED_SPECS', STATE::SELECTED + 2);
-define ('SHEET_DISP', STATE::SELECT + 3);
-
-define ('TASK_DISP', STATE::SELECT);
-define ('TASK_PICK', STATE::SELECTED);
-define ('SUBTASK_DISP', STATE::SELECT + 1);
-define ('SUBTASK_PICK', STATE::SELECTED + 1);
-define ('ACCOUNT_DISP', STATE::SELECT + 2);
-define ('ACCOUNT_PICK', STATE::SELECTED + 2);
-define ('DATE_DISP', STATE::SELECT + 3);
-define ('DATE_PICK', STATE::SELECTED + 3);
-define ('ACTIVITY_DISP', STATE::SELECT + 4);
-define ('ACTIVITY_PICK', STATE::SELECTED + 4);
-define ('HOURS_DISP', STATE::SELECT + 5);
-define ('BUTTON_DISP', STATE::SELECT + 6);
+//The Main State Gate cases:
+define('LIST_PERSONS',		STATE::INIT);
+define('SELECT_PERSON',			LIST_PERSONS + 1);
+define('SELECTED_PERSON',		LIST_PERSONS + 2);
+define('LIST_PROJECTS',		STATE::INIT + 10);
+define('SELECT_PROJECT',		LIST_PROJECTS + 1);
+define('SELECTED_PROJECT',		LIST_PROJECTS + 2);
+define('SHOW_SPECS',		STATE::INIT + 20);
+define('SELECT_SPECS',			SHOW_SPECS + 1);
+define('SELECTED_SPECS',		SHOW_SPECS + 2);
+define('SHEET_DISP',		STATE::INIT + 30);
+//SCION State Gate cases:
+define ('TASK_DISP',		STATE::SELECT);
+define ('TASK_PICK',		STATE::SELECTED);
+define ('SUBTASK_DISP',		STATE::SELECT + 1);
+define ('SUBTASK_PICK',		STATE::SELECTED + 1);
+define ('ACCOUNT_DISP',		STATE::SELECT + 2);
+define ('ACCOUNT_PICK',		STATE::SELECTED + 2);
+define ('DATE_DISP',		STATE::SELECT + 3);
+define ('DATE_PICK',		STATE::SELECTED + 3);
+define ('ACTIVITY_DISP',	STATE::SELECT + 4);
+define ('ACTIVITY_PICK',	STATE::SELECTED + 4);
+define ('HOURS_DISP',		STATE::SELECT + 5);
+define ('BUTTON_DISP',		STATE::SELECT + 6);
 
 //Define $_STATE->columns array: (a 'column' corresponds to one day within the date range)
 define ('COL_COUNT', 0); //total columns (1 rel)
@@ -32,11 +35,11 @@ define ('COL_OPEN',1); //first open column (0 rel)
 define ('COL_INACTIVE',2); //first 'inactive' column (0 rel)
 define ('COL_AGENT',3); //name of 'inactive' agent: 'project','task','subtask'
 
-$version = "v3.0"; //goes with the downloaded timesheet file for client verification
+$version = "v3.1"; //goes with the downloaded timesheet file for client verification
 
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
-case STATE::INIT:
+case LIST_PERSONS:
 	$_STATE->person_id = 0;
 	$_STATE->project_id = 0;
 	$_STATE->accounting_id = 0;
@@ -53,12 +56,14 @@ case STATE::INIT:
 	if (!$_EDIT) { //set by executive.php
 		$persons->set_state($_SESSION["person_id"]);
 		$_STATE->person_select = serialize($persons);
+		$_STATE->init = LIST_PROJECTS;
 		$_STATE->status = SELECTED_PERSON;
 		break 1; //re-switch to SELECTED_PERSON
 	}
 	if (!$_PERMITS->can_pass("edit_logs")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 	$_STATE->person_select = serialize(clone($persons));
 	if ($persons->selected) {
+		$_STATE->init = LIST_PROJECTS;
 		$_STATE->status = SELECTED_PERSON;
 		break 1; //re-switch to SELECTED_PERSON
 	}
@@ -70,18 +75,21 @@ case SELECT_PERSON: //select the person whose logs are to be editted (person_id=
 	$persons = unserialize($_STATE->person_select);
 	$persons->set_state();
 	$_STATE->person_select = serialize($persons);
-	$_STATE->status = SELECTED_PERSON; //for possible goback
-	$_STATE->replace();
-//	break 1; //re_switch
 case SELECTED_PERSON:
+
+	$_STATE->status = LIST_PROJECTS; //our new starting point for goback
+	$_STATE->replace(); //so loopback() can find it
+case LIST_PROJECTS:
 	require_once "project_select.php";
 	$projects = new PROJECT_SELECT(get_projects($_SESSION["person_id"]), true);
 	$_STATE->project_select = serialize(clone($projects));
 	if ($projects->selected) {
+		$_STATE->init = SELECT_SPECS;
 		$_STATE->status = SELECTED_PROJECT;
 		break 1; //re-switch to SELECTED_PROJECT
 	}
 	$_STATE->msgGreet = "Select the project";
+	$_STATE->backup = LIST_PERSONS;
 	$_STATE->status = SELECT_PROJECT;
 	break 2;
 case SELECT_PROJECT: //select the project
@@ -89,13 +97,12 @@ case SELECT_PROJECT: //select the project
 	$projects = unserialize($_STATE->project_select);
 	$projects->set_state();
 	$_STATE->project_select = serialize(clone($projects));
-	$_STATE->status = SELECTED_PROJECT; //for possible goback
-	$_STATE->replace();
-//	break 1; //re_switch
 case SELECTED_PROJECT:
-	require_once "project_select.php"; //in case of goback
-	$projects = unserialize($_STATE->project_select);
 	$_STATE->project_name = $projects->selected_name();
+
+	$_STATE->status = SHOW_SPECS; //our new starting point for goback
+	$_STATE->replace(); //so loopback() can find it
+case SHOW_SPECS:
 	require_once "date_select.php";
 	$dates = new DATE_SELECT("wmp","p"); //show within week(w), month(m), period(p)(default)
 	$_STATE->date_select = serialize(clone($dates));
@@ -103,6 +110,7 @@ case SELECTED_PROJECT:
 	$calendar = new CALENDAR(2, "FT"); //2 pages
 	$_STATE->calendar = serialize(clone($calendar));
 	$_STATE->msgGreet = $_STATE->project_name."<br>Select the date range";
+	$_STATE->backup = LIST_PROJECTS; //set goback
 	$_STATE->status = SELECT_SPECS;
 	break 2;
 case SELECT_SPECS: //set the from and to dates
@@ -117,7 +125,6 @@ case SELECT_SPECS: //set the from and to dates
 	set_state($dates);
 	$_STATE->status = SELECTED_SPECS; //for possible goback
 	$_STATE->replace();
-//	break 1; //re_switch
 case SELECTED_SPECS:
 	total_hours($_STATE); //for all projects
 	log_list($_STATE);
@@ -126,11 +133,12 @@ case SELECTED_SPECS:
 						"<br>To add or change hours: click on the lefthand column";
 	$_STATE->extension = "";
 	$_STATE->scion_start("SHEET"); //create the child state stack
+	$_STATE->backup = SHOW_SPECS; //set goback
 	$_STATE->status = SHEET_DISP;
 	break 2;
 case SHEET_DISP:
 	if (isset($_GET["sheet"])) { //change displayed sheet
-		$_STATE = $_STATE->goback(1); //go back to log_list (BEFORE this project change)
+		$_STATE = $_STATE->loopback(SELECTED_SPECS);
 		require_once "project_select.php";
 		$projects = unserialize($_STATE->project_select);
 		$projects->set_state($_GET["sheet"]);
@@ -139,7 +147,7 @@ case SHEET_DISP:
 		break 1;
 	}
 	if (isset($_POST["selPerson"])) { //change displayed person
-		$_STATE = $_STATE->goback(1); //go back to log_list (BEFORE this change)
+		$_STATE = $_STATE->loopback(SELECTED_SPECS);
 		require_once "person_select.php";
 		$persons = unserialize($_STATE->person_select);
 		$persons->set_state($_POST["selPerson"]);
@@ -148,13 +156,13 @@ case SHEET_DISP:
 		break 1;
 	}
 	if (isset($_POST["btnMode"])) { //switch modes
-		$_STATE = $_STATE->goback(1); //go back to log_list (BEFORE this change)
+		$_STATE = $_STATE->loopback(SELECTED_SPECS);
 		$_STATE->mode = ($_STATE->mode == "l")?"t":"l";
 		$_STATE->replace();
 		break 1;
 	}
 	if (isset($_GET["reset"])) {
-		$_STATE = $_STATE->goback(1); //go back to log_list
+		$_STATE = $_STATE->loopback(SELECTED_SPECS);
 		break 1;
 	}
 	if (isset($_GET["getdesc"])) { //asking for the description of a cell
@@ -546,6 +554,9 @@ function log_put() {
 	global $_DB, $_STATE;
 	global $version;
 
+	require_once "props_send.php"; //routines for sending property values
+	$props_send = new PROPS_SEND(array("a12","a14","a21"));
+
 	$sql = "SELECT name, description FROM ".$_DB->prefix."a00_organization
 			WHERE organization_id=".$_SESSION["organization_id"].";";
 	$row = $_DB->query($sql)->fetchObject();
@@ -594,50 +605,61 @@ function log_put() {
 	}
 	fputcsv($out, $outline);
 
-	foreach ($_STATE->project_ids as $project_ID) {
+	$props_send->init($outline); //set up to get property values
+
+	$sql_logs = "SELECT ".substr($fields,1)." FROM ".$_DB->prefix."v10_timereport
+			WHERE (person_id=:person_id) AND (project_id=:project_id)
+			AND (logdate BETWEEN :fromdate AND :todate)
+			ORDER BY logdate;";
+	$stmt_logs = $_DB->prepare($sql_logs);
+
+	foreach ($_STATE->project_ids as $project_id) {
 		$sql = "SELECT name, description FROM ".$_DB->prefix."a10_project
-				WHERE project_id=".$project_ID.";";
+				WHERE project_id=".$project_id.";";
 		$row = $_DB->query($sql)->fetchObject();
 		$outline = array();
-		$outline[] = "project";
+		$outline[] = "<project>";
 		$outline[] = $row->name;
 		$outline[] = $row->description;
 		fputcsv($out, $outline); //project row
 
-		foreach ($_STATE->person_ids as $person_ID) {
+		foreach ($_STATE->person_ids as $person_id) {
 			$sql = "SELECT lastname, firstname FROM ".$_DB->prefix."c00_person
-					WHERE person_id=".$person_ID.";";
+					WHERE person_id=".$person_id.";";
 			$row = $_DB->query($sql)->fetchObject();
 			$outline = array();
-			$outline[] = "person";
+			$outline[] = "<person>";
 			$outline[] = $row->lastname;
 			$outline[] = $row->firstname;
 			fputcsv($out, $outline); //person row
 
-			$sql = "SELECT ".substr($fields,1)." FROM ".$_DB->prefix."v10_timereport
-					WHERE (person_id=".$person_ID.") AND (project_id=".$project_ID.")
-					AND (logdate BETWEEN :fromdate AND :todate)
-					ORDER BY logdate;";
-			$stmt = $_DB->prepare($sql);
-			$stmt->bindValue(':fromdate', $from, db_connect::PARAM_DATE);
-			$stmt->bindValue(':todate', $to, db_connect::PARAM_DATE);
-			$stmt->execute();
-			while ($row = $stmt->fetch(PDO::FETCH_NUM)) {
-				fputcsv($out, $row);
+			$stmt_logs->bindvalue(':person_id', $person_id, db_connect::PARAM_INT);
+			$stmt_logs->bindvalue(':project_id', $project_id, db_connect::PARAM_INT);
+			$stmt_logs->bindValue(':fromdate', $from, db_connect::PARAM_DATE);
+			$stmt_logs->bindValue(':todate', $to, db_connect::PARAM_DATE);
+			$stmt_logs->execute();
+			while ($row_logs = $stmt_logs->fetch(PDO::FETCH_NUM)) {
+
+				$props_send->add_ids($row_logs); //add property value ids
+
+				fputcsv($out, $row_logs);
 			}
-			$stmt->closeCursor();
-		} //end projects
+			$stmt_logs->closeCursor();
+		} //end persons
 
 		$outline = array();
-		$outline[] = "person";
+		$outline[] = "<person>";
 		$outline[] = "<end>";
 		fputcsv($out, $outline); //person row
-	} //end persons
+	} //end projects
 
 	$outline = array();
-	$outline[] = "project";
+	$outline[] = "<project>";
 	$outline[] = "<end>";
 	fputcsv($out, $outline); //project row
+
+	$props_send->send_all($out);
+
 	fclose($out);
 
 	FP_end();
@@ -1096,19 +1118,18 @@ function changes(&$state, &$response) {
 
 //-------end function code; begin HTML------------
 
-EX_pageStart(); //standard HTML page start stuff - insert SCRIPTS here
+$scripts = array("call_server.js");
+if ($_STATE->status == SELECT_SPECS) {
+	$scripts[] = "calendar.js";
+} else if ($_STATE->status > SELECT_SPECS) {
+	$scripts[] = "timelog.js";
+}
+EX_pageStart($scripts); //standard HTML page start stuff - insert SCRIPTS here
 ?>
 <script>
 var COLs = <?php echo $_STATE->columns[COL_COUNT]; ?>;
 </script>
 <?php
-echo "<script type='text/javascript' src='".$EX_SCRIPTS."/call_server.js'></script>\n";
-if ($_STATE->status == SELECT_SPECS) {
-	echo "<script type='text/javascript' src='".$EX_SCRIPTS."/calendar.js'></script>\n";
-} else if ($_STATE->status > SELECT_SPECS) {
-	echo "<script type='text/javascript' src='".$EX_SCRIPTS."/timelog.js'></script>\n";
-}
-
 EX_pageHead(); //standard page headings - after any scripts
 
 //forms and display depend on process state; note, however, that the state was probably changed after entering
