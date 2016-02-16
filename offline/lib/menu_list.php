@@ -70,6 +70,7 @@
 			"UP", //Upyear Timelog
 			) );
 	}
+	$MENU_LIST[] = "AB"; //'About' page
 	foreach ($MENU_LIST as $item) {
 		$staff = $EX_staff[$item];
 		if (($staff[PERMIT] == "") || $_PERMITS->can_pass($staff[PERMIT])) {
@@ -97,6 +98,11 @@ function menu_list_OS(&$staff) { //Check "OS"
 	global $org_count;
 	if ($org_count > 1) return true;
 	return false;
+}
+
+function menu_list_AB(&$staff) { //add PAGETITLE to 'About'
+	$staff[MENU] .= " ".$_SESSION["_SITE_CONF"]["PAGETITLE"];
+	return true;
 }
 
 ?>

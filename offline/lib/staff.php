@@ -7,6 +7,7 @@ define ('PERMIT', 2);
 define ('PRE_EXEC', 3);
 //					MENU					PAGE					PERMIT				PRE_EXEC
 $EX_staff = array(
+"AB" => array('About',					"about.php",			'',					""			),
 "AC" => array('Account Edit',			"account_edit.php",		'account_edit',		""			),
 "AG" => array('Accounting group Edit',	"accounting_edit.php",	'accounting_edit',	""			),
 "CF" => array('Site Config',			"config.php",			PERMITS::_SUPERUSER,""			),
