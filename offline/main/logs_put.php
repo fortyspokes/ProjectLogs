@@ -212,6 +212,7 @@ function get_log(&$props_send, &$file=null) {
 			$outline[] = "<project>";
 			$outline[] = $_STATE->projname;
 			$outline[] = $_STATE->projdesc;
+			$outline[] = $project_id;
 			fputcsv($file, $outline); //project row
 		}
 
@@ -234,6 +235,7 @@ function get_log(&$props_send, &$file=null) {
 					$outline[] = "<person>";
 					$outline[] = $info->lastname;
 					$outline[] = $info->firstname;
+					$outline[] = $person_id;
 					fputcsv($file, $outline);
 				}
 			}

@@ -646,6 +646,7 @@ function log_put() {
 		$outline[] = "<project>";
 		$outline[] = $row->name;
 		$outline[] = $row->description;
+		$outline[] = $project_id;
 		$mileage = $row->mileage;
 		fputcsv($out, $outline); //project row
 
@@ -657,6 +658,7 @@ function log_put() {
 			$outline[] = "<person>";
 			$outline[] = $row->lastname;
 			$outline[] = $row->firstname;
+			$outline[] = $person_id;
 			fputcsv($out, $outline); //person row
 
 			$stmt_logs->bindvalue(':person_id', $person_id, db_connect::PARAM_INT);

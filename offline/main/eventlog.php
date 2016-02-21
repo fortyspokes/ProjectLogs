@@ -446,6 +446,7 @@ function log_put() {
 		$outline[] = "<project>";
 		$outline[] = $row->name;
 		$outline[] = $row->description;
+		$outline[] = $project_id;
 		fputcsv($out, $outline); //project row
 
 		$stmt_logs->bindValue(':fromdate', $from, db_connect::PARAM_DATE);
