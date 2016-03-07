@@ -31,7 +31,7 @@ INSERT INTO <PREFIX>d01_permit VALUES (2, 'org_edit', 'Add, change, delete organ
 INSERT INTO <PREFIX>d01_permit VALUES (3, 'person_edit', 'Add, change, delete persons', '', 10);
 INSERT INTO <PREFIX>d01_permit VALUES (4, 'assign_permits', 'Grantrevoke permissions', '', 10);
 INSERT INTO <PREFIX>d01_permit VALUES (5, 'project_edit', 'Add, change projects', 'Projects are not deleted.  Only the INACTIVE_ASOF date is set.', 10);
-INSERT INTO d01_permit VALUES (6, 'task_edit', 'Add, change tasks', 'Tasks are not deleted.  Only the INACTIVE_ASOF date is set.', 100);
+INSERT INTO <PREFIX>d01_permit VALUES (6, 'task_edit', 'Add, change tasks', 'Tasks are not deleted.  Only the INACTIVE_ASOF date is set.', 100);
 INSERT INTO <PREFIX>d01_permit VALUES (7, 'subtask_edit', 'Add, change subtasks', 'Subtasks are not deleted.  Only the INACTIVE_ASOF date is set.', 100);
 INSERT INTO <PREFIX>d01_permit VALUES (8, 'account_edit', 'Add, change accounts', 'Accounts are not deleted.  Only the INACTIVE_ASOF date is set.', 10);
 INSERT INTO <PREFIX>d01_permit VALUES (9, 'project_logs', 'Download project timelogs', '', 100);

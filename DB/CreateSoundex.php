@@ -5,7 +5,11 @@
 
 echo("To enter a parameter, type it followed by a newline follwed by ctrl-d\n");
 
-$outputname = "Soundex.txt";
+echo("Where to put the soundex?:\n");
+exec ("cat",$soundex_loc);
+$soundex_loc = $soundex_loc[0];
+
+$outputname = $soundex_loc."/Soundex.txt";
 $output = fopen($outputname,"w");
 while (1==1) {
 

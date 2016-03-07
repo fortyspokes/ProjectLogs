@@ -5,9 +5,13 @@
 
 echo("To enter a parameter, type it followed by a newline follwed by ctrl-d\n");
 
-echo("Please enter the directory:\n");
-exec ("cat",$location);
-$location = $location[0];
+echo("Where is the template?:\n");
+exec ("cat",$template_loc);
+$template_loc = $template_loc[0];
+
+echo("Where to put the SQL?:\n");
+exec ("cat",$SQL_loc);
+$SQL_loc = $SQL_loc[0];
 
 echo("DB name? (required for mySQL):\n");
 exec ("cat",$DBname);
@@ -25,18 +29,18 @@ if (empty($prefix)) {
 	$prefix = $prefix[0];
 }
 
-echo("Drop tables? ('y' or 'n'):\n");
-exec ("cat",$drop);
-if (strtolower($drop[0]) == "y") {
-	$drop = true;
-} else {
-	$drop = false;
-}
+//echo("Drop tables? ('y' or 'n'):\n");
+//exec ("cat",$drop);
+//if (strtolower($drop[0]) == "y") {
+//	$drop = true;
+//} else {
+//	$drop = false;
+//}
 
-$config = parse_ini_file("CreateTables.ini",FALSE);
+$config = parse_ini_file($SQL_loc."/CreateTables.ini",FALSE);
 
-$inputname = $location."/CreateTablesTemplate";
-$outputname = $location."/CreateTables";
+$inputname = $template_loc."/CreateTablesTemplate";
+$outputname = $SQL_loc."/CreateTables";
 if ($DBname != "") $outputname .= "_".$DBname;
 if ($prefix == "") {
 	$outputname .= "(no prefix).sql";
@@ -53,13 +57,13 @@ $output = fopen($outputname,"w");
 
 while (!feof($input)) {
 	$buffer = fgets($input, 1024);
+	$buffer = str_replace("<PREFIX>", $prefix, $buffer);
+	$buffer = str_replace("<DBNAME>", $DBname, $buffer);
 	foreach($config as $key => $value) {
-		$buffer = str_replace("<PREFIX>", $prefix, $buffer);
-		$buffer = str_replace("<DBNAME>", $DBname, $buffer);
 		$buffer = str_replace("<".$key.">", $value, $buffer);
-		if ($drop) {
-			$buffer = str_replace("-- DROP", "DROP", $buffer);
-		}
+//		if ($drop) {
+//			$buffer = str_replace("-- DROP", "DROP", $buffer);
+//		}
 	}
 	fwrite($output, $buffer);
 }

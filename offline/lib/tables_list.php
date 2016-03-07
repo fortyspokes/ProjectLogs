@@ -251,7 +251,7 @@ function tables_list() {
 
 	$fields = array(
 		"property_id" =>			new TFIELD(PDO::PARAM_INT),
-		"project_idref" =>			new TFIELD(PDO::PARAM_INT),
+		"organization_idref" =>		new TFIELD(PDO::PARAM_INT),
 		"name" =>					new TFIELD(PDO::PARAM_STR),
 		"description" =>			new TFIELD(PDO::PARAM_STR,"string"),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)

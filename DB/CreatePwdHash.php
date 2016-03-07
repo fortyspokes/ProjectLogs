@@ -5,7 +5,11 @@
 
 echo("To enter a parameter, type it followed by a newline follwed by ctrl-d\n");
 
-$outputname = "HashedPWD.txt";
+echo("Where to put the hash?:\n");
+exec ("cat",$hash_loc);
+$hash_loc = $hash_loc[0];
+
+$outputname = $hash_loc."/HashedPWD.txt";
 $output = fopen($outputname,"w");
 while (1==1) {
 
