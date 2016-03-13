@@ -105,6 +105,7 @@ function changes(row) {
 }
 
 function Reset() {
-	window.location = IAm + "?reset";
+	var URL_delim = "&"; if (IAm.indexOf("?") == -1 ) URL_delim = "?";
+	window.location = IAm + URL_delim + "reset";
 }
 

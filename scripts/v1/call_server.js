@@ -1,4 +1,4 @@
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 var CS_callback;
@@ -25,7 +25,8 @@ function server_call(type, content, who, service) { //type: "POST", "GET"
 		}
 	}
 	if (type == "GET") {
-		caller.open("GET", who + "?servercall=g&" + content, true);
+		var URL_delim = "&"; if (who.indexOf("?") == -1 ) URL_delim = "?";
+		caller.open("GET", who + URL_delim + "servercall=g&" + content, true);
 		caller.send(null);
 	} else {
 		caller.open("POST", who, true);
@@ -56,7 +57,8 @@ function server_answer(resp) {
 		eval(resp);
 		break;
 	case "-": //re-draw the page
-		window.location = IAm + "?reset";
+		var URL_delim = "&"; if (IAm.indexOf("?") == -1 ) URL_delim = "?";
+		window.location = IAm + URL_delim + "reset";
 		break;
 	case ".": //the period: we're done with dialog, stay here
 		break;

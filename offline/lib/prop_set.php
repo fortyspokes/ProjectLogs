@@ -309,8 +309,9 @@ private function prop_list() {
 	$sql = "SELECT * FROM ".$_DB->prefix."e00_property
 			WHERE organization_idref=".$_SESSION["organization_id"]."
 			AND property_id NOT IN (
-				SELECT property_idref FROM e02_prop_value AS e02
-				JOIN e04_prop_element AS e04 ON e02.prop_value_id = e04.prop_value_idref
+				SELECT property_idref FROM ".$_DB->prefix."e02_prop_value AS e02
+				JOIN ".$_DB->prefix."e04_prop_element AS e04
+					ON e02.prop_value_id = e04.prop_value_idref
 				WHERE e04.element_table = '".$this->element."'
 				AND e04.element_idref = ".$this->element_id."
 			)

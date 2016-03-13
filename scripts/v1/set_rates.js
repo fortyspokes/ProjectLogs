@@ -1,5 +1,6 @@
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
+
 function submit_it(me) {
   var myText = document.getElementById("txtPerson_ID");
   var myForm = document.getElementById("frmAction_ID");
@@ -74,6 +75,7 @@ function new_rate(row) {
 }
 
 function Reset() {
-  window.location = IAm + "?reset";
+	var URL_delim = "&"; if (IAm.indexOf("?") == -1 ) URL_delim = "?";
+	window.location = IAm + URL_delim + "reset";
 }
 

@@ -190,7 +190,8 @@ public function tabs() {
 				$HTML .= "</li>\n";
 			}
 		} else {
-			$HTML .= "<li style='opacity:.5;'><a href='".$_SESSION["IAm"]."?sheet=".$ID."'>\n";
+			$URL_delim = (!strpos($_SESSION["IAm"],"?"))?"?":"&";
+			$HTML .= "<li style='opacity:.5;'><a href='".$_SESSION["IAm"].$URL_delim."sheet=".$ID."'>\n";
 			$HTML .= $name."</a>";
 			$HTML .= "</li>\n";
 		}
