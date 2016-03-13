@@ -407,7 +407,7 @@ case STATE::SELECT:
 	break; //end STATE::SELECT status ----END STATUS PROCESSING----
 default:
 ?>
-<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SERVER['SCRIPT_NAME']; ?>" onsubmit="return audit_form()">
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>" onsubmit="return audit_form()">
   <table align="center">
     <tr>
       <td class="label"><?php echo $_STATE->fields['Cutoff Date']->HTML_label("Logs Cutoff Date(YYYY-MM-DD): "); ?></td>

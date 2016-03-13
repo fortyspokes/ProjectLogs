@@ -1,13 +1,17 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015,2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("assign_permits")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
-//Define the cases for the Main State Gate that are unique to this module:
-define('SELECT_PERSON', STATE::SELECT);
-define('SELECTED_PERSON', STATE::SELECTED);
-define('SELECT_PROJECT', STATE::SELECT + 1);
-define('SELECTED_PROJECT', STATE::SELECTED + 1);
+//The Main State Gate cases:
+define('LIST_PERSONS',		STATE::INIT);
+define('SELECT_PERSON',			LIST_PERSONS + 1);
+define('SELECTED_PERSON',		LIST_PERSONS + 2);
+define('LIST_PROJECTS',		STATE::INIT + 10);
+define('SELECT_PROJECT',		LIST_PROJECTS + 1);
+define('SELECTED_PROJECT',		LIST_PROJECTS + 2);
+define('LIST_PERMITS',		STATE::INIT + 20);
+define('UPDATE_PERMIT',			LIST_PERMITS + 1);
 
 class A_PERMIT {
 	public $grade;		//d01.grade (1=system, 10=org, 100=proj)
@@ -29,14 +33,15 @@ class A_PERMIT {
 
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
-case STATE::INIT:
+case LIST_PERSONS:
 	$_STATE->person_id = 0;
 	require_once "person_select.php";
 	$persons = new PERSON_SELECT(array(-$_SESSION["person_id"])); //blacklist: user can't change own permits
-	if ($persons->selected != 0) { //solo person?
+	if ($persons->selected) {
 		$persons->set_state();
+		$_STATE->init = LIST_PROJECTS;
 		$_STATE->status = SELECTED_PERSON;
-		break 1; //re-switch
+		break 1; //re-switch to SELECTED_PERSON
 	}
 	$_STATE->person_select = serialize(clone($persons));
 	$_STATE->msgGreet = "Select a person to assign permissions";
@@ -47,16 +52,22 @@ case SELECT_PERSON:
 	$persons = unserialize($_STATE->person_select);
 	$persons->set_state();
 	$_STATE->status = SELECTED_PERSON;
-//	break 1; //re-switch
+	$_STATE->person_select = serialize($persons);
 case SELECTED_PERSON:
+
+	$_STATE->status = LIST_PROJECTS; //our new starting point for goback
+	$_STATE->replace(); //so loopback() can find it
+case LIST_PROJECTS:
 	require_once "project_select.php";
 	$projects = new PROJECT_SELECT();
 	$_STATE->project_select = serialize(clone($projects));
 	if ($projects->selected) {
+		$_STATE->init = SELECT_SPECS;
 		$_STATE->status = SELECTED_PROJECT;
 		break 1; //re-switch to SELECTED_PROJECT
 	}
 	$_STATE->msgGreet = "Select the project";
+	$_STATE->backup = LIST_PERSONS;
 	$_STATE->status = SELECT_PROJECT;
 	break 2;
 case SELECT_PROJECT:
@@ -64,24 +75,24 @@ case SELECT_PROJECT:
 	$projects = unserialize($_STATE->project_select);
 	$projects->set_state();
 	$_STATE->project_select = serialize(clone($projects));
-	$_STATE->status = SELECTED_PROJECT; //for possible goback
-	$_STATE->replace();
-//	break 1; //re_switch
 case SELECTED_PROJECT:
-	require_once "project_select.php"; //in case of goback
-	$projects = unserialize($_STATE->project_select);
 	$_STATE->project_name = $projects->selected_name();
+
+	$_STATE->status = LIST_PERMITS; //our new starting point for goback
+	$_STATE->replace(); //so loopback() can find it
+case LIST_PERMITS:
 	$_STATE->msgGreet = $_STATE->project_name."<br>Assign (check) or Un-assign permissions for <br>".
 						$_STATE->person_name;
 	permit_list($_PERMITS);
-	$_STATE->status = STATE::ENTRY;
+	$_STATE->backup = LIST_PROJECTS; //set goback
+	$_STATE->status = UPDATE_PERMIT;
 	break 2;
-case STATE::ENTRY:
+case UPDATE_PERMIT:
 	if (entry_audit($_PERMITS)) {
 		$_STATE->msgGreet = "New permissions for ".$_STATE->person_name;
-		$_STATE->status = STATE::DONE;
+		$_STATE = $_STATE->loopback(LIST_PERMITS);
+		break 1; //re-switch
 	}
-	$_STATE->goback(1); //sets up goback to STATE::INIT
 	break 2;
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
@@ -180,10 +191,7 @@ function entry_audit(&$permits) {
 
 //-------end function code; begin HTML------------
 
-EX_pageStart(); //standard HTML page start stuff - insert SCRIPTS here
-
-if ($_STATE->status == SELECT_PROJECT)
-	echo "<script type='text/javascript' src='".$EX_SCRIPTS."/call_server.js'></script>\n";
+EX_pageStart(array("call_server.js")); //standard HTML page start stuff - insert SCRIPTS here
 ?>
 <script language="JavaScript">
 LoaderS.push('load_status();');
@@ -193,9 +201,6 @@ function load_status() {
 }
 </script>
 <?php
-if ($_STATE->status == STATE::SELECT) {
-	echo "<script type='text/javascript' src='".$EX_SCRIPTS."/call_server.js'></script>\n";
-}
 EX_pageHead(); //standard page headings - after any scripts
 
 //forms and display depend on process state; note, however, that the state was probably changed after entering
@@ -213,11 +218,10 @@ case SELECT_PROJECT:
 
 	break; //end SELECT_PROJECT status ----END STATE: EXITING FROM PROCESS----
 
-//case STATE::ENTRY:
-//case STATE::DONE:
-default:
+case LIST_PERMITS:
+case UPDATE_PERMIT:
 ?>
-<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SERVER['SCRIPT_NAME']; ?>">
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
 <table style='margin:auto;'>
 <?php
 	$grade = -1;
@@ -248,9 +252,8 @@ default:
 	} ?>
 </form>
 <?php
-//end default status ----END STATUS PROCESSING----
+//end LIST/UPDATE_PERMIT status ----END STATUS PROCESSING----
 }
 
 EX_pageEnd(); //standard end of page stuff
 ?>
-

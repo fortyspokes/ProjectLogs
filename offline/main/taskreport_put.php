@@ -288,7 +288,7 @@ case SELECT_PROJECT:
 	break; //end SELECT_PROJECT status ----END STATE: EXITING FROM PROCESS----
 case SELECT_SPECS:
 ?>
-<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SERVER['SCRIPT_NAME']; ?>">
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
 <table cellpadding="3" border="0" align="center">
   <tr><td colspan="3">- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </td></tr>
 <?php
@@ -318,7 +318,7 @@ case SELECT_SPECS:
 	break;
 case DOWNLOAD_LOG: ?>
 
-<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SERVER['SCRIPT_NAME']; ?>">
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
 <?php
 	if ($_STATE->listLog) {
 		echo "<br>\n";

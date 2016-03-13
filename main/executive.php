@@ -17,6 +17,7 @@ if (isset($_GET["init"])) {
 		$_STATE->heading = $_GET["head"];
 		$_STATE->replace();
 	}
+	$_SESSION["IAm"] = $_SERVER["SCRIPT_NAME"]; //for form action
 
 } else {
 	$_STATE = STATE_pull(); //'pull' the working state

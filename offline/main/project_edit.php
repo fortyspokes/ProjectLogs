@@ -1,13 +1,20 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015,2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("project_edit")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
 require_once "field_edit.php";
 
+//The Main State Gate cases:
+define('LIST_PROJECTS',		STATE::INIT);
+define('SELECT_PROJECT',		LIST_PROJECTS + 1);
+define('SELECTED_PROJECT',		LIST_PROJECTS + 2);
+define('ADD_PROJECT',			LIST_PROJECTS + 3);
+define('UPDATE_PROJECT',		LIST_PROJECTS + 4);
+
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
-case STATE::INIT:
+case LIST_PROJECTS:
 	$_STATE->accounting_id = 0;
 	$_STATE->acct_list = array();
 	$_STATE->noSleep[] = "acct_list";
@@ -17,39 +24,40 @@ case STATE::INIT:
 	$projects->show_new = true;
 	$_STATE->project_select = serialize(clone($projects));
 	$_STATE->msgGreet = "Select a project record to edit";
-	$_STATE->status = STATE::SELECT;
+	$_STATE->status = SELECT_PROJECT;
 	break 2;
-case STATE::SELECT:
+case SELECT_PROJECT:
 	require_once "project_select.php"; //catches $_GET list refresh (assumes break 2)
 	$projects = unserialize($_STATE->project_select);
 	$projects->set_state();
 	$_STATE->record_id = $_STATE->project_id;
-	$_STATE->status = STATE::SELECTED; //for possible goback
+	$_STATE->status = SELECTED_PROJECT; //for possible goback
 	$_STATE->replace();
-//	break 1; //re_switch
-case STATE::SELECTED:
+case SELECTED_PROJECT:
 	state_fields(); //creates the accounting list for display
 	if ($_STATE->record_id == -1) {
 		$_STATE->msgGreet = "New project record";
-		$_STATE->status = STATE::ADD;
+		$_STATE->status = ADD_PROJECT;
 	} else {
 		record_info();
 		$_STATE->msgGreet = "Edit project record";
-		$_STATE->status = STATE::UPDATE;
+		$_STATE->status = UPDATE_PROJECT;
 	}
 	break 2;
-case STATE::ADD:
+case ADD_PROJECT:
 	state_fields(); //creates the accounting list for audit
 	$_STATE->msgGreet = "New project record";
 	if (isset($_POST["btnReset"])) {
 		break 2;
 	}
 	if (new_audit()) {
-		$_STATE->status = STATE::DONE;
-		$_STATE->goback(1); //setup for goback
+		$record_id = $_STATE->record_id;
+		$_STATE = $_STATE->loopback(SELECTED_PROJECT);
+		$_STATE->record_id = $record_id;
+		break 1; //re-switch with new record_id
 	}
 	break 2;
-case STATE::UPDATE:
+case UPDATE_PROJECT:
 	state_fields(); //creates the accounting list for audit
 	$_STATE->msgGreet = "Edit project record";
 	if (isset($_POST["btnReset"])) {
@@ -57,8 +65,8 @@ case STATE::UPDATE:
 		break 2;
 	}
 	if (update_audit()) {
-		$_STATE->status = STATE::DONE;
-		$_STATE->goback(1); //setup for goback
+		$_STATE = $_STATE->loopback(SELECTED_PROJECT);
+		break 1; //re-switch
 	}
 	break 2;
 default:
@@ -225,24 +233,25 @@ function new_audit() {
 
 //-------end function code; begin HTML------------
 
-EX_pageStart(); //standard HTML page start stuff - insert SCRIPTS here
-
-if ($_STATE->status == STATE::SELECT)
-	echo "<script type='text/javascript' src='".$EX_SCRIPTS."/call_server.js'></script>\n";
-
+if ($_STATE->status == SELECT_PROJECT) {
+	$scripts = array("call_server.js");
+} else {
+	$scripts = array();
+}
+EX_pageStart($scripts); //standard HTML page start stuff - insert SCRIPTS here
 EX_pageHead(); //standard page headings - after any scripts
 
 //forms and display depend on process state; note, however, that the state was probably changed after entering
 //the Main State Gate so this switch will see the next state in the process:
 switch ($_STATE->status) {
-case STATE::SELECT:
+case SELECT_PROJECT:
 
 	echo $projects->set_list();
 
-	break; //end STATE::SELECT status ----END STATUS PROCESSING----
+	break; //end SELECT_PROJECT status ----END STATUS PROCESSING----
 default:
 ?>
-<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SERVER['SCRIPT_NAME']; ?>">
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <table align="center">
     <tr>
       <td class="label"><?php echo $_STATE->fields['Name']->HTML_label("Name: "); ?></td>
@@ -305,16 +314,13 @@ default:
   </table>
   <p>
 <?php
-	if ($_STATE->status != STATE::DONE) {
-		if ($_STATE->status == STATE::ADD ) {
-			echo FIELD_edit_buttons(FIELD_ADD);
-		} else {
-			echo Field_edit_buttons(FIELD_UPDATE);
-		}
+	if ($_STATE->status == ADD_PROJECT ) {
+		echo FIELD_edit_buttons(FIELD_ADD);
+	} else {
+		echo Field_edit_buttons(FIELD_UPDATE);
 	} ?>
 </form>
 <?php //end default status ----END STATUS PROCESSING----
 }
 EX_pageEnd(); //standard end of page stuff
 ?>
-

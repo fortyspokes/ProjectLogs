@@ -1,9 +1,67 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015,2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("accounting_edit")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
 require_once "field_edit.php";
+
+//The Main State Gate cases:
+define('LIST_ACCOUNTING',	STATE::INIT);
+define('SELECT_ACCOUNTING',		LIST_ACCOUNTING + 1);
+define('SELECTED_ACCOUNTING',	LIST_ACCOUNTING + 2);
+define('ADD_ACCOUNTING',		LIST_ACCOUNTING + 4);
+define('UPDATE_ACCOUNTING',		LIST_ACCOUNTING + 6);
+
+//Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
+while (1==1) { switch ($_STATE->status) {
+case LIST_ACCOUNTING:
+	accounting_list();
+	$_STATE->status = SELECT_ACCOUNTING;
+	$_STATE->msgGreet = "Select the accounting group to edit";
+	break 2;
+case SELECT_ACCOUNTING:
+	accounting_select();
+	$_STATE->status = SELECTED_ACCOUNTING; //set for possible goback
+	$_STATE->replace(); //so loopback() can find it
+case SELECTED_ACCOUNTING:
+	state_fields();
+	if ($_STATE->record_id == -1) {
+		$_STATE->msgGreet = "New accounting record";
+		$_STATE->status = ADD_ACCOUNTING;
+	} else {
+		accounting_info();
+		$_STATE->msgGreet = "Edit accounting record?";
+		$_STATE->status = UPDATE_ACCOUNTING;
+	}
+	break 2;
+case ADD_ACCOUNTING:
+	$_STATE->msgGreet = "New accounting record";
+	if (isset($_POST["btnReset"])) {
+		break 2;
+	}
+	state_fields();
+	if (new_audit()) {
+		$record_id = $_STATE->record_id;
+		$_STATE = $_STATE->loopback(SELECTED_ACCOUNTING);
+		$_STATE->record_id = $record_id;
+		break 1; //re-switch with new record_id
+	}
+	break 2;
+case UPDATE_ACCOUNTING:
+	$_STATE->msgGreet = "Edit accounting record";
+	if (isset($_POST["btnReset"])) {
+		record_info($_DB, $_STATE);
+		break 2;
+	}
+	state_fields();
+	if (update_audit()) {
+		$_STATE = $_STATE->loopback(SELECTED_ACCOUNTING);
+		break 1; //re-switch
+	}
+	break 2;
+default:
+	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+} } //while & switch
 
 function state_fields() {
 	global $_STATE;
@@ -126,71 +184,16 @@ function new_audit() {
 	return TRUE;
 }
 
-//Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
-while (1==1) { switch ($_STATE->status) {
-case STATE::INIT:
-	accounting_list();
-	$_STATE->status = STATE::SELECT;
-	$_STATE->msgGreet = "Select the accounting group to edit";
-	break 2;
-case STATE::SELECT:
-	accounting_select();
-	$_STATE->status = STATE::SELECTED; //set for possible goback
-//	break 1; //re_switch
-case STATE::SELECTED:
-	state_fields();
-	if ($_STATE->record_id == -1) {
-		$_STATE->msgGreet = "New accounting record";
-		$_STATE->status = STATE::ADD;
-	} else {
-		accounting_info();
-		$_STATE->msgGreet = "Edit accounting record?";
-		$_STATE->status = STATE::UPDATE;
-	}
-	break 2;
-case STATE::ADD:
-	$_STATE->msgGreet = "New accounting record";
-	if (isset($_POST["btnReset"])) {
-		break 2;
-	}
-//	if ($_POST["btnSubmit"] != "add") { //IE < v8 submits name/InnerText NOT name/value
-//		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid btnSubmit ".$_POST["btnSubmit"]);
-//	}
-	state_fields();
-	if (new_audit()) {
-		$_STATE->status = STATE::DONE;
-	}
-	$_STATE->goback(1); //sets up goback to STATE::INIT
-	break 2;
-case STATE::UPDATE:
-	$_STATE->msgGreet = "Edit accounting record";
-	if (isset($_POST["btnReset"])) {
-		record_info($_DB, $_STATE);
-		break 2;
-	}
-//	if ($_POST["btnSubmit"] != "update") {
-//		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid btnSubmit ".$_POST["btnSubmit"]);
-//	}
-	state_fields();
-	if (update_audit()) {
-		$_STATE->status = STATE::DONE;
-	}
-	$_STATE->goback(1); //sets up goback to STATE::INIT
-	break 2;
-default:
-	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
-} } //while & switch
-
 EX_pageStart(); //standard HTML page start stuff - insert scripts here
 EX_pageHead(); //standard page headings - after any scripts
 ?>
 
-<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SERVER['SCRIPT_NAME']; ?>">
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
 <?php
 //forms and display depend on process state; note, however, that the state was probably changed after entering
 //the Main State Gate so this switch will see the next state in the process:
 switch ($_STATE->status) {
-case STATE::SELECT:
+case SELECT_ACCOUNTING:
 ?>
   <p>
   <select name='selAccounting' size="<?php echo count($_STATE->records); ?>" onclick="this.form.submit()">
@@ -200,9 +203,12 @@ case STATE::SELECT:
 	} ?>
   </select>
   </p>
-<?php //end STATE::SELECT status ----END STATUS PROCESSING----
+<?php //end SELECT_ACCOUNTING status ----END STATUS PROCESSING----
 	break;
-default:
+
+case SELECTED_ACCOUNTING:
+case ADD_ACCOUNTING:
+case UPDATE_ACCOUNTING:
 ?>
   <table align="center">
     <tr>
@@ -216,16 +222,13 @@ default:
    </table>
   <p>
 <?php
-	if ($_STATE->status != STATE::DONE) {
-		if ($_STATE->status == STATE::ADD ) {
-			echo FIELD_edit_buttons(FIELD_ADD);
-		} else {
-			echo Field_edit_buttons(FIELD_UPDATE);
-		}
+	if ($_STATE->status == ADD_ACCOUNTING ) {
+		echo FIELD_edit_buttons(FIELD_ADD);
+	} else {
+		echo Field_edit_buttons(FIELD_UPDATE);
 	} ?>
 </form>
 <?php //end default status ----END STATUS PROCESSING----
 }
 EX_pageEnd(); //standard end of page stuff
 ?>
-

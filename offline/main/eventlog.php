@@ -900,7 +900,7 @@ case SELECT_PROJECT:
 case SELECT_SPECS:
 ?>
 
-<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SERVER['SCRIPT_NAME']; ?>">
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
 <table cellpadding="3" border="0" align="center">
   <tr><td colspan="3">- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </td></tr>
 <?php
@@ -1019,7 +1019,7 @@ for ($ndx=0; $ndx<$_STATE->columns[COL_COUNT]; $ndx++) { //save one row's worth 
 
 <?php
 if ($_PERMITS->can_pass("project_logs")) { ?>
-<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SERVER['SCRIPT_NAME']; ?>">
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
 <br>You can
 <button name="btnPut" type="submit" value="<?php echo $_SESSION["person_id"]; ?>" title="click here to download">Download</button>
 this data for import into the timesheet template<br>(check your browser preferences for where the downloaded file will go)

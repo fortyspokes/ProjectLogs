@@ -318,7 +318,7 @@ case SELECT_PROJECT:
 case SELECT_TASK:
 ?>
   <p>
-<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SERVER['SCRIPT_NAME']; ?>">
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <select name='selTask' size="<?php echo count($_STATE->records); ?>" onclick="this.form.submit()">
 <?php
 	foreach($_STATE->records as $value => $name) {
@@ -332,7 +332,7 @@ case SELECT_TASK:
 case SELECT_SUBTASK:
 ?>
   <p>
-<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SERVER['SCRIPT_NAME']; ?>">
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <select name='selSubtask' size="<?php echo count($_STATE->records); ?>" onclick="this.form.submit()">
 <?php	foreach($_STATE->records as $value => $name) {
   		echo "    <option value=\"".$value."\">".$name."\n";
@@ -347,7 +347,7 @@ case SELECTED_SUBTASK:
 case ADD_SUBTASK:
 case UPDATE_SUBTASK:
 ?>
-<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SERVER['SCRIPT_NAME']; ?>">
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <table align="center">
     <tr>
       <td class="label"><?php echo $_STATE->fields['Name']->HTML_label("Name: "); ?></td>

@@ -1152,7 +1152,7 @@ case SELECT_PROJECT:
 case SELECT_SPECS:
 ?>
 
-<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SERVER['SCRIPT_NAME']; ?>">
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
 <table cellpadding="3" border="0" align="center">
   <tr><td>&nbsp</td><td colspan="2">- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </td></tr>
 <?php
@@ -1183,7 +1183,7 @@ default: //list the hours and allow new entry:
 	$mode = ($_STATE->mode == "l")?"Tabular":"List"; //for 'Show in ___ Mode' message
 ?>
 <div style='position:fixed; left:10px; top:5px;'>
-<form method='post' name='frmAction' id='frmAction_ID' action='<?php echo $_SERVER['SCRIPT_NAME']; ?>'>
+<form method='post' name='frmAction' id='frmAction_ID' action='<?php echo $_SESSION["IAm"]; ?>'>
       <button name="btnMode" type="submit" onclick="this.form.submit()">Show in <?php echo $mode ?> Mode</button>
 </form>
 </div>
@@ -1384,7 +1384,7 @@ if ($_STATE->mode == "l") { //list
 } // ---end TABULAR STYLE--- ?>
 </table>
 
-<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SERVER['SCRIPT_NAME']; ?>">
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
 <br>You can
 <button name="btnPut" type="submit" value="<?php echo $_STATE->person_id ?>" title="click here to download">
 Download</button>

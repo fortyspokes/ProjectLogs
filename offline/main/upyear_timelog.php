@@ -139,7 +139,7 @@ EX_pageStart(); //standard HTML page start stuff - insert scripts here
 EX_pageHead(); //standard page headings - after any scripts
 ?>
 
-<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SERVER['SCRIPT_NAME']; ?>">
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
 <table align='center'>
   <tr>
     <td class="label">Old Date:</td>

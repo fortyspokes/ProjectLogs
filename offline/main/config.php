@@ -66,7 +66,7 @@ EX_pageHead();
 echo $HTML;
 ?>
 
-<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SERVER['SCRIPT_NAME']; ?>">
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
 <table align='center'>
 <?php
 foreach ($_SESSION['_SITE_CONF'] as $ID => $value) {

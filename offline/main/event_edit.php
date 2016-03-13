@@ -263,7 +263,7 @@ case SELECT_PROJECT:
 case SELECT_EVENT:
 ?>
   <p>
-<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SERVER['SCRIPT_NAME']; ?>">
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <select name='selEvent' size="<?php echo count($_STATE->records); ?>" onclick="this.form.submit()">
 <?php
 	foreach($_STATE->records as $value => $name) {
@@ -279,7 +279,7 @@ case SELECTED_EVENT:
 case ADD_EVENT:
 case UPDATE_EVENT:
 ?>
-<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SERVER['SCRIPT_NAME']; ?>">
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <table align="center">
     <tr>
       <td class="label"><?php echo $_STATE->fields['Name']->HTML_label("Name: "); ?></td>

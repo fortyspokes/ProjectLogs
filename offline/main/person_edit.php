@@ -1,109 +1,109 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015,2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 require_once "field_edit.php";
-$_STATE->fields = array( //pagename,DBname,load from DB?,write to DB?,required?,maxlength
-		"First Name"=>new FIELD("txtFirstName","firstname",TRUE,TRUE,TRUE,64),
-		"Last Name"=>new FIELD("txtLastName","lastname",TRUE,TRUE,TRUE,64),
-		"Log ID"=>new FIELD("txtLogID","loginname",TRUE,TRUE,FALSE,64),
-		"Password"=>new PSWD_FIELD("txtPswd","password",FALSE,TRUE,FALSE,64),
-		"RePassword"=>new PSWD_FIELD("txtRePswd","",FALSE,FALSE,FALSE,64),
-		"Email"=>new FIELD("txtEmail","email",TRUE,TRUE,FALSE,64),
-		"Inactive As Of"=>new DATE_FIELD("txtInactive","inactive_asof",TRUE,TRUE,FALSE,0),
-		);
+
+//The Main State Gate cases:
+define('LIST_PERSONS',		STATE::INIT);
+define('SELECT_PERSON',			LIST_PERSONS + 1);
+define('SELECTED_PERSON',		LIST_PERSONS + 2);
+define('CHANGE_PERSON',			LIST_PERSONS + 3);
+define('UPDATE_PERSON',			LIST_PERSONS + 4);
+define('ADD_PERSON',			LIST_PERSONS + 5);
+define('DELETE_PERSON',			LIST_PERSONS + 6);
 
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
-case STATE::INIT:
+case LIST_PERSONS:
 	$_STATE->person_organization_id = 0;
 	$_STATE->person_id = 0;
 	require_once "person_select.php";
 	$persons = new PERSON_SELECT();
 	if (!$_PERMITS->can_pass("person_edit")) {
 		$persons->set_state($_SESSION["person_id"]);
-		$_STATE->person_select = serialize($persons);
-		$_STATE->status = STATE::SELECTED;
-		break 1; //re-switch to STATE::SELECTED
-/*		$_STATE->record_id = $_SESSION["person_id"];
-		record_info();
-		$_STATE->msgGreet = "Edit your personal record?";
-		$_STATE->status = STATE::CHANGE;
-		break 2; */
+		$_STATE->status = SELECTED_PERSON;
+		break 1; //re-switch to SELECTED_PERSON
 	}
 	$persons->show_new = true;
 	$_STATE->person_select = serialize(clone($persons));
 	$_STATE->msgGreet = "Select a person record to edit";
-	$_STATE->status = STATE::SELECT;
+	$_STATE->status = SELECT_PERSON;
 	break 2;
-case STATE::SELECT:
+case SELECT_PERSON:
 	require_once "person_select.php"; //catches $_GET list refresh
 	$persons = unserialize($_STATE->person_select);
 	$persons->set_state();
-	$_STATE->status = STATE::SELECTED; //for possible goback
+	$_STATE->person_select = serialize(clone($persons));
+	$_STATE->status = SELECTED_PERSON; //for possible goback
 	$_STATE->replace();
-//	break 1; //re_switch
-case STATE::SELECTED:
+case SELECTED_PERSON:
+	state_fields();
 	$_STATE->record_id = $_STATE->person_id;
 	if ($_STATE->record_id == -1) {
 		$_STATE->msgGreet = "New person record";
-		$_STATE->status = STATE::ADD;
+		$_STATE->status = ADD_PERSON;
 	} else {
 		record_info();
 		$_STATE->msgGreet = "Edit person record?";
-		$_STATE->status = STATE::CHANGE;
+		$_STATE->status = CHANGE_PERSON;
 	}
 	break 2;
-case STATE::ADD:
-	$_STATE->goback(1); //stay at this level
+case ADD_PERSON:
+	state_fields();
 	$_STATE->msgGreet = "New person record";
 	if (isset($_POST["btnReset"])) {
 		break  2;
 	}
-//	if ($_POST["btnSubmit"] != "add") { //IE < v8 submits name/InnerText NOT name/value
-//		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid btnSubmit ".$_POST["btnSubmit"]);
-//	}
 	if (new_audit()) {
-		$_STATE->status = STATE::DONE;
+		$record_id = $_STATE->record_id;
+		$_STATE = $_STATE->loopback(SELECTED_PERSON);
+		$_STATE->record_id = $record_id;
+		break 1; //re-switch with new record_id
 	}
 	break 2;
-case STATE::CHANGE:
-case STATE::UPDATE:
-case STATE::DELETE:
-	$_STATE->goback(1); //stay at this level
+case CHANGE_PERSON:
+case UPDATE_PERSON:
+case DELETE_PERSON:
+	state_fields();
 	$_STATE->msgGreet = "Edit person record";
 	if (isset($_POST["btnReset"])) {
 		record_info();
 		break 2;
 	}
 	if (isset($_POST["btnSubmit"])) {
-//		if ($_POST["btnSubmit"] != "update") {
-//			throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid btnSubmit ".$_POST["btnSubmit"]);
-//		}
 		if (update_audit()) {
-			$_STATE->status = STATE::DONE;
-		} else {
-			$_STATE->status = STATE::UPDATE;
+			$_STATE = $_STATE->loopback(SELECTED_PERSON);
+			break 1; //re-switch
 		}
 		break 2;
 	}
 	if (isset($_POST["btnDelete"])) {
-//		if (($_POST["btnDelete"] != "delete") || (!can_pass("person_edit"))) {
-//			throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid btnDelete ".$_POST["btnDelete"]);
-//		}
 		if (delete_audit()) {
-			$_STATE->status = STATE::DONE;
-		} else {
-			$_STATE->status = STATE::DELETE;
+			$_STATE = $_STATE->loopback(LIST_PERSONS);
+			break 1; //re-switch
 		}
 		break 2;
 	}
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid Submit");
 default:
-	$_STATE->status = STATE::ERROR;
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
 //End Main State Gate
+
+function state_fields() {
+	global $_STATE;
+
+	$_STATE->fields = array( //pagename,DBname,load from DB?,write to DB?,required?,maxlength
+			"First Name"=>new FIELD("txtFirstName","firstname",TRUE,TRUE,TRUE,64),
+			"Last Name"=>new FIELD("txtLastName","lastname",TRUE,TRUE,TRUE,64),
+			"Log ID"=>new FIELD("txtLogID","loginname",TRUE,TRUE,FALSE,64),
+			"Password"=>new PSWD_FIELD("txtPswd","password",FALSE,TRUE,FALSE,64),
+			"RePassword"=>new PSWD_FIELD("txtRePswd","",FALSE,FALSE,FALSE,64),
+			"Email"=>new FIELD("txtEmail","email",TRUE,TRUE,FALSE,64),
+			"Inactive As Of"=>new DATE_FIELD("txtInactive","inactive_asof",TRUE,TRUE,FALSE,0),
+			);
+}
 
 function record_info() {
 	global $_DB, $_STATE;
@@ -308,9 +308,7 @@ function delete_audit() {
 
 //-------end function code; begin HTML------------
 
-EX_pageStart(); //standard HTML page start stuff - insert SCRIPTS here
-
-echo "<script type='text/javascript' src='".$EX_SCRIPTS."/call_server.js'></script>\n";
+EX_pageStart(array("call_server.js")); //standard HTML page start stuff - insert SCRIPTS here
 ?>
 <script language="JavaScript">
 function compare_pswds() {
@@ -326,23 +324,19 @@ function DeleteBtn() {
 }
 </script>
 <?php
-if ($_STATE->status == STATE::SELECT) { ?>
-<?php
-}
-
 EX_pageHead(); //standard page headings - after any scripts
 
 //forms and display depend on process state; note, however, that the state was probably changed after entering
 //the Main State Gate so this switch will see the next state in the process:
 switch ($_STATE->status) {
-case STATE::SELECT:
+case SELECT_PERSON:
 
 	echo $persons->set_list();
 
-	break; //end STATE::SELECT status ----END STATUS PROCESSING----
+	break; //end SELECT_PERSON status ----END STATUS PROCESSING----
 default:
 ?>
-<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SERVER['SCRIPT_NAME']; ?>">
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <table align="center">
     <tr>
       <td class="label"><?php echo $_STATE->fields['First Name']->HTML_label("First Name: "); ?></td>
@@ -375,17 +369,16 @@ default:
   </table>
   <p>
 <?php
-	if ($_STATE->status != STATE::DONE) {
-		if ($_STATE->status == STATE::ADD ) {
-			echo FIELD_edit_buttons(FIELD_ADD);
-		} else {
-			echo Field_edit_buttons(FIELD_UPDATE);
-		}
-		if (($_STATE->status != STATE::ADD) && ($_PERMITS->can_pass("person_edit"))
+	if ($_STATE->status == ADD_PERSON ) {
+		echo FIELD_edit_buttons(FIELD_ADD);
+	} else {
+		echo Field_edit_buttons(FIELD_UPDATE);
+	}
+	if (($_STATE->status != ADD_PERSON) && ($_PERMITS->can_pass("person_edit"))
 &&( 1 == 0 ) //for now, no delete; use inactive instead
 				&& ($_SESSION["person_id"] != $_STATE->record_id)) { //note: can't delete yourself ?>
   <button type="submit" name="btnDelete" id="btnDelete_ID" value = "delete" onclick="return DeleteBtn()">Remove this person record</button>
-<?php	}
+<?php
 	}
 	//end default status ----END STATUS PROCESSING----
 } ?>
@@ -394,4 +387,3 @@ default:
 <?php
 EX_pageEnd(); //standard end of page stuff
 ?>
-

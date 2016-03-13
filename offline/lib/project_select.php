@@ -1,5 +1,5 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015,2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 class PROJECT_SELECT {
@@ -164,7 +164,7 @@ public function set_list() { //set up initial form and select
 		$HTML .= "}\n";
 		$HTML .= "</script>\n";
 	}
-	$HTML .= "<form method='post' name='frmAction' id='frmAction_ID' action='".$_SERVER['SCRIPT_NAME']."'>\n";
+	$HTML .= "<form method='post' name='frmAction' id='frmAction_ID' action='".$_SESSION["IAm"]."'>\n";
 	$HTML .= "  <div id='".$this->list_ID."'>\n";
 	$list = $this->show_list();
 	foreach ($list as $line) $HTML .= $line."\n";
@@ -190,7 +190,7 @@ public function tabs() {
 				$HTML .= "</li>\n";
 			}
 		} else {
-			$HTML .= "<li style='opacity:.5;'><a href='".$_SERVER['SCRIPT_NAME']."?sheet=".$ID."'>\n";
+			$HTML .= "<li style='opacity:.5;'><a href='".$_SESSION["IAm"]."?sheet=".$ID."'>\n";
 			$HTML .= $name."</a>";
 			$HTML .= "</li>\n";
 		}
