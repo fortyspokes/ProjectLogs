@@ -1,9 +1,9 @@
 <?php
-//copyright 2015,2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("project_edit")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
-require_once "field_edit.php";
+require_once "lib/field_edit.php";
 
 //The Main State Gate cases:
 define('LIST_PROJECTS',		STATE::INIT);
@@ -19,7 +19,7 @@ case LIST_PROJECTS:
 	$_STATE->acct_list = array();
 	$_STATE->noSleep[] = "acct_list";
 	$_STATE->budget_by = "t";
-	require_once "project_select.php";
+	require_once "lib/project_select.php";
 	$projects = new PROJECT_SELECT();
 	$projects->show_new = true;
 	$_STATE->project_select = serialize(clone($projects));
@@ -27,7 +27,7 @@ case LIST_PROJECTS:
 	$_STATE->status = SELECT_PROJECT;
 	break 2;
 case SELECT_PROJECT:
-	require_once "project_select.php"; //catches $_GET list refresh (assumes break 2)
+	require_once "lib/project_select.php"; //catches $_GET list refresh (assumes break 2)
 	$projects = unserialize($_STATE->project_select);
 	$projects->set_state();
 	$_STATE->record_id = $_STATE->project_id;

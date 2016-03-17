@@ -1,9 +1,9 @@
 <?php
-//copyright 2015, 2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("task_edit")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
-require_once "field_edit.php";
+require_once "lib/field_edit.php";
 
 //The Main State Gate cases:
 define('LIST_PROJECTS',		STATE::INIT);
@@ -21,7 +21,7 @@ define('PROPERTIES_GOBACK',		PROPERTIES + 1);
 while (1==1) { switch ($_STATE->status) {
 case STATE::INIT:
 	$_STATE->project_id = 0;
-	require_once "project_select.php";
+	require_once "lib/project_select.php";
 	$projects = new PROJECT_SELECT($_PERMITS->restrict("task_edit"));
 	$_STATE->project_select = serialize(clone($projects));
 	if ($projects->selected) {
@@ -33,7 +33,7 @@ case STATE::INIT:
 	$_STATE->status = SELECT_PROJECT;
 	break 2;
 case SELECT_PROJECT:
-	require_once "project_select.php"; //catches $_GET list refresh
+	require_once "lib/project_select.php"; //catches $_GET list refresh
 	$projects = unserialize($_STATE->project_select);
 	$projects->set_state();
 	$_STATE->project_select = serialize(clone($projects));
@@ -96,11 +96,11 @@ case UPDATE_TASK:
 	}
 	break 2;
 case PROPERTIES:
-	require_once "prop_set.php";
+	require_once "lib/prop_set.php";
 	$propset = PROP_SET_exec($_STATE, false);
 	break 2;
 case PROPERTIES_GOBACK:
-	require_once "prop_set.php";
+	require_once "lib/prop_set.php";
 	PROP_SET_exec($_STATE, true);
 	$_STATE = $_STATE->loopback(SELECTED_TASK);
 	break 1;
@@ -332,4 +332,3 @@ case PROPERTIES: //list properties and allow new entry:
 }
 EX_pageEnd(); //standard end of page stuff
 ?>
-

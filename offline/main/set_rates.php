@@ -1,5 +1,5 @@
 <?php
-//copyright 2015,2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("set_rates")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
@@ -18,7 +18,7 @@ case LIST_PROJECTS:
 	$_STATE->project_id = 0;
 	$_STATE->close_date = false;
 	$_STATE->show_inactive = false;
-	require_once "project_select.php";
+	require_once "lib/project_select.php";
 	$projects = new PROJECT_SELECT($_PERMITS->restrict("set_rates"));
 	$_STATE->project_select = serialize(clone($projects));
 	if ($projects->selected) {
@@ -30,7 +30,7 @@ case LIST_PROJECTS:
 	$_STATE->status = SELECT_PROJECT;
 	break 2;
 case SELECT_PROJECT:
-	require_once "project_select.php"; //catches $_GET list refresh
+	require_once "lib/project_select.php"; //catches $_GET list refresh
 	$projects = unserialize($_STATE->project_select);
 	$projects->set_state();
 	$_STATE->project_select = serialize(clone($projects));
@@ -410,8 +410,7 @@ case RATE_CHANGE:
 <table align='center' cellpadding='4' border='2' class="list">
   <tr><th style="width:100px">&nbsp;</th><th>Rate</th><th>Effective as of</th><th>Expires after</th></tr>
   <tr>
-    <td id="BN_0" data-recid="0" onclick="init_row(this)" title="Click to add new rate"><img src="<?php
-		echo $_SESSION["_SITE_CONF"]["_REDIRECT"]?>/images/add.png"></td>
+    <td id="BN_0" data-recid="0" onclick="init_row(this)" title="Click to add new rate"><img src="<?php echo $_SESSION["BUTLER"]; ?>?IAm=IG&file=add.png&ver=<?php echo $_VERSION; ?>"></td>
     <td id="RT_0"></td>
     <td id="EF_0"></td>
     <td id="EX_0"></td>

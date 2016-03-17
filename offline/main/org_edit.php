@@ -1,9 +1,9 @@
 <?php
-//copyright 2015,2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("org_edit")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
-require_once "field_edit.php";
+require_once "lib/field_edit.php";
 
 //The Main State Gate cases:
 define('LIST_ORGS',			STATE::INIT);

@@ -1,5 +1,5 @@
 <?php
-//copyright 2015,2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("assign_permits")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
@@ -35,7 +35,7 @@ class A_PERMIT {
 while (1==1) { switch ($_STATE->status) {
 case LIST_PERSONS:
 	$_STATE->person_id = 0;
-	require_once "person_select.php";
+	require_once "lib/person_select.php";
 	$persons = new PERSON_SELECT(array(-$_SESSION["person_id"])); //blacklist: user can't change own permits
 	if ($persons->selected) {
 		$persons->set_state();
@@ -48,7 +48,7 @@ case LIST_PERSONS:
 	$_STATE->status = SELECT_PERSON;
 	break 2;
 case SELECT_PERSON:
-	require_once "person_select.php"; //catches $_GET list refresh
+	require_once "lib/person_select.php"; //catches $_GET list refresh
 	$persons = unserialize($_STATE->person_select);
 	$persons->set_state();
 	$_STATE->status = SELECTED_PERSON;
@@ -58,7 +58,7 @@ case SELECTED_PERSON:
 	$_STATE->status = LIST_PROJECTS; //our new starting point for goback
 	$_STATE->replace(); //so loopback() can find it
 case LIST_PROJECTS:
-	require_once "project_select.php";
+	require_once "lib/project_select.php";
 	$projects = new PROJECT_SELECT();
 	$_STATE->project_select = serialize(clone($projects));
 	if ($projects->selected) {
@@ -71,7 +71,7 @@ case LIST_PROJECTS:
 	$_STATE->status = SELECT_PROJECT;
 	break 2;
 case SELECT_PROJECT:
-	require_once "project_select.php"; //catches $_GET list refresh
+	require_once "lib/project_select.php"; //catches $_GET list refresh
 	$projects = unserialize($_STATE->project_select);
 	$projects->set_state();
 	$_STATE->project_select = serialize(clone($projects));

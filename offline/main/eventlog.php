@@ -1,8 +1,8 @@
 <?php
-//copyright 2015, 2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
-require_once "field_edit.php";
+require_once "lib/field_edit.php";
 
 //The Main State Gate cases:
 define('LIST_PROJECTS',		STATE::INIT);
@@ -44,7 +44,7 @@ case LIST_PROJECTS:
 	$_STATE->event_id = 0;
 	$_STATE->account_id = 0;
 	$_STATE->columns = array(1,0,0,"");
-	require_once "project_select.php";
+	require_once "lib/project_select.php";
 	$projects = new PROJECT_SELECT(get_projects($_SESSION["person_id"]),true);
 	$_STATE->project_select = serialize(clone($projects));
 	if ($projects->selected) {
@@ -56,7 +56,7 @@ case LIST_PROJECTS:
 	$_STATE->status = SELECT_PROJECT;
 	break 2;
 case SELECT_PROJECT: //select the project
-	require_once "project_select.php"; //catches $_GET list refresh
+	require_once "lib/project_select.php"; //catches $_GET list refresh
 	$projects = unserialize($_STATE->project_select);
 	$projects->set_state();
 	$_STATE->project_select = serialize(clone($projects));
@@ -66,10 +66,10 @@ case SELECTED_PROJECT:
 	$_STATE->status = SHOW_SPECS; //our new starting point for goback
 	$_STATE->replace(); //so loopback() can find it
 case SHOW_SPECS:
-	require_once "date_select.php";
+	require_once "lib/date_select.php";
 	$dates = new DATE_SELECT("wmp","p"); //show within week(w), month(m), period(p)(default)
 	$_STATE->date_select = serialize(clone($dates));
-	require_once "calendar.php";
+	require_once "lib/calendar.php";
 	$calendar = new CALENDAR(2, "FT"); //2 pages
 	$_STATE->calendar = serialize(clone($calendar));
 	$_STATE->msgGreet = $_STATE->project_name."<br>Select the date range";
@@ -77,8 +77,8 @@ case SHOW_SPECS:
 	$_STATE->status = SELECT_SPECS;
 	break 2;
 case SELECT_SPECS: //set the from and to dates
-	require_once "calendar.php"; //catches $_GET refresh
-	require_once "date_select.php";
+	require_once "lib/calendar.php"; //catches $_GET refresh
+	require_once "lib/date_select.php";
 	$dates = unserialize($_STATE->date_select);
 	if (!$dates->POST()) {
 		$calendar = unserialize($_STATE->calendar);
@@ -99,7 +99,7 @@ case SELECTED_SPECS:
 case SHEET_DISP: //fill cells (if edit, starts with Hours)
 	if (isset($_GET["sheet"])) { //change displayed sheet
 		$_STATE = $_STATE->loopback(SELECTED_SPECS);
-		require_once "project_select.php";
+		require_once "lib/project_select.php";
 		$projects = unserialize($_STATE->project_select);
 		$projects->set_state($_GET["sheet"]);
 		$_STATE->project_select = serialize($projects);
@@ -180,18 +180,18 @@ case SHEET_DISP: //fill cells (if edit, starts with Hours)
 		$SCION->status = array_shift($SCION->path);
 		break 1; //go back around
 	case DATE_DISP:
-		include_once "callback/date_list.php";
+		include_once "lib/callback/date_list.php";
 		date_send($SCION, $response);
 		$SCION->status = DATE_PICK;
 		echo $response;
 		break 2; //break out
 	case DATE_PICK:
-		include_once "callback/date_list.php";
+		include_once "lib/callback/date_list.php";
 		date_select($SCION, $response);
 		$SCION->status = array_shift($SCION->path);
 		break 1; //go back around
 	case COMMENTS_DISP:
-		include_once "callback/comments.php";
+		include_once "lib/callback/comments.php";
 		comments_send($SCION, $response);
 		$SCION->status = COMMENTS_PICK;
 		echo $response;
@@ -205,7 +205,7 @@ case SHEET_DISP: //fill cells (if edit, starts with Hours)
 		$SCION->status = array_shift($SCION->path);
 		break 1; //go back around
 	case BUTTON_DISP:
-		include_once "callback/buttons.php";
+		include_once "lib/callback/buttons.php";
 		button_send($SCION, $response);
 		echo $response;
 		$SCION->status = STATE::CHANGE;
@@ -379,7 +379,7 @@ function log_put() {
 	global $_DB, $_STATE, $_PERMITS;
 	global $version;
 
-	require_once "props_send.php"; //routines for sending property values
+	require_once "lib/props_send.php"; //routines for sending property values
 	$props_send = new PROPS_SEND(array("a21","a30"));
 
 	$sql = "SELECT name FROM ".$_DB->prefix."a00_organization
@@ -391,7 +391,7 @@ function log_put() {
 	$to = $_STATE->to_date->format('Y-m-d');
 
 	$filename = "eventlog_".$orgname."_".$from."_to_".$to.".csv"; //for file_put...
-	require_once "file_put.php";
+	require_once "lib/file_put.php";
 
 	$out = fopen('php://output', 'w');
 
@@ -935,7 +935,7 @@ default: //list the hours and allow new entry:
   <input type="button" id="cancelPop" onclick="save_comments(false)" value="cancel">
 </div>
 <?php
-	require_once "project_select.php";
+	require_once "lib/project_select.php";
 	$projects = unserialize($_STATE->project_select);
 	echo $projects->tabs();
 ?>
@@ -951,7 +951,7 @@ default: //list the hours and allow new entry:
   </tr>
   <tr id="add">
     <td id="BN_0" data-recid="0" title="Click to add new <?php echo $_STATE->title_singular; ?> counts">
-      <img src="<?php echo $_SESSION["_SITE_CONF"]["_REDIRECT"]; ?>/images/add.png"></td>
+      <img src="<?php echo $_SESSION["BUTLER"]; ?>?IAm=IG&file=add.png&ver=<?php echo $_VERSION; ?>"></td>
     <td id="AC_0" data-recid="0"></td>
     <td id="EV_0" data-recid="0"></td>
     <td id='DT_0' data-recid='0' class='date'></td>

@@ -68,8 +68,11 @@
 			"RC", //Refresh CSV
 			"SC", //Save CSV
 			"UP", //Upyear Timelog
+			"ET", //Experiment
 			) );
 	}
+	if (($_SESSION["person_id"] == 0) || ($_SESSION["_SITE_CONF"]["RUNLEVEL"] == 1))
+			$MENU_LIST[] = "PI"; //phpInfo
 	$MENU_LIST[] = "AB"; //'About' page
 	foreach ($MENU_LIST as $item) {
 		$staff = $EX_staff[$item];
@@ -83,15 +86,6 @@
 				$menu[$staff[MENU]] = $item;
 			}
 		}
-	}
-
-	if ($_SESSION["_SITE_CONF"]["RUNLEVEL"] > 0) { //can't do this stuff in production
-		if ($_PERMITS->can_pass(PERMITS::_SUPERUSER)) $menu["Experiment"] = "!/main/experiment.php?init=EX";
-	}
-
-	if ($_PERMITS->can_pass(PERMITS::_SUPERUSER)) {
-		if (($_SESSION["person_id"] == 0) || ($_SESSION["_SITE_CONF"]["RUNLEVEL"] == 1))
-				$menu['phpInfo'] = "PI";
 	}
 
 function menu_list_OS(&$staff) { //Check "OS"

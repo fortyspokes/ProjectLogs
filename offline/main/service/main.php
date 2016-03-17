@@ -1,8 +1,8 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 require_once "prepend.php";
-require_once "common.php";
+require_once "lib/common.php";
 
 if (isset($state)) {
 	$msgStatus = $state->msgStatus;
@@ -14,9 +14,7 @@ if (isset($state)) {
 <head>
 <title>SR2S Timesheets Main</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<link rel="stylesheet" href="<?php echo
-	$_SESSION["_SITE_CONF"]["_REDIRECT"]."/css".$_SESSION["_SITE_CONF"]["CSS"]."/".
-	$_SESSION["_SITE_CONF"]["THEME"]; ?>/main.css" type="text/css">
+<link rel="stylesheet" href="<?php echo $_SESSION["BUTLER"]; ?>?IAm=CG&file=main&ver=<?php echo $_VERSION; ?>" type="text/css">
 <script language="JavaScript">
 <!--
 window.onload = function() {
@@ -36,4 +34,3 @@ window.onload = function() {
 <?php
 exit; //this module can be included within other code as an exit or can stand alone as a location re-assign
 ?>
-

@@ -1,13 +1,12 @@
 <?php
-//copyright 2015, 2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 require_once "prepend.php";
-require_once "state.php";
-require_once "common.php";
-require_once "db_".$_SESSION['_SITE_CONF']['DBMANAGER'].".php";
+require_once "lib/state.php";
+require_once "lib/common.php";
+require_once "lib/db_".$_SESSION['_SITE_CONF']['DBMANAGER'].".php";
 $_DB = new db_connect($_SESSION['_SITE_CONF']['DBEDITOR']);
 $EX_servercall = false;
-$EX_SCRIPTS = $_SESSION["_SITE_CONF"]["_REDIRECT"]."/scripts".$_SESSION["_SITE_CONF"]["SCR"];
 
 //A non-blank $_GET["init"] tells us to create a new state object with status=STATE::INIT;
 //many processes rely on that STATE::INIT being set so they know to create initial setup:
@@ -17,7 +16,7 @@ if (isset($_GET["init"])) {
 		$_STATE->heading = $_GET["head"];
 		$_STATE->replace();
 	}
-	$_SESSION["IAm"] = $_SERVER["SCRIPT_NAME"]; //for form action
+	$_SESSION["IAm"] = $_SESSION["BUTLER"]."?IAm=".$_GET["IAm"]; //for form action
 
 } else {
 	$_STATE = STATE_pull(); //'pull' the working state
@@ -33,13 +32,13 @@ if (isset($_GET["init"])) {
 	}
 }
 
-require_once "staff.php";
+require_once "lib/staff.php";
 if (!isset($EX_staff[$_STATE->ID])) {
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid process ID");
 } else {
 	$EX_staffer = $EX_staff[$_STATE->ID];
 	eval($EX_staffer[PRE_EXEC]);
-	require_once($EX_staffer[PAGE]);
+	require_once("main/".$EX_staffer[PAGE]);
 }
 
 //called processes should not exit(); or, if they do, they must do their own STATE->push(), etc
@@ -48,7 +47,7 @@ $_DB = NULL;
 
 function EX_pageStart($scripts=array()) {
 //The standardized HTML stuff at the top of the page:
-	global $_STATE, $EX_SCRIPTS, $EX_servercall;
+	global $_STATE, $EX_servercall, $_VERSION;
 	if ($EX_servercall) {
 		exit(); //server_call wants a clean buffer
 	}
@@ -59,11 +58,9 @@ function EX_pageStart($scripts=array()) {
 <head>
 <title>SR2S Timesheets <?php echo $_STATE->heading; ?></title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<link rel="stylesheet" href="<?php echo
-	$_SESSION["_SITE_CONF"]["_REDIRECT"]."/css".$_SESSION["_SITE_CONF"]["CSS"]."/".
-	$_SESSION["_SITE_CONF"]["THEME"]; ?>/main.css" type="text/css">
+<link rel="stylesheet" href="<?php echo $_SESSION["BUTLER"]; ?>?IAm=CG&file=main&ver=<?php echo $_VERSION; ?>" type="text/css">
 <script language="JavaScript">
-var IAm = "<?php echo $_SERVER["SCRIPT_NAME"]; ?>";
+var IAm = "<?php echo $_SESSION["IAm"]; ?>";
 var LoaderS = new Array();
 window.onload = function() {
   for (var i = 0; i < LoaderS.length; i++) {
@@ -74,7 +71,7 @@ window.onload = function() {
 </script>
 <?php
 	foreach ($scripts as $script) {
-		echo "<script type='text/javascript' src='".$EX_SCRIPTS."/".$script."'></script>\n";
+		echo "<script type='text/javascript' src='".$_SESSION["BUTLER"],"?IAm=SG&file=".$script."&ver=".$_VERSION."'></script>\n";
 	}
 } //end function EX_pageStart
 
@@ -93,15 +90,14 @@ function EX_pageEnd() {
 //The standardized stuff at the end of the page:
 //A neg $goback = # of levels to pop; pos is the actual status to return to.
 	global $_STATE;
-	$redirect = $_SESSION["_SITE_CONF"]["_REDIRECT"];
 ?>
 <div id="msgStatus_ID" class="status"><?php echo $_STATE->msgStatus ?></div>
 <p>
-<button type="button" onclick="window.location.assign('<?php echo $redirect; ?>/main/main.php')">&lt&lt Return to menu</button>
+<button type="button" onclick="top.reload_main();">&lt&lt Return to menu</button>
 <?php
 	$state = STATE_pull(); //the state before changes
 	if ($state->status > $state->init) { ?>
-<button type="button" onclick="window.location.assign('<?php echo $redirect; ?>/main/executive.php?goback')">
+<button type="button" onclick="window.location.assign('<?php echo $_SESSION["IAm"] ?>&goback')">
 	&lt Goback</button>
 <?php
 	}
@@ -134,4 +130,3 @@ function EX_pageEnd() {
 <?php
 } //end function EX_pageEnd()
 ?>
-

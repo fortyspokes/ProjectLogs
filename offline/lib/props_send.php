@@ -98,7 +98,7 @@ public function init($headers) {
 	foreach ($this->elements as $name=>$element) {
 		$sql .= " OR (element_table = '".$element[0]."' AND element_idref = :".$name."_id)";
 	}
-	$sql = "SELECT prop_value_idref AS value_id, element_table AS table
+	$sql = "SELECT prop_value_idref AS value_id, element_table AS table_name
 				FROM ".$_DB->prefix."e04_prop_element
 				WHERE".substr($sql,3).";";
 	$this->stmt = $_DB->prepare($sql);
@@ -112,7 +112,7 @@ public function add_ids(&$log) {
 	}
 	$this->stmt->execute();
 	while ($row = $this->stmt->fetchObject()) {
-		switch ($row->table) {
+		switch ($row->table_name) {
 		case "a12":
 			$log[$this->elements["task"][1]] .= " ".$row->value_id;
 			break;

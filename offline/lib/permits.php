@@ -1,5 +1,5 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 class PERMITS {
@@ -93,4 +93,3 @@ public function get_permits($person_id) {
 } //end class
 
 ?>
-

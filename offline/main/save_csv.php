@@ -4,7 +4,7 @@
 if (($_SESSION["_SITE_CONF"]["RUNLEVEL"] < 1) || (!$_PERMITS->can_pass(PERMITS::_SUPERUSER)))
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
-require_once ("tables_list.php");
+require_once ("lib/tables_list.php");
 tables_list();
 $REFRESH_PATH = $_SESSION["_SITE_CONF"]["_STASH"]."/refresh/";
 
@@ -108,4 +108,3 @@ case STATE::UPDATE:
 <?php
 EX_pageEnd(); //standard end of page stuff
 ?>
-

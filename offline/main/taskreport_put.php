@@ -1,9 +1,9 @@
 <?php
-//copyright 2015, 2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("reports")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
-require_once "field_edit.php";
+require_once "lib/field_edit.php";
 
 //The Main State Gate cases:
 define('LIST_PROJECTS',		STATE::INIT);
@@ -20,7 +20,7 @@ while (1==1) { switch ($_STATE->status) {
 case LIST_PROJECTS:
 	$_STATE->project_id = 0;
 	$_STATE->close_date = false; //not used but lib/project_select.php expects it
-	require_once "project_select.php";
+	require_once "lib/project_select.php";
 	$projects = new PROJECT_SELECT($_PERMITS->restrict("reports"));
 	$_STATE->project_select = serialize(clone($projects));
 	if ($projects->selected) {
@@ -32,7 +32,7 @@ case LIST_PROJECTS:
 	$_STATE->status = SELECT_PROJECT;
 	break 2;
 case SELECT_PROJECT: //select the project
-	require_once "project_select.php"; //catches $_GET list refresh
+	require_once "lib/project_select.php"; //catches $_GET list refresh
 	$projects = unserialize($_STATE->project_select);
 	$projects->set_state();
 	$_STATE->project_select = serialize(clone($projects));
@@ -42,10 +42,10 @@ case SELECTED_PROJECT:
 	$_STATE->status = SHOW_SPECS; //our new starting point for goback
 	$_STATE->replace(); //so loopback() can find it
 case SHOW_SPECS:
-	require_once "date_select.php";
+	require_once "lib/date_select.php";
 	$dates = new DATE_SELECT("bp"); //show all before(b) and within period(p)
 	$_STATE->date_select = serialize(clone($dates));
-	require_once "calendar.php";
+	require_once "lib/calendar.php";
 	$calendar = new CALENDAR(2, "FT"); //2 pages
 	$_STATE->calendar = serialize(clone($calendar));
 	$_STATE->msgGreet = $_STATE->project_name."<br>Select the data window";
@@ -53,8 +53,8 @@ case SHOW_SPECS:
 	$_STATE->status = SELECT_SPECS;
 	break 2;
 case SELECT_SPECS: //set the from and to dates
-	require_once "calendar.php"; //catches $_GET refresh
-	require_once "date_select.php";
+	require_once "lib/calendar.php"; //catches $_GET refresh
+	require_once "lib/date_select.php";
 	$dates = unserialize($_STATE->date_select);
 	if (!$dates->POST(DATE_SELECT::TO)) { //check only to date for recent
 		$calendar = unserialize($_STATE->calendar);
@@ -62,7 +62,7 @@ case SELECT_SPECS: //set the from and to dates
 		break 2;
 	}
 	set_state($dates);
-	require_once "props_send.php"; //routines for sending property values
+	require_once "lib/props_send.php"; //routines for sending property values
 	$props_send = new PROPS_SEND(array("a12","a14"));
 	$_STATE->props_send = serialize($props_send);
 	$_STATE->heading .= "<br>as of ".$_STATE->to_date->format('Y-m-d');
@@ -132,13 +132,13 @@ function put_log() { //put the log to the download file
 	global $_STATE;
 	global $version;
 
-	require_once "props_send.php"; //routines for sending property values
+	require_once "lib/props_send.php"; //routines for sending property values
 	$props_send = unserialize($_STATE->props_send);
 
 	$from = $_STATE->from_date->format('Y-m-d');
 	$to = $_STATE->to_date->format('Y-m-d');
 	$filename = "taskreport_".$_STATE->orgname."_".$_STATE->projname."_".$to.".csv"; //for file_put...
-	require_once "file_put.php"; //start the file put
+	require_once "lib/file_put.php"; //start the file put
 	$out = fopen('php://output', 'w');
 
 	$outline = array();

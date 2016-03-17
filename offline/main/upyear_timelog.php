@@ -6,8 +6,8 @@
 if (($_SESSION["_SITE_CONF"]["RUNLEVEL"] < 1) || (!$_PERMITS->can_pass(PERMITS::_SUPERUSER)))
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
-require_once "field_edit.php";
-require_once "tables_list.php";
+require_once "lib/field_edit.php";
+require_once "lib/tables_list.php";
 
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
@@ -170,4 +170,3 @@ EX_pageHead(); //standard page headings - after any scripts
 <?php
 EX_pageEnd(); //standard end of page stuff
 ?>
-

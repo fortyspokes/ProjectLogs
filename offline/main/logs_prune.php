@@ -3,7 +3,7 @@
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("logs_prune")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
-require_once "field_edit.php";
+require_once "lib/field_edit.php";
 
 $version = "v1.0"; //downloaded with the file for client verification
 $PRUNE_PATH = $_SESSION["_SITE_CONF"]["_STASH"]."/prunings/";
@@ -11,14 +11,14 @@ $PRUNE_PATH = $_SESSION["_SITE_CONF"]["_STASH"]."/prunings/";
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
 case STATE::INIT:
-	require_once "project_select.php";
+	require_once "lib/project_select.php";
 	$projects = new PROJECT_SELECT();
 	$_STATE->project_select = serialize(clone($projects));
 	$_STATE->msgGreet = "Select the project to prune";
 	$_STATE->status = STATE::SELECT;
 	break 2;
 case STATE::SELECT:
-	require_once "project_select.php"; //catches $_GET list refresh (assumes break 2)
+	require_once "lib/project_select.php"; //catches $_GET list refresh (assumes break 2)
 	$projects = unserialize($_STATE->project_select);
 	$projects->set_state();
 	$_STATE->project = $projects->selected_name();
@@ -353,7 +353,7 @@ function update_audit() {
 
 	if (!field_input_audit()) return false;
 
-	require_once ("tables_list.php");
+	require_once ("lib/tables_list.php");
 	tables_list();
 	$sql = "SELECT name FROM ".$_DB->prefix."a00_organization
 			WHERE organization_id=".$_SESSION["organization_id"].";";
@@ -434,4 +434,3 @@ default:
 }
 EX_pageEnd(); //standard end of page stuff
 ?>
-

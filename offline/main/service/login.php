@@ -1,15 +1,15 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 //require_once ("../noparent.php");
 
 $_TEMP_PERMIT = "_LEGAL_"; //a temp permission for the "are you logged in" gate (in prepend)
 require_once "prepend.php";
-require_once "common.php";
-require_once ("db_".$_SESSION['_SITE_CONF']['DBMANAGER'].".php");
+require_once "lib/common.php";
+require_once ("lib/db_".$_SESSION['_SITE_CONF']['DBMANAGER'].".php");
 $_DB = new db_connect($_SESSION['_SITE_CONF']['DBEDITOR']);
 
-require_once ("state.php");
+require_once ("lib/state.php");
 if (isset($_GET["init"])) {
 	$_STATE = new STATE($_GET["init"]); //create a new state object with status=STATE::INIT
 	if (isset($_GET["head"])) {
@@ -34,7 +34,7 @@ case STATE::INIT:
 	$_STATE->status = STATE::ENTRY;
 	break;
 case STATE::ENTRY:
-	require_once "logging.php";
+	require_once "lib/logging.php";
 	if (entry_audit()) {
 		$_STATE->msgGreet = "";
 		$_STATE->msgStatus = "";
@@ -50,20 +50,16 @@ default:
 
 $_STATE->replace(); //with new status, etc.
 $_DB = NULL;
-
-$redirect = $_SESSION["_SITE_CONF"]["_REDIRECT"];
-
 ?>
 <html>
 <head>
 <title>SR2S Timesheets Login</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<link rel="stylesheet" href="<?php echo $redirect."/css".$_SESSION["_SITE_CONF"]["CSS"]."/".
-	$_SESSION["_SITE_CONF"]["THEME"]; ?>/main.css" type="text/css">
+<link rel="stylesheet" href="<?php echo $_SESSION["BUTLER"]; ?>?IAm=CG&file=main&ver=<?php echo $_VERSION; ?>" type="text/css">
 <script language="JavaScript">
 <!--
 if (top == self) {
-	top.location = "https://<?php echo($_SERVER["HTTP_HOST"].$_SESSION["_SITE_CONF"]["_OFFSET"].'/'); ?>";
+	top.location = "https://<?php echo($_SERVER["HTTP_HOST"]); ?>";
 }
 
 window.onload = function () {
@@ -73,7 +69,7 @@ if ($reload) {
 	echo "  top.reload_menu();\n";
 }
 if ($_STATE->status == STATE::DONE) {
-	echo "  window.location.assign('".$redirect."/main/main.php');\n";
+	echo "  top.reload_main();\n";
 } else {
 	if ($_STATE->fields['txtName'] == "") {
 		echo "  document.getElementById('txtName_ID').focus();\n";
@@ -91,7 +87,7 @@ if ($_STATE->status == STATE::DONE) {
 <?php
 if ($_STATE->status == STATE::ENTRY) {
 ?>
-<form method="post" name="frmLogin" action="<?php echo $_SERVER['SCRIPT_NAME']; ?>">
+<form method="post" name="frmLogin" action="<?php echo $_SESSION["BUTLER"]."?IAm=".$_STATE->ID; ?>">
 <p>
 Username: <input name="txtName" id="txtName_ID" type="text" class="formInput" <?php
 	echo "value=\"".COM_output_edit($_STATE->fields['txtName'])."\"";

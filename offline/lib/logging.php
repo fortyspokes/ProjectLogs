@@ -1,5 +1,5 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 function entry_audit() {
@@ -38,6 +38,7 @@ function entry_audit() {
 	}
 
 	$_SESSION["person_id"] = $row->person_id;
+	$_SESSION["user"] = $_STATE->fields["txtName"];
 	if (is_null($row->organization_idref)) { //should be the super-duper user
 		$_SESSION["person_organization_id"] = 0;
 		$_SESSION["organization_id"] = 1; //better be a record there
@@ -80,4 +81,3 @@ function entry_audit() {
 	error_log("Login: by ".$_STATE->fields["txtName"]."; id=".$_SESSION["person_id"]); //not an error but the best place to put it
 	return true;
 }
-

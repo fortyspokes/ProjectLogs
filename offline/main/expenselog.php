@@ -1,8 +1,8 @@
 <?php
-//copyright 2015, 2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
-require_once "field_edit.php";
+require_once "lib/field_edit.php";
 
 //The Main State Gate cases:
 define('LIST_PERSONS',		STATE::INIT);
@@ -54,7 +54,7 @@ case LIST_PERSONS:
 	$_STATE->columns = array(1,0,0,"");
 	$_STATE->type = "";
 	$_STATE->mode = "t"; //tabular (list mode => "l")
-	require_once "person_select.php";
+	require_once "lib/person_select.php";
 	$persons = new PERSON_SELECT(array(0),true); //everybody, multiple
 	if (!$_EDIT) { //set by executive.php
 		$persons->set_state($_SESSION["person_id"]);
@@ -74,7 +74,7 @@ case LIST_PERSONS:
 	$_STATE->status = SELECT_PERSON;
 	break 2;
 case SELECT_PERSON: //select the person whose logs are to be editted (person_id=0 is superduperuser)
-	require_once "person_select.php"; //catches $_GET list refresh
+	require_once "lib/person_select.php"; //catches $_GET list refresh
 	$persons = unserialize($_STATE->person_select);
 	$persons->set_state();
 	$_STATE->person_select = serialize($persons);
@@ -83,7 +83,7 @@ case SELECTED_PERSON:
 	$_STATE->status = LIST_PROJECTS; //our new starting point for goback
 	$_STATE->replace(); //so loopback() can find it
 case LIST_PROJECTS:
-	require_once "project_select.php";
+	require_once "lib/project_select.php";
 	$projects = new PROJECT_SELECT(get_projects($_SESSION["person_id"]), true);
 	$_STATE->project_select = serialize(clone($projects));
 	if ($projects->selected) {
@@ -96,7 +96,7 @@ case LIST_PROJECTS:
 	$_STATE->status = SELECT_PROJECT;
 	break 2;
 case SELECT_PROJECT: //select the project
-	require_once "project_select.php"; //catches $_GET list refresh (assumes break 2)
+	require_once "lib/project_select.php"; //catches $_GET list refresh (assumes break 2)
 	$projects = unserialize($_STATE->project_select);
 	$projects->set_state();
 	$_STATE->project_select = serialize(clone($projects));
@@ -106,10 +106,10 @@ case SELECTED_PROJECT:
 	$_STATE->status = SHOW_SPECS; //our new starting point for goback
 	$_STATE->replace(); //so loopback() can find it
 case SHOW_SPECS:
-	require_once "date_select.php";
+	require_once "lib/date_select.php";
 	$dates = new DATE_SELECT("wmp","p"); //show within week(w), month(m), period(p)(default)
 	$_STATE->date_select = serialize(clone($dates));
-	require_once "calendar.php";
+	require_once "lib/calendar.php";
 	$calendar = new CALENDAR(2, "FT"); //2 pages
 	$_STATE->calendar = serialize(clone($calendar));
 	$_STATE->msgGreet = $_STATE->project_name."<br>Select the date range";
@@ -117,8 +117,8 @@ case SHOW_SPECS:
 	$_STATE->status = SELECT_SPECS;
 	break 2;
 case SELECT_SPECS: //set the from and to dates
-	require_once "calendar.php"; //catches $_GET refresh
-	require_once "date_select.php";
+	require_once "lib/calendar.php"; //catches $_GET refresh
+	require_once "lib/date_select.php";
 	$dates = unserialize($_STATE->date_select);
 	if (!$dates->POST()) {
 		$calendar = unserialize($_STATE->calendar);
@@ -141,7 +141,7 @@ case SELECTED_SPECS:
 case SHEET_DISP:
 	if (isset($_GET["sheet"])) { //change displayed sheet
 		$_STATE = $_STATE->loopback(SELECTED_SPECS);
-		require_once "project_select.php";
+		require_once "lib/project_select.php";
 		$projects = unserialize($_STATE->project_select);
 		$projects->set_state($_GET["sheet"]);
 		$_STATE->project_select = serialize($projects);
@@ -150,7 +150,7 @@ case SHEET_DISP:
 	}
 	if (isset($_POST["selPerson"])) { //change displayed person
 		$_STATE = $_STATE->loopback(SELECTED_SPECS);
-		require_once "person_select.php";
+		require_once "lib/person_select.php";
 		$persons = unserialize($_STATE->person_select);
 		$persons->set_state($_POST["selPerson"]);
 		$_STATE->person_select = serialize($persons);
@@ -236,7 +236,7 @@ case SHEET_DISP:
 		$SCION->status = array_shift($SCION->path);
 		break 1; //go back around
 	case TASK_DISP:
-		include_once "callback/task.php";
+		include_once "lib/callback/task.php";
 		if (task_send($SCION, $response) == 1) {
 			task_select($SCION, $response, $SCION->task_id);
 			$SCION->status = array_shift($SCION->path);
@@ -246,12 +246,12 @@ case SHEET_DISP:
 		echo $response;
 		break 2; //break out
 	case TASK_PICK:
-		include_once "callback/task.php";
+		include_once "lib/callback/task.php";
 		task_select($SCION, $response);
 		$SCION->status = array_shift($SCION->path);
 		break 1; //go back around
 	case SUBTASK_DISP:
-		include_once "callback/subtask.php";
+		include_once "lib/callback/subtask.php";
 		if (subtask_send($SCION, $response) == 1) {
 			subtask_select($SCION, $response, $SCION->subtask_id);
 			$SCION->status = array_shift($SCION->path);
@@ -261,12 +261,12 @@ case SHEET_DISP:
 		echo $response;
 		break 2; //break out
 	case SUBTASK_PICK:
-		include_once "callback/subtask.php";
+		include_once "lib/callback/subtask.php";
 		subtask_select($SCION, $response);
 		$SCION->status = array_shift($SCION->path);
 		break 1; //go back around
 	case ACCOUNT_DISP:
-		include_once "callback/account.php";
+		include_once "lib/callback/account.php";
 		if (account_send($SCION, $response) == 1) {
 			account_select($SCION, $response, $SCION->account_id);
 			$SCION->status = array_shift($SCION->path);
@@ -276,7 +276,7 @@ case SHEET_DISP:
 		echo $response;
 		break 2; //break out
 	case ACCOUNT_PICK:
-		include_once "callback/account.php";
+		include_once "lib/callback/account.php";
 		account_select($SCION, $response);
 		$SCION->status = array_shift($SCION->path);
 		break 1; //go back around
@@ -290,13 +290,13 @@ case SHEET_DISP:
 		$SCION->status = array_shift($SCION->path);
 		break 1; //go back around
 	case DATE_DISP:
-		include_once "callback/date_list.php";
+		include_once "lib/callback/date_list.php";
 		date_send($SCION, $response);
 		$SCION->status = DATE_PICK;
 		echo $response;
 		break 2; //break out
 	case DATE_PICK:
-		include_once "callback/date_list.php";
+		include_once "lib/callback/date_list.php";
 		date_select($SCION, $response);
 		$SCION->status = array_shift($SCION->path);
 		break 1; //go back around
@@ -314,7 +314,7 @@ case SHEET_DISP:
 		$SCION->status = array_shift($SCION->path);
 		break 1; //go back around
 	case BUTTON_DISP:
-		include_once "callback/buttons.php";
+		include_once "lib/callback/buttons.php";
 		button_send($SCION, $response);
 		echo $response;
 		$SCION->status = STATE::CHANGE;
@@ -574,7 +574,7 @@ function log_put() {
 	global $_DB, $_STATE;
 	global $version;
 
-	require_once "props_send.php"; //routines for sending property values
+	require_once "lib/props_send.php"; //routines for sending property values
 	$props_send = new PROPS_SEND(array("a12","a14","a21"));
 
 	$sql = "SELECT name, description FROM ".$_DB->prefix."a00_organization
@@ -601,7 +601,7 @@ function log_put() {
 	}
 
 	$filename = "expensesheet_".$orgname."_".$from."_to_".$to.".csv"; //for file_put...
-	require_once "file_put.php";
+	require_once "lib/file_put.php";
 
 	$out = fopen('php://output', 'w');
 
@@ -1056,7 +1056,7 @@ function new_amounts(&$state) {
 function change_subtask(&$state) {
 	global $_DB;
 
-	include_once "callback/subtask.php";
+	include_once "lib/callback/subtask.php";
 	subtask_list($state); //restore the record list
 	if (!array_key_exists($state->subtask_id, $state->records)) {
 		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid subtask id ".$state->subtask_id,true);
@@ -1091,7 +1091,7 @@ function change_type(&$state) {
 function change_account(&$state) {
 	global $_DB;
 
-	include_once "callback/account.php";
+	include_once "lib/callback/account.php";
 	account_list($state); //restore the record list
 	if (!array_key_exists($state->account_id, $state->records)) {
 		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid accounting id ".$state->account_id,true);
@@ -1237,7 +1237,7 @@ default: //list the amounts and allow new entry:
 </div>
 <?php
 	if ($_EDIT) { //set by executive.php if admin Edit Logs
-		require_once "person_select.php";
+		require_once "lib/person_select.php";
 		$persons = unserialize($_STATE->person_select);
 		$select_list = $persons->selected();
 		If (count($select_list) > 1) {
@@ -1265,7 +1265,7 @@ default: //list the amounts and allow new entry:
   <input type="button" id="cancelPop" onclick="save_activity(false)" value="cancel">
 </div>
 <?php
-	require_once "project_select.php";
+	require_once "lib/project_select.php";
 	$projects = unserialize($_STATE->project_select);
 	echo $projects->tabs();
 ?>
@@ -1306,7 +1306,7 @@ if ($_STATE->mode == "l") {	//list style
   </tr>
   <tr id="add">
     <td id="BN_0" data-recid="0" title="Click to add amounts for new expenses">
-      <img src="<?php echo $_SESSION["_SITE_CONF"]["_REDIRECT"]; ?>/images/add.png"></td>
+      <img src="<?php echo $_SESSION["BUTLER"]; ?>?IAm=IG&file=add.png&ver=<?php echo $_VERSION; ?>"></td>
     <td id="TK_0" data-recid="0"></td>
     <td id="ST_0" data-recid="0"></td>
     <td id="AC_0" data-recid="0"></td>

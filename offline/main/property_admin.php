@@ -3,7 +3,7 @@
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("property_admin")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
-require_once "field_edit.php";
+require_once "lib/field_edit.php";
 
 //Define the cases for the Main State Gate that are unique to this module:
 define('LIST_PROPERTIES',	STATE::INIT);
@@ -450,5 +450,4 @@ case UPDATE_VALUE:
 } ?>
 <?php
 EX_pageEnd(); //standard end of page stuff
-
 ?>

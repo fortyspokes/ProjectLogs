@@ -1,13 +1,12 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 require_once "prepend.php";
-require_once "state.php";
-require_once "common.php";
-require_once "db_".$_SESSION['_SITE_CONF']['DBMANAGER'].".php";
+require_once "lib/state.php";
+require_once "lib/common.php";
+require_once "lib/db_".$_SESSION['_SITE_CONF']['DBMANAGER'].".php";
 $_DB = new db_connect($_SESSION['_SITE_CONF']['DBEDITOR']);
 $EX_servercall = false;
-$EX_SCRIPTS = $_SESSION["_SITE_CONF"]["_REDIRECT"]."/scripts".$_SESSION["_SITE_CONF"]["SCR"];
 
 if (isset($_GET["init"])) {
 	$_STATE = STATE_pull()->scion_pull(-1); //-1 => get 'youngest' generation
@@ -47,8 +46,7 @@ $_DB = NULL;
 
 function EX_pageStart() {
 //The standardized HTML stuff at the top of the page:
-	global $_STATE;
-	global $EX_servercall;
+	global $_STATE, $EX_servercall, $_VERSION;
 	if ($EX_servercall) {
 		exit(); //server_call wants a clean buffer
 	}
@@ -59,11 +57,9 @@ function EX_pageStart() {
 <head>
 <title>SR2S Timesheets <?php echo $_STATE->heading; ?></title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<link rel="stylesheet" href="<?php echo
-	$_SESSION["_SITE_CONF"]["_REDIRECT"]."/css".$_SESSION["_SITE_CONF"]["CSS"]."/".
-	$_SESSION["_SITE_CONF"]["THEME"]; ?>/main.css" type="text/css">
+<link rel="stylesheet" href="<?php echo $_SESSION["BUTLER"]; ?>?IAm=CG&file=main&ver=<?php echo $_VERSION; ?>" type="text/css">
 <script language="JavaScript">
-var IAm = "<?php echo $_SERVER["SCRIPT_NAME"]; ?>";
+var IAm = "<?php echo $_SESSION["IAm"]; ?>";
 var LoaderS = new Array();
 window.onload = function() {
   for (var i = 0; i < LoaderS.length; i++) {
@@ -90,14 +86,14 @@ function EX_pageEnd() {
 //The standardized stuff at the end of the page:
 	global $_STATE;
 	global $EX_status;
-	$redirect = $_SESSION["_SITE_CONF"]["_REDIRECT"];
 ?>
 <div id="msgStatus_ID"><?php echo $_STATE->msgStatus ?></div>
 <p>
 <button type="button" onclick="return window.parent.remove_ext(false);">&lt&lt Return</button>
 <?php
 	if ($EX_status != STATE::INIT) { ?>
-<button type="button" onclick="window.location.assign('<?php echo $redirect; ?>/main/main.php')">/main/ext_exec.php?goback')">&lt Goback</button>
+<button type="button" onclick="window.location.assign('<?php echo $_SESSION["IAm"] ?>&goback')">
+	&lt Goback</button>
 <?php
 	}
 	if ($_SESSION["_SITE_CONF"]["RUNLEVEL"] == 1) { ?>
@@ -120,4 +116,3 @@ function EX_pageEnd() {
 <?php
 } //end functin EX_pageEnd
 ?>
-

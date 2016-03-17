@@ -1,12 +1,11 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
-require_once ("../noparent.php");
 
 $_TEMP_PERMIT = "_LEGAL_"; //a temp permission for the "are you logged in" gate (in prepend)
 require_once "prepend.php";
-require_once "common.php";
-require_once ("db_".$_SESSION['_SITE_CONF']['DBMANAGER'].".php");
+require_once "lib/common.php";
+require_once ("lib/db_".$_SESSION['_SITE_CONF']['DBMANAGER'].".php");
 
 $menu = array();
 $title = "";
@@ -14,7 +13,7 @@ if (isset($_SESSION["person_id"])) { //logged in
 
 	$_DB = new db_connect($_SESSION['_SITE_CONF']['DBEDITOR']);
 	$title = "Menu";
-	require_once "menu_list.php";
+	require_once "lib/menu_list.php";
 	$_DB = NULL;
 }
 ?>
@@ -22,13 +21,11 @@ if (isset($_SESSION["person_id"])) { //logged in
 <head>
 <title>SR2S Timesheets Menu</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-<link rel="stylesheet" href="<?php echo
-	$_SESSION["_SITE_CONF"]["_REDIRECT"]."/css".$_SESSION["_SITE_CONF"]["CSS"]."/".
-	$_SESSION["_SITE_CONF"]["THEME"]; ?>/menu.css" type="text/css">
+<link rel="stylesheet" href="<?php echo $_SESSION["BUTLER"]; ?>?IAm=CG&file=menu&ver=<?php echo $_VERSION; ?>" type="text/css">
 <script language="JavaScript">
 <!--
 if (top == self) {
-	top.location = "https://<?php echo($_SERVER["HTTP_HOST"].$_SESSION["_SITE_CONF"]["_OFFSET"].'/'); ?>";
+	top.location = "https://<?php echo($_SERVER["HTTP_HOST"]); ?>";
 }
 
 var color_sav;

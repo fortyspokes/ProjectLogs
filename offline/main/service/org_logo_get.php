@@ -1,7 +1,6 @@
 <?php
 //copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
-session_start();
 if (isset($_SESSION["organization_id"])) {
 	$org_id = $_SESSION["organization_id"];
 } else {
@@ -9,8 +8,8 @@ if (isset($_SESSION["organization_id"])) {
 	$_TEMP_PERMIT = "_LEGAL_"; //a temp permission for the "are you logged in" gate
 }
 require_once "prepend.php";
-require_once "common.php";
-require_once ("db_".$_SESSION['_SITE_CONF']['DBMANAGER'].".php");
+require_once "lib/common.php";
+require_once ("lib/db_".$_SESSION['_SITE_CONF']['DBMANAGER'].".php");
 
 $db = new db_connect($_SESSION['_SITE_CONF']['DBEDITOR']);
 

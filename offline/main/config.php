@@ -20,8 +20,6 @@ default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
 function THE_END() {
-//	global $_DB, $_STATE;
-//	sav_state($_STATE);
 }
 
 function update(&$reload) {
@@ -46,8 +44,6 @@ function update(&$reload) {
 	}
 	return $HTML."<br><br>End changes\n";
 }
-
-$redirect = $_SESSION["_SITE_CONF"]["_REDIRECT"];
 
 EX_pageStart();
 ?>
@@ -94,8 +90,7 @@ foreach ($_SESSION['_SITE_CONF'] as $ID => $value) {
   <div id="msgStatus_ID"><?php echo $_STATE->msgStatus ?></div>
 </p>
 </p>
-<button type="button" onclick="window.location.assign('<?php
-	echo $redirect; ?>/main/main.php')">Return to menu</button>
+<button type="button" onclick="top.reload_main();">Return to menu</button>
 <?php
 if (($_SESSION["_SITE_CONF"]["RUNLEVEL"] == 1) || ($_SESSION["person_id"] == 0)) {
 function show_array($list) {
@@ -138,4 +133,3 @@ echo "<br>";
 </body>
 </html>
 <?php THE_END(); ?>
-
