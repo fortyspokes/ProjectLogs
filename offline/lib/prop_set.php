@@ -149,6 +149,8 @@ function setNoSleep($var) {
 }
 
 public function show_list() { //get the HTML for the list items
+	global $_VERSION;
+
 	$HTML = array();
 
 	$HTML[] = "<table align='center' id='tblLog' cellpadding='4' border='2'>";
@@ -158,7 +160,7 @@ public function show_list() { //get the HTML for the list items
 	$HTML[] = "    <th width='140'>Value</th>";
 	$HTML[] = "  </tr>";
 	$HTML[] = "  <tr id='add'>";
-	$HTML[] = "    <td id='BN_0' data-recid='0' title='Click to add property values'><img src='/images/add.png'></td>";
+	$HTML[] = "    <td id='BN_0' data-recid='0' title='Click to add property values'><img src='".$_SESSION["BUTLER"]."?IAm=IG&file=add.png&ver=".$_VERSION."'></td>";
 	$HTML[] = "    <td id='NM_0' data-recid='0'></td>";
 	$HTML[] = "    <td id='VA_0' data-recid='0'></td>";
 	$HTML[] = "  </tr>";

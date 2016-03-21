@@ -203,7 +203,7 @@ function changes(row) {
 var EXT_up = false;
 var EXT_width = 800; //defaults
 var EXT_height = 600;
-function extension(recID,width,height) {
+function extension(butler,recID,width,height) {
 	if (EXT_up) {
 //    alert("Only one popup at a time, please!");
 		return;
@@ -214,15 +214,15 @@ function extension(recID,width,height) {
 	x.id = 'extension'; //we find it by id
 	x.name = 'extension'; //popup can return only the name
 	document.body.insertBefore(x,document.getElementById("extension"));
-	x.setAttribute("src", "ext_exec.php?init=EX&recid="+recID);
+	x.setAttribute("src", butler+"&init=EN&recid="+recID);
 	EXT_up = true;
 }
-function remove_ext(done) {
+function remove_ext(butler,done) {
 	if (done) {
 		document.body.removeChild(document.getElementById('extension'));
 		EXT_up = false;
 	} else {
-		server_call("GET","quit","ext_exec.php");
+		server_call("GET","quit",butler);
 	}
 }
 

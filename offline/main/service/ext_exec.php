@@ -1,6 +1,7 @@
 <?php
 //copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
+
 require_once "prepend.php";
 require_once "lib/state.php";
 require_once "lib/common.php";
@@ -18,13 +19,14 @@ if (isset($_GET["init"])) {
 	$_SESSION["_EXTENSION"] = array_merge($_SESSION["_EXTENSION"],parse_ini_file($inifile));
 
 	$_STATE->heading = $_SESSION["_EXTENSION"]["title"];
+	$_SESSION["IAm"] = $_SESSION["BUTLER"]."?IAm=".$_GET["IAm"]; //for form action
 
 } else if (isset($_GET["quit"])) {
 	unset($_SESSION["_EXTENSION"]);
 	$_STATE= STATE_pull("_EXTENSION");
 	$_STATE->cut(); //remove the thread
 	ob_clean();
-	echo "@remove_ext(true);\n";
+	echo "@remove_ext('".$_SESSION["BUTLER"]."IAm=EN',true);\n";
 	exit;
 
 } else {
@@ -44,7 +46,7 @@ require_once $_SESSION["_SITE_CONF"]["_EXTENSIONS"].$_SESSION["_EXTENSION"]["pag
 $_STATE->push();
 $_DB = NULL;
 
-function EX_pageStart() {
+function EX_pageStart($scripts=array()) {
 //The standardized HTML stuff at the top of the page:
 	global $_STATE, $EX_servercall, $_VERSION;
 	if ($EX_servercall) {
@@ -68,6 +70,9 @@ window.onload = function() {
 }
 </script>
 <?php
+	foreach ($scripts as $script) {
+		echo "<script type='text/javascript' src='".$_SESSION["BUTLER"],"?IAm=SG&file=".$script."&ver=".$_VERSION."'></script>\n";
+	}
 } //end function EX_pageStart
 
 function EX_pageHead() {
@@ -89,7 +94,7 @@ function EX_pageEnd() {
 ?>
 <div id="msgStatus_ID"><?php echo $_STATE->msgStatus ?></div>
 <p>
-<button type="button" onclick="return window.parent.remove_ext(false);">&lt&lt Return</button>
+<button type="button" onclick="return window.parent.remove_ext('<?php echo $_SESSION["BUTLER"] ?>?IAm=EN',false);">&lt&lt Return</button>
 <?php
 	if ($EX_status != STATE::INIT) { ?>
 <button type="button" onclick="window.location.assign('<?php echo $_SESSION["IAm"] ?>&goback')">
@@ -114,5 +119,5 @@ function EX_pageEnd() {
 </body>
 </html>
 <?php
-} //end functin EX_pageEnd
+} //end function EX_pageEnd
 ?>

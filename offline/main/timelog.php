@@ -763,6 +763,7 @@ function activity_select(&$state, &$HTML) {
 
 //Send the hours text entry field(s) via server call-back:
 function hours_send(&$state, &$HTML) {
+	global $_VERSION;
 
 	if ($state->mode == "l") { //list style ; only one hour field
 		$offset = 0;
@@ -792,10 +793,10 @@ function hours_send(&$state, &$HTML) {
 			$HTML .= " maxlength='6' class='number' onblur='audit_hours(this)' value='\"+cellValue+\"'>\";\n";
 			if ($state->extension != "") {
 				$HTML .= "if (cellValue != 0) {\n";
-				$HTML .= "  fill += \"<br><img src='".$_SESSION["_SITE_CONF"]["_REDIRECT"]."/images/extension.png'";
+				$HTML .= "  fill += \"<br><img src='".$_SESSION["BUTLER"]."?IAm=IG&file=extension.png&ver=".$_VERSION."'";
 				$conf = parse_ini_file($_SESSION["_SITE_CONF"]["_EXTENSIONS"].$state->extension."_conf.php");
 				$HTML .= "   title='click for ".$conf["title"]."'";
-				$HTML .= "   onclick = 'return extension(get_cell_recid(\\\"".$cellID."\\\"),".$conf["width"].",".$conf["height"].")'>\";\n";
+				$HTML .= "   onclick = 'return extension(\\\"".$_SESSION["BUTLER"]."?IAm=EN\\\",get_cell_recid(\\\"".$cellID."\\\"),".$conf["width"].",".$conf["height"].")'>\";\n";
 				$HTML .= "}\n";
 				}
 		}

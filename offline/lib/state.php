@@ -115,18 +115,16 @@ function cut() { //remove the stack
 }
 
 public function goback($levels) {
-	$child = "";
+//	$child = "";
 	while ($levels > 0) {
 		if (count($_SESSION["STATE"][$this->thread]) < 2 ) break;
 		$junk = unserialize(array_pop($_SESSION["STATE"][$this->thread]));
-		if ($junk->child != $child) {
-			$this->cleanup($child);
-			$child = $junk->child;
+		$pull = STATE_pull($this->thread);
+		if ($junk->child != $pull->child) {
+			$this->cleanup($junk->child);
 		}
 		--$levels;
 	}
-	$pull = STATE_pull($this->thread);
-	if ($pull->child != $child) $this->cleanup($child);
 	return $pull;
 }
 

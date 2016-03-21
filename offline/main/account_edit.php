@@ -93,11 +93,11 @@ case UPDATE_ACCOUNT:
 	}
 	break 2;
 case PROPERTIES:
-	require_once "prop_set.php";
+	require_once "lib/prop_set.php";
 	$propset = PROP_SET_exec($_STATE, false);
 	break 2;
 case PROPERTIES_GOBACK:
-	require_once "prop_set.php";
+	require_once "lib/prop_set.php";
 	PROP_SET_exec($_STATE, true);
 	$_STATE = $_STATE->loopback(SELECTED_ACCOUNT);
 	break 1;
