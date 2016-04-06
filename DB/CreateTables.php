@@ -5,13 +5,27 @@
 
 echo("To enter a parameter, type it followed by a newline follwed by ctrl-d\n");
 
-echo("Where is the template?:\n");
-exec ("cat",$template_loc);
-$template_loc = $template_loc[0];
+do {
+	echo("Where is the template?:\n");
+	exec ("cat",$template_loc);
+	$template_loc = $template_loc[0];
+	if ($template_loc == "") exit;
+	$inputname = $template_loc."/CreateTablesTemplate";
+	if (file_exists($inputname)) break;
+	echo ("template '".$inputname."' does not exist\n");
+	exec ("cat");
+} while (1==1);
 
-echo("Where to put the SQL?:\n");
-exec ("cat",$SQL_loc);
-$SQL_loc = $SQL_loc[0];
+do {
+	echo("Where to put the SQL?:\n");
+	exec ("cat",$SQL_loc);
+	$SQL_loc = $SQL_loc[0];
+	if ($SQL_loc == "") exit;
+	$ininame = $SQL_loc."/CreateTables.ini";
+	if (file_exists($ininame)) break;
+	echo ("ini file '".$ininame."' does not exist\n");
+	exec ("cat");
+} while (1==1);
 
 echo("DB name? (required for mySQL):\n");
 exec ("cat",$DBname);
@@ -39,7 +53,6 @@ if (empty($prefix)) {
 
 $config = parse_ini_file($SQL_loc."/CreateTables.ini",FALSE);
 
-$inputname = $template_loc."/CreateTablesTemplate";
 $outputname = $SQL_loc."/CreateTables";
 if ($DBname != "") $outputname .= "_".$DBname;
 if ($prefix == "") {

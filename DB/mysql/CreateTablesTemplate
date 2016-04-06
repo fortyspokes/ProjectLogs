@@ -571,8 +571,8 @@ CREATE OR REPLACE VIEW `<DBNAME>`.`<PREFIX>v11_expensereport` AS
 CREATE OR REPLACE VIEW `<DBNAME>`.`<PREFIX>v12_taskreport` AS 
   SELECT a12.project_idref AS project_id, a12.task_id, a12.name AS taskname,
          a12.description AS task_desc, a12.budget AS task_budget,
-		 a12.task_id AS task_props,
          a12.budget_exp AS task_budget_exp, a12.inactive_asof AS task_inactive_asof,
+		 a12.task_id AS task_props,
          a14.subtask_id, a14.name AS subtaskname, a14.description AS subtask_desc,
          a14.inactive_asof AS subtask_inactive_asof, a14.subtask_id AS subtask_props
   FROM <PREFIX>a10_project AS a10
