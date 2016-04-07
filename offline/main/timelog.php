@@ -1195,7 +1195,7 @@ default: //list the hours and allow new entry:
 		$select_list = $persons->selected();
 		If (count($select_list) > 1) {
 			$HTML = "";
-			$HTML .= "<form method='post' name='frmAction' id='frmAction_ID' action='".$_SERVER['SCRIPT_NAME']."'>\n";
+			$HTML .= "<form method='post' name='frmAction' id='frmAction_ID' action='".$_SESSION["IAm"]."'>\n";
 			$HTML .= "<select name='selPerson' onclick=";
 			$HTML .= "'if (this.selectedIndex > 0) this.form.submit();'";
 			$HTML .= " title='to select, click and hold down arrow'>\n";
