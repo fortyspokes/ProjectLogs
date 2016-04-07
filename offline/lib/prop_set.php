@@ -229,7 +229,7 @@ function state_gate() {
 	case PROP_SET::NAME_DISP:
 		if ($this->prop_send($response) == 1) {
 			$this->prop_select($response, $this->state->prop_id);
-			$Sthis->state->status = array_shift($this->state->path);
+			$this->state->status = array_shift($this->state->path);
 			break 1; //go back around
 		}
 		$this->state->status = PROP_SET::NAME_PICK;
