@@ -18,7 +18,7 @@ $EX_staff = array(
 "AG" => array('Accounting group Edit',	"accounting_edit.php",	'accounting_edit',	""		),
 "CG" => array('Css file get (service)',	"service/css_get.php",	'',					""		),
 "CF" => array('Site Config',			"config.php",			PERMITS::_SUPERUSER,""		),
-"EE" => array('Event Log Edit',			"eventlog.php",			'edit_logs',		'$_EDIT=true;'),
+//"EE" => array('Event Log Edit',			"eventlog.php",			'edit_logs',		'$_EDIT=true;'),
 "EL" => array('Event Log Entry',		"eventlog.php",			'',					'$_EDIT=false;'),
 "EN" => array('Extension Executive',	"service/ext_exec.php",	'',					""		),
 "ET" => array('Experiment',				"experiment.php",		PERMITS::_SUPERUSER,""		),
@@ -52,4 +52,57 @@ $EX_staff = array(
 "XE" => array('Expense Log Edit',		"expenselog.php",		'edit_logs',		'$_EDIT=true;'),
 "XL" => array('Expense Log Entry',		"expenselog.php",		'',					'$_EDIT=false;'),
 );
+
+$MENU_LIST = array( //the standard application menu list: (altered/replaced by preferences)
+	"TL", //Time Log Entry
+	"PE", //Person Edit
+	"EL", //Event Log Entry (Classes)
+	"XL", //Expense Log Entry
+	"TE", //Edit time Logs (for any person)
+	"XE", //Edit expense logs
+	"LP", //Download logs
+	"TR", //Download Task Report
+	"SR", //Set Rates
+	"PJ", //Project Edit
+	"TK", //Task Edit
+	"ST", //Subtask Edit
+	"AG", //Accounting group Edit
+	"AC", //Account Edit
+	"EV", //Event Edit
+	);
+$ADMIN_LIST = array( //the admin menu items:
+	"PM", //Grant/revoke permits
+	"PR", //Property Admin
+	"OE", //Org Edit
+	"OS", //Org Select
+	"CF", //Site Config
+	"LC", //Logs Prune (Cut)
+	);
+if ($_SESSION["_SITE_CONF"]["RUNLEVEL"] > 0) { //can't do this stuff in production
+	$ADMIN_LIST = array_merge($ADMIN_LIST, array(
+		"RC", //Refresh CSV
+		"SC", //Save CSV
+		"UP", //Upyear Timelog
+		"ET", //Experiment
+		"PI", //phpInfo
+		));
+}
+$ADMIN_LIST[] = "AB"; //'About' page - always last in the menu
+
+//The 'audit' functions called by menu_list.php:
+function menu_list_OS(&$staff) { //Check "Org Select" for multiple orgs
+	global $org_count;
+	if ($org_count > 1) return true;
+	return false;
+}
+function menu_list_PI(&$staff) { //phpInfo
+	if (($_SESSION["person_id"] == 0) || ($_SESSION["_SITE_CONF"]["RUNLEVEL"] == 1))
+		return true;
+	return false;
+}
+function menu_list_AB(&$staff) { //add PAGETITLE to 'About'
+	$staff[MENU] .= " ".$_SESSION["_SITE_CONF"]["PAGETITLE"];
+	return true;
+}
+
 ?>

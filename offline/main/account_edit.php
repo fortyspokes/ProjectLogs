@@ -171,10 +171,6 @@ function account_select($ID=-1) {
 		$ID = intval($_POST["selAccount"]);
 	}
 	$_STATE->record_id = $ID;
-	$sql = "SELECT name, description FROM ".$_DB->prefix."a21_account
-			WHERE account_id=".$_STATE->record_id.";";
-	$row = $_DB->query($sql)->fetchObject();
-	$_STATE->forwho = $row->name.": ".$row->description; //PROPERTIES wants to see this
 }
 
 function account_info() {
@@ -188,6 +184,7 @@ function account_info() {
 			$props->value($row->{$props->dbname});
 		}
 	}
+	$_STATE->forwho = $row->name.": ".$row->description; //PROPERTIES wants to see this
 	$stmt->closeCursor();
 }
 
@@ -347,9 +344,8 @@ case UPDATE_ACCOUNT:
 
 case PROPERTIES: //list properties and allow new entry:
 	$propset->set_HTML();
-?>
 
-<?php //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
-}
+} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
+
 EX_pageEnd(); //standard end of page stuff
 ?>

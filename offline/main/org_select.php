@@ -62,12 +62,14 @@ function entry_audit() {
 	init_setup(); //re-display the list
 	$_SESSION["organization_id"] = intval($_POST["selOrgs"]);
 	//Set theme for organization:
-	$sql = "SELECT theme FROM ".$_DB->prefix."d10_preferences
-			WHERE organization_idref=".$_SESSION["organization_id"].";";
+	$_SESSION["THEME"] = $_SESSION["_SITE_CONF"]["THEME"]; //go back to default
+	$sql = "SELECT prefer FROM ".$_DB->prefix."d10_preferences
+			WHERE user_idref=".$_SESSION["organization_id"]."
+			AND user_table='a00' AND name='theme';";
 	$stmt = $_DB->query($sql);
 	if ($row = $stmt->fetchObject()) {
-		if ($row->theme != "") {
-			$_SESSION["_SITE_CONF"]["THEME"] = $row->theme;
+		if ($row->prefer != "") {
+			$_SESSION["THEME"] = $row->prefer;
 		}
 	}
 	$stmt->closeCursor();

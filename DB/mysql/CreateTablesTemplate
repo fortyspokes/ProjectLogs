@@ -377,14 +377,10 @@ CREATE TABLE `<DBNAME>`.`<PREFIX>d02_currency` (
 
 CREATE TABLE `<DBNAME>`.`<PREFIX>d10_preferences` (
   `preferences_id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `organization_idref` INT NOT NULL DEFAULT '0',
-  `project_idref` INT NOT NULL DEFAULT '0',
-  `person_idref` INT NOT NULL DEFAULT '0',
-  `theme` VARCHAR( 64 ) NOT NULL DEFAULT '',
-  `menu` VARCHAR( 512 ) NOT NULL DEFAULT '',
-  `date` VARCHAR( 16 ) NOT NULL DEFAULT '',
-  `currency_idref` INT NOT NULL DEFAULT '1',
-  `decimal_char` CHAR(1) NOT NULL DEFAULT '.',
+  `user_table` CHAR(3) NOT NULL DEFAULT 'a00' COMMENT '3 char collating prefix of assignee table name',
+  `user_idref` INT NOT NULL DEFAULT '0',
+  `name` VARCHAR( 64 ) NOT NULL DEFAULT 'new preference',
+  `prefer` VARCHAR( 512 ) NOT NULL DEFAULT '',
   `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
 ) ENGINE = INNODB ;
 

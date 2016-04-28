@@ -62,17 +62,18 @@ function entry_audit() {
 	$stmt->closeCursor();
 
 	//Set theme for organization/person:
-	$sql = "SELECT theme FROM ".$_DB->prefix."d10_preferences
-			WHERE organization_idref=".$_SESSION["organization_id"].";";
+	$sql = "SELECT prefer FROM ".$_DB->prefix."d10_preferences
+			WHERE user_idref=".$_SESSION["organization_id"]."
+			AND user_table='a00' AND name='theme';";
 	$stmt = $_DB->query($sql);
-	if (($row = $stmt->fetchObject()) && ($row->theme != "")) $_SESSION["_SITE_CONF"]["THEME"] = $row->theme;
+	if ($row = $stmt->fetchObject()) $_SESSION["THEME"] = $row->prefer;
 	$stmt->closeCursor();
-	$sql = "SELECT theme FROM ".$_DB->prefix."d10_preferences
-			WHERE person_idref=".$_SESSION["person_id"].";";
+	$sql = "SELECT prefer FROM ".$_DB->prefix."d10_preferences
+			WHERE user_idref=".$_SESSION["person_organization_id"]."
+			AND user_table='c10' AND name='theme';";
 	$stmt = $_DB->query($sql);
-	if (($row = $stmt->fetchObject()) && ($row->theme != "")) $_SESSION["_SITE_CONF"]["THEME"] = $row->theme;
+	if ($row = $stmt->fetchObject()) $_SESSION["THEME"] = $row->prefer;
 	$stmt->closeCursor();
-
 	$_STATE->msgStatus = "";
 
 	$_SESSION["UserPermits"] = $_PERMITS->get_permits($_SESSION["person_id"]); //set the users's permissions

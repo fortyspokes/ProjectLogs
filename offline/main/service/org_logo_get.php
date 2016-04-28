@@ -1,7 +1,9 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015,2016 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
-if (isset($_SESSION["organization_id"])) {
+if (isset($_GET["ID"])) {
+	$org_id = $_GET["ID"];
+} elseif (isset($_SESSION["organization_id"])) {
 	$org_id = $_SESSION["organization_id"];
 } else {
 	$org_id = 1; //not logged in so take default

@@ -13,7 +13,8 @@ define('ADD_ORG',				LIST_ORGS + 3);
 define('CHANGE_ORG',			LIST_ORGS + 4);//initiates all changes, incl. logo
 define('UPDATE_ORG',			LIST_ORGS + 5);
 define('DELETE_ORG',			LIST_ORGS + 6);
-define('GET_LOGO', 				LIST_ORGS + 7);
+define('GET_LOGO', 			STATE::INIT + 10);
+define('PREFERENCES',		STATE::INIT + 20);
 
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
@@ -27,18 +28,19 @@ case SELECT_ORG:
 	$_STATE->status = SELECTED_ORG; //for possible goback
 	$_STATE->replace(); //so loopback() can find it
 case SELECTED_ORG:
-	state_fields();
 	if ($_STATE->record_id == -1) {
+		state_fields(false);
 		$_STATE->msgGreet = "New organization record";
 		$_STATE->status = ADD_ORG;
 	} else {
+		state_fields();
 		org_info();
 		$_STATE->msgGreet = "Edit organization record";
 		$_STATE->status = CHANGE_ORG;
 	}
 	break 2;
 case ADD_ORG:
-	state_fields();
+	state_fields(false);
 	$_STATE->msgGreet = "New organization record";
 	if (isset($_POST["btnReset"])) {
 		break 2;
@@ -51,9 +53,18 @@ case ADD_ORG:
 	}
 	break 2;
 case CHANGE_ORG:
+	if (isset($_POST["btnLogo"])) {
+		$_STATE->status = GET_LOGO;
+		$_STATE->msgGreet = "Upload the new organization logo";
+		break 2;
+	}
+	if (isset($_POST["btnPrefs"])) {
+		$_STATE->status = PREFERENCES;
+		break 1; //re-switch to show preferences
+	}
+	//fall thru
 case UPDATE_ORG:
 case DELETE_ORG:
-case GET_LOGO:
 	state_fields();
 	$_STATE->msgGreet = "Edit organization record";
 	if (isset($_POST["btnReset"])) {
@@ -72,27 +83,38 @@ case GET_LOGO:
 			$_STATE = $_STATE->loopback(LIST_ORGS);
 			break 1; //re-switch
 		}
-	} elseif ($_POST["btnSubmit"] == "logo") {
-		$_STATE->status = GET_LOGO;
-		if (logo_audit()) {
-			$_STATE = $_STATE->loopback(SELECTED_ORG);
-			break 1; //re-switch
-		}
 	} else {
 		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid btnSubmit ".$_POST["btnSubmit"]);
 	}
+	break 2;
+case GET_LOGO:
+	$_STATE->backup = SELECTED_ORG; //set goback
+	logo_audit();
+	break 2;
+case PREFERENCES:
+	require_once "lib/preference_set.php";
+	if (!isset($_STATE->prefset)) { //first time thru
+		$_STATE->prefset = serialize(new PREF_SET($_STATE,"a00", $_STATE->record_id, $_STATE->forwho));
+	}
+	$prefset = unserialize($_STATE->prefset);
+	if (!$prefset->state_gate($_STATE)) {
+		$_STATE = $_STATE->loopback(SELECTED_ORG);
+		break 1;
+	}
+	$_STATE->prefset = serialize(clone($prefset)); //leave $prefset intact for later services
+	$_STATE->replace();
 	break 2;
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
 
-function state_fields() {
+function state_fields($disabled=true) {
 	global $_STATE;
 
 	$_STATE->fields = array( //pagename,DBname,load from DB?,write to DB?,required?,maxlength,disabled
-			"Name"=>new FIELD("txtName","name",TRUE,TRUE,TRUE,64,TRUE),
-			"Description"=>new AREA_FIELD("txtDesc","description",TRUE,TRUE,TRUE,256,TRUE),
-			"Time Zone"=>new FIELD("txtTZO","timezone",TRUE,TRUE,TRUE,3,TRUE),
+			"Name"=>new FIELD("txtName","name",TRUE,TRUE,TRUE,64,$disabled),
+			"Description"=>new AREA_FIELD("txtDesc","description",TRUE,TRUE,TRUE,256,$disabled),
+			"Time Zone"=>new FIELD("txtTZO","timezone",TRUE,TRUE,TRUE,3,$disabled),
 			);
 }
 
@@ -130,6 +152,7 @@ function org_info() {
 			$props->value($row->{$props->dbname});
 		}
 	}
+	$_STATE->forwho = $row->name.": ".$row->description; //PREFERENCES wants to see this
 	$stmt->closeCursor();
 }
 
@@ -145,8 +168,6 @@ function org_select() {
 
 function logo_audit() {
 	global $_DB, $_STATE;
-
-	org_info(); //set state fields for display
 
 	if ($_FILES["txtFile"]["error"] != UPLOAD_ERR_OK) {
 		if ($_FILES["txtFile"]["error"] == UPLOAD_ERR_NO_FILE) {
@@ -243,7 +264,6 @@ function update_audit() {
 		return FALSE;
 	}
 
-
 	update_db();
 
 	$_STATE->msgStatus = "The record for \"".$_STATE->fields["Name"]->value()."\" has been updated";
@@ -327,6 +347,8 @@ function delete_audit() {
 		return FALSE;
 	}
 
+//delete projects, preferences, properties???
+
 	$sql = "DELETE FROM ".$_DB->prefix."a00_organization WHERE organization_id=".$_STATE->record_id.";";
 	$stmt = $_DB->prepare($sql);
 	$result = $stmt->exec();
@@ -339,37 +361,21 @@ function delete_audit() {
 	return TRUE;
 }
 
-EX_pageStart(); //standard HTML page start stuff - insert scripts here
+if ($_STATE->status == PREFERENCES) {
+	$_STATE->msgGreet = $prefset->greeting();
+	$scripts = $prefset->set_script();
+} else {
+	$scripts = array();
+}
+EX_pageStart($scripts); //standard HTML page start stuff - insert scripts here
 ?>
 <script language="JavaScript">
-LoaderS.push('init_buttons();');
-
-function init_buttons() {
 <?php
 switch ($_STATE->status) {
-case ADD_ORG:
-	echo "  select_hold(true);\n";
-	echo "  fields_hold(false);\n";
-	break;
-case UPDATE_ORG:
-	echo "  UpdateBtn();\n";
-	break;
-case DELETE_ORG:
-	echo "  DeleteBtn();\n";
-	break;
 case CHANGE_ORG:
-	echo "  ResetBtn();\n";
-	break;
-case GET_LOGO:
-	echo "  LogoBtn();\n";
-	break;
-case STATE::DONE:
-	echo "  Done();\n";
-} //end switch ?>
-}
-
-<?php
-if ($_STATE->status != ADD_ORG) { ?>
+case UPDATE_ORG:
+case DELETE_ORG:
+//if (($_STATE->status != ADD_ORG) && ($_STATE->status != GET_LOGO)) { ?>
 function EnableReset() {
   button = document.getElementById("btnReset_ID");
   button.disabled = false;
@@ -379,27 +385,25 @@ function EnableReset() {
 }
 
 function UpdateBtn() {
-  fields_hold(false);
-  file_hold(true);
-  select_hold(true);
-  button = document.getElementById("btnSubmit_ID");
-  button.disabled = false;
-  button.innerHTML = "Submit Changes";
-  button.style.visibility = "visible";
-  button.value = "update";
-  document.getElementById("msgGreet_ID").innerHTML = "Make changes to this organization record";
-  EnableReset();
+	fields_hold(false);
+	select_hold(true);
+	button = document.getElementById("btnSubmit_ID");
+	button.disabled = false;
+	button.innerHTML = "Submit Changes";
+	button.style.visibility = "visible";
+	button.value = "update";
+	document.getElementById("msgGreet_ID").innerHTML = "Make changes to this organization record";
+	EnableReset();
 }
 
 function DeleteBtn() {
 <?php
-	if ($_SESSION["organization_id"] == 1) { ?>
+	if ($_STATE->record_id == 1) { ?>
   alert ("You can't delete the default organization!");
 }
 <?php
 	} else { ?>
   fields_hold(true);
-  file_hold(true);
   select_hold(true);
   button = document.getElementById("btnSubmit_ID");
   button.disabled = false;
@@ -411,43 +415,25 @@ function DeleteBtn() {
 }
 <?php
 	}
-} //end ($_STATE->status != ADD_ORG) ?>
-
-function LogoBtn() {
-  fields_hold(true);
-  file_hold(false);
-  select_hold(true);
-  document.getElementById("frmAction_ID").encoding="multipart/form-data";
-  button = document.getElementById("btnSubmit_ID");
-  button.disabled = false;
-  button.innerHTML = "Upload New Logo";
-  button.style.visibility = "visible";
-  button.value = "logo";
-  document.getElementById("msgGreet_ID").innerHTML = "Upload the new organization logo";
-  EnableReset();
-}
+// end case CHANGE_ORG, UPDATE_ORG, DELETE_ORG - fall thru
+case ADD_ORG:
+?>
 
 function ResetBtn() {
 <?php
-if ($_STATE->status == ADD_ORG) {
-	echo "  return true;\n";
-} else { ?>
+	if ($_STATE->status == ADD_ORG) {
+		echo "  return true;\n";
+	} else {
+?>
   fields_hold(true);
-  file_hold(true);
   select_hold(false);
   action_hold(true);
-  document.getElementById("frmAction_ID").encoding="application/x-www-form-urlencoded";
+//  document.getElementById("frmAction_ID").encoding="application/x-www-form-urlencoded";
   document.getElementById("msgGreet_ID").innerHTML = "What do you want to do to this organization record?";
   document.getElementById("msgStatus_ID").innerHTML = "";
   return true; //reset to default values
 <?php
-} ?>
-}
-
-function Done() {
-  fields_hold(true);
-  select_hold(true);
-  action_hold(true);
+	} ?>
 }
 
 function action_hold(cond) {
@@ -468,6 +454,7 @@ function select_hold(cond) {
   updater = document.getElementById("btnUpdate_ID");
   deleter = document.getElementById("btnDelete_ID");
   logo = document.getElementById("btnLogo_ID");
+  prefs = document.getElementById("btnPrefs_ID");
   updater.disabled = cond;
   deleter.disabled = cond;
   logo.disabled = cond;
@@ -475,10 +462,12 @@ function select_hold(cond) {
     updater.style.visibility = "hidden";
     deleter.style.visibility = "hidden";
     logo.style.visibility = "hidden";
+    prefs.style.visibility = "hidden";
   } else {
     updater.style.visibility = "visible";
     deleter.style.visibility = "visible";
     logo.style.visibility = "visible";
+    prefs.style.visibility = "visible";
   }
 }
 
@@ -487,35 +476,51 @@ function fields_hold(cond) {
   document.getElementById("<?php echo $props->pagename; ?>_ID").readOnly = cond;
 <?php } ?>
 }
+<?php
+} //end switch ($_STATE->status)
+?>
 
-function file_hold(cond) {
-  document.getElementById("txtFile_ID").disabled = cond;
-}
 </script>
 <?php
 EX_pageHead(); //standard page headings - after any scripts
-?>
-<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
-<?php
+
 //forms and display depend on process state; note, however, that the state was probably changed after entering
 //the Main State Gate so this switch will see the next state in the process:
 switch ($_STATE->status) {
 case SELECT_ORG:
 ?>
+  <p>
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <select name='selOrg' size="<?php echo count($_STATE->records); ?>" onclick="this.form.submit()">
 <?php
 	foreach($_STATE->records as $value => $name) {
 		echo "    <option value=\"".$value."\">".$name."\n";
 	} ?>
   </select>
+</form>
   </p>
 <?php //end SELECT_ORG status ----END STATUS PROCESSING----
 	break;
-default:
+case CHANGE_ORG:
 ?>
+  <p>
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <button type="button" name="btnUpdate" id="btnUpdate_ID" onclick="UpdateBtn();">Enter changes<br>to this org</button>
-  <button type="button" name="btnLogo" id="btnLogo_ID" onclick="LogoBtn();">Change the logo</button>
+  <button type="submit" name="btnLogo" id="btnLogo_ID" value="logo">Change the logo</button>
+  <button type="submit" name="btnPrefs" id="btnPrefs_ID" value="preferences">Preferences</button>
   <button type="button" name="btnDelete" id="btnDelete_ID" onclick="DeleteBtn();">Remove this org</button>
+</form>
+  </p>
+<?php //end CHANGE_ORG status ----END STATUS PROCESSING----
+	//no break - falls thru
+case SELECTED_ORG:
+case ADD_ORG:
+case UPDATE_ORG:
+case DELETE_ORG:
+?>
+  <p>
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
+  <p>
   <table align="center">
     <tr>
       <td class="label"><?php echo $_STATE->fields['Name']->HTML_label("Name: "); ?></td>
@@ -530,9 +535,6 @@ default:
       <td><?php echo $_STATE->fields['Time Zone']->HTML_input(3); ?></td>
     </tr>
   </table>
-  <p>
-  <input type="hidden" name="MAX_FILE_SIZE" value="1000000" >
-  <input type="file" name="txtFile" id="txtFile_ID" accept="image/jpeg image/gif image/bmp">
   </p>
   <p>
 <?php
@@ -540,10 +542,41 @@ default:
 		echo FIELD_edit_buttons(FIELD_ADD);
 	} else {
 		echo Field_edit_buttons(FIELD_UPDATE);
-	}
-//end default status ----END STATUS PROCESSING----
-} ?>
+	} ?>
 </form>
+  </p>
 <?php
+//end SELECTED/ADD/UPDATE/DELETE_ORG status ----END STATUS PROCESSING----
+	break;
+case GET_LOGO:
+?>
+  <p>
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
+<script language="JavaScript">
+  document.getElementById("frmAction_ID").encoding="multipart/form-data";
+</script>
+  <p>
+  <table align="center">
+    <tr><td>
+	  <input type="hidden" name="MAX_FILE_SIZE" value="1000000" >
+	  <input type="file" name="txtFile" id="txtFile_ID" accept="image/jpeg image/gif image/bmp">
+	  <button type="submit" name="btnLogo" id="btnLogo_ID" value="logo">Upload the logo</button>
+	</td></td>
+	<tr><td>
+	  <img src="<?php echo $_SESSION["BUTLER"]; ?>?IAm=LG&ID=<?php echo $_STATE->record_id; ?>" height="110" width="110">
+	</td></tr>
+  </table>
+  </p>
+</form>
+  </p>
+<?php
+//end GET_LOGO status ----END STATUS PROCESSING----
+	break;
+
+case PREFERENCES: //show preferences and allow update:
+	$prefset->set_HTML();
+
+} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
+
 EX_pageEnd(); //standard end of page stuff
 ?>

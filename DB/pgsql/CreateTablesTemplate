@@ -414,14 +414,10 @@ GRANT UPDATE ON TABLE <PREFIX>d02_currency_currency_id_seq TO <DBEDITOR>;
 
 CREATE TABLE <PREFIX>d10_preferences (
   preferences_id serial NOT NULL,
-  organization_idref integer NOT NULL DEFAULT 0,
-  project_idref integer NOT NULL DEFAULT 0,
-  person_idref integer NOT NULL DEFAULT 0,
-  "theme" character varying(64) NOT NULL DEFAULT ''::character varying,
-  "menu" character varying(512) NOT NULL DEFAULT ''::character varying,
-  "date" character varying(16) NOT NULL DEFAULT ''::character varying,
-  currency_idref integer NOT NULL DEFAULT 1,
-  "decimal_char" character(1) NOT NULL DEFAULT'.',
+  user_table character(3) NOT NULL DEFAULT'a00',
+  user_idref integer NOT NULL DEFAULT 0,
+  "name" character varying(64) NOT NULL DEFAULT 'new preference'::character varying,
+  "prefer" character varying(512) NOT NULL DEFAULT ''::character varying,
   "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
   CONSTRAINT <PREFIX>preferences_Key PRIMARY KEY (preferences_id)
 )
@@ -432,6 +428,7 @@ ALTER TABLE <PREFIX>d10_preferences OWNER TO <DBADMIN>;
 GRANT ALL ON TABLE <PREFIX>d10_preferences TO <DBADMIN>;
 GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>d10_preferences TO <DBEDITOR>;
 GRANT SELECT ON TABLE <PREFIX>d10_preferences TO <DBREADER>;
+COMMENT ON COLUMN <PREFIX>d10_preferences.user_table IS '3 char collating prefix of assignee table name';
 COMMENT ON COLUMN <PREFIX>d10_preferences."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
 GRANT UPDATE ON TABLE <PREFIX>d10_preferences_preferences_id_seq TO <DBEDITOR>;
 

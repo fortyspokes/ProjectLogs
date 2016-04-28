@@ -239,11 +239,8 @@ function tables_list() {
 		"organization_idref" =>		new TFIELD(PDO::PARAM_INT),
 		"project_idref" =>			new TFIELD(PDO::PARAM_INT),
 		"person_idref" =>			new TFIELD(PDO::PARAM_INT),
-		"theme" =>					new TFIELD(PDO::PARAM_STR),
-		"menu" =>					new TFIELD(PDO::PARAM_STR),
-		"date" =>					new TFIELD(PDO::PARAM_STR),
-		"currency_idref" =>			new TFIELD(PDO::PARAM_INT),
-		"decimal_char" =>			new TFIELD(PDO::PARAM_STR),
+		"name" =>					new TFIELD(PDO::PARAM_STR),
+		"prefer" =>					new TFIELD(PDO::PARAM_STR),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
 	$_STATE->records["preferences"] = new TABLE(

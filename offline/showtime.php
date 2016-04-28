@@ -3,6 +3,7 @@
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 if (isset($evicted)) $_SESSION["_EVICTED"] = $evicted; //note _EVICTED != _EVICTED_
+$_SESSION["THEME"] = $_SESSION["_SITE_CONF"]["THEME"]; //THEME can be changed and can revert back
 ?>
 <html>
 <head>
