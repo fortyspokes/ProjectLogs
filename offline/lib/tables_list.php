@@ -23,10 +23,9 @@ class TFIELD {
 	}
 }
 
-function tables_list() {
-	global $_STATE;
+function DB_tables($prefix="") {
 
-	$DBPREFIX = $_SESSION['_SITE_CONF']['DBPREFIX'];
+	$list = array();
 
 	$fields = array(
 		"organization_id" =>		new TFIELD(PDO::PARAM_INT),
@@ -38,8 +37,8 @@ function tables_list() {
 		"timezone" =>				new TFIELD(PDO::PARAM_INT),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
-	$_STATE->records["organization"] = new TABLE(
-		$DBPREFIX."a00_organization", "organization_id", $fields);
+	$list["organization"] = new TABLE(
+		$prefix."a00_organization", "organization_id", $fields);
 
 	$fields = array(
 		"project_id" =>				new TFIELD(PDO::PARAM_INT),
@@ -56,8 +55,8 @@ function tables_list() {
 		"close_date" =>				new TFIELD(db_connect::PARAM_DATE,"date"),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
-	$_STATE->records["project"] = new TABLE(
-		$DBPREFIX."a10_project", "project_id", $fields);
+	$list["project"] = new TABLE(
+		$prefix."a10_project", "project_id", $fields);
 
 	$fields = array(
 		"task_id" =>				new TFIELD(PDO::PARAM_INT),
@@ -69,8 +68,8 @@ function tables_list() {
 		"inactive_asof" =>			new TFIELD(db_connect::PARAM_DATE,"date"),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
-	$_STATE->records["task"] = new TABLE(
-		$DBPREFIX."a12_task","task_id", $fields);
+	$list["task"] = new TABLE(
+		$prefix."a12_task","task_id", $fields);
 
 	$fields = array(
 		"subtask_id" =>				new TFIELD(PDO::PARAM_INT),
@@ -81,8 +80,8 @@ function tables_list() {
 		"inactive_asof" =>			new TFIELD(db_connect::PARAM_DATE,"date"),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
-	$_STATE->records["subtask"] = new TABLE(
-		$DBPREFIX."a14_subtask","subtask_id", $fields);
+	$list["subtask"] = new TABLE(
+		$prefix."a14_subtask","subtask_id", $fields);
 
 	$fields = array(
 		"accounting_id" =>			new TFIELD(PDO::PARAM_INT),
@@ -92,8 +91,8 @@ function tables_list() {
 		"comment" =>				new TFIELD(PDO::PARAM_STR,"string"),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
-	$_STATE->records["accounting"] = new TABLE(
-		$DBPREFIX."a20_accounting","accounting_id", $fields);
+	$list["accounting"] = new TABLE(
+		$prefix."a20_accounting","accounting_id", $fields);
 
 	$fields = array(
 		"account_id" =>				new TFIELD(PDO::PARAM_INT),
@@ -103,8 +102,8 @@ function tables_list() {
 		"inactive_asof" =>			new TFIELD(db_connect::PARAM_DATE,"date"),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
-	$_STATE->records["account"] = new TABLE(
-		$DBPREFIX."a21_account","account_id", $fields);
+	$list["account"] = new TABLE(
+		$prefix."a21_account","account_id", $fields);
 
 	$fields = array(
 		"event_id" =>				new TFIELD(PDO::PARAM_INT),
@@ -115,8 +114,8 @@ function tables_list() {
 		"inactive_asof" =>			new TFIELD(db_connect::PARAM_DATE,"date"),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
-	$_STATE->records["event"] = new TABLE(
-		$DBPREFIX."a30_event","event_id", $fields);
+	$list["event"] = new TABLE(
+		$prefix."a30_event","event_id", $fields);
 
 	$fields = array(
 		"timelog_id" =>				new TFIELD(PDO::PARAM_INT),
@@ -129,16 +128,16 @@ function tables_list() {
 		"hours" =>					new TFIELD(db_connect::PARAM_STR),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
-	$_STATE->records["timelog"] = new TABLE(
-		$DBPREFIX."b00_timelog","timelog_id", $fields);
+	$list["timelog"] = new TABLE(
+		$prefix."b00_timelog","timelog_id", $fields);
 
 	$fields = array(
 		"activity_id" =>			new TFIELD(PDO::PARAM_INT),
 		"description" =>			new TFIELD(PDO::PARAM_STR,"string"),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
-	$_STATE->records["activity"] = new TABLE(
-		$DBPREFIX."b02_activity","activity_id", $fields);
+	$list["activity"] = new TABLE(
+		$prefix."b02_activity","activity_id", $fields);
 
 	$fields = array(
 		"eventlog_id" =>			new TFIELD(PDO::PARAM_INT),
@@ -151,8 +150,8 @@ function tables_list() {
 		"comments" =>				new TFIELD(PDO::PARAM_STR),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
-	$_STATE->records["eventlog"] = new TABLE(
-		$DBPREFIX."b10_eventlog","eventlog_id", $fields);
+	$list["eventlog"] = new TABLE(
+		$prefix."b10_eventlog","eventlog_id", $fields);
 
 	$fields = array(
 		"expenselog_id" =>			new TFIELD(PDO::PARAM_INT),
@@ -165,8 +164,8 @@ function tables_list() {
 		"amount" =>					new TFIELD(PDO::PARAM_STR, "money"),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
-	$_STATE->records["expenselog"] = new TABLE(
-		$DBPREFIX."b20_expenselog","expenselog_id", $fields);
+	$list["expenselog"] = new TABLE(
+		$prefix."b20_expenselog","expenselog_id", $fields);
 
 	$fields = array(
 		"person_id" =>				new TFIELD(PDO::PARAM_INT),
@@ -178,8 +177,8 @@ function tables_list() {
 		"email" =>					new TFIELD(db_connect::PARAM_STR),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
-	$_STATE->records["person"] = new TABLE(
-		$DBPREFIX."c00_person","person_id", $fields);
+	$list["person"] = new TABLE(
+		$prefix."c00_person","person_id", $fields);
 
 	$fields = array(
 		"rate_id" =>				new TFIELD(PDO::PARAM_INT),
@@ -190,8 +189,8 @@ function tables_list() {
 		"expire_after" =>			new TFIELD(db_connect::PARAM_DATE,"date"),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
-	$_STATE->records["rate"] = new TABLE(
-		$DBPREFIX."c02_rate","rate_id", $fields);
+	$list["rate"] = new TABLE(
+		$prefix."c02_rate","rate_id", $fields);
 
 	$fields = array(
 		"person_organization_id" => new TFIELD(PDO::PARAM_INT),
@@ -200,8 +199,8 @@ function tables_list() {
 		"inactive_asof"	=>			new TFIELD(db_connect::PARAM_DATE,"date"),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
-	$_STATE->records["person_organization"] = new TABLE(
-		$DBPREFIX."c10_person_organization","person_organization_id", $fields);
+	$list["person_organization"] = new TABLE(
+		$prefix."c10_person_organization","person_organization_id", $fields);
 
 	$fields = array(
 		"person_permit_id" =>		new TFIELD(PDO::PARAM_INT),
@@ -211,8 +210,8 @@ function tables_list() {
 		"project_idref" =>			new TFIELD(PDO::PARAM_INT),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
-	$_STATE->records["person_permit"] = new TABLE(
-		$DBPREFIX."c20_person_permit","person_permit_id", $fields);
+	$list["person_permit"] = new TABLE(
+		$prefix."c20_person_permit","person_permit_id", $fields);
 
 	$fields = array(
 		"permit_id" =>				new TFIELD(PDO::PARAM_INT),
@@ -222,8 +221,8 @@ function tables_list() {
 		"grade" =>					new TFIELD(PDO::PARAM_INT),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
-	$_STATE->records["permit"] = new TABLE(
-		$DBPREFIX."d01_permit","permit_id", $fields);
+	$list["permit"] = new TABLE(
+		$prefix."d01_permit","permit_id", $fields);
 
 	$fields = array(
 		"currency_id" =>			new TFIELD(PDO::PARAM_INT),
@@ -231,8 +230,8 @@ function tables_list() {
 		"symbol" =>					new TFIELD(PDO::PARAM_STR),
 		"decimal_cnt" =>			new TFIELD(PDO::PARAM_INT)
 		);
-	$_STATE->records["currency"] = new TABLE(
-		$DBPREFIX."d02_currency","currency_id", $fields);
+	$list["currency"] = new TABLE(
+		$prefix."d02_currency","currency_id", $fields);
 
 	$fields = array(
 		"preferences_id" =>			new TFIELD(PDO::PARAM_INT),
@@ -243,8 +242,8 @@ function tables_list() {
 		"prefer" =>					new TFIELD(PDO::PARAM_STR),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
-	$_STATE->records["preferences"] = new TABLE(
-		$DBPREFIX."d10_preferences","preferences_id", $fields);
+	$list["preferences"] = new TABLE(
+		$prefix."d10_preferences","preferences_id", $fields);
 
 	$fields = array(
 		"property_id" =>			new TFIELD(PDO::PARAM_INT),
@@ -253,8 +252,8 @@ function tables_list() {
 		"description" =>			new TFIELD(PDO::PARAM_STR,"string"),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
-	$_STATE->records["property"] = new TABLE(
-		$DBPREFIX."e00_property","property_id", $fields);
+	$list["property"] = new TABLE(
+		$prefix."e00_property","property_id", $fields);
 
 	$fields = array(
 		"prop_value_id" =>			new TFIELD(PDO::PARAM_INT),
@@ -263,8 +262,8 @@ function tables_list() {
 		"description" =>			new TFIELD(PDO::PARAM_STR,"string"),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
-	$_STATE->records["prop_value"] = new TABLE(
-		$DBPREFIX."e02_prop_value","prop_value_id", $fields);
+	$list["prop_value"] = new TABLE(
+		$prefix."e02_prop_value","prop_value_id", $fields);
 
 	$fields = array(
 		"prop_element_id" =>		new TFIELD(PDO::PARAM_INT),
@@ -273,8 +272,10 @@ function tables_list() {
 		"element_idref" =>			new TFIELD(PDO::PARAM_INT),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
-	$_STATE->records["prop_element"] = new TABLE(
-		$DBPREFIX."e04_prop_element","prop_element_id", $fields);
+	$list["prop_element"] = new TABLE(
+		$prefix."e04_prop_element","prop_element_id", $fields);
+
+	return $list;
 
 }
 ?>

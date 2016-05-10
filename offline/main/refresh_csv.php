@@ -5,7 +5,7 @@ if (($_SESSION["_SITE_CONF"]["RUNLEVEL"] < 1) || (!$_PERMITS->can_pass(PERMITS::
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
 require_once ("lib/tables_list.php");
-tables_list();
+$_STATE->records = DB_tables($_DB->prefix);
 $REFRESH_PATH = $_SESSION["_SITE_CONF"]["_STASH"]."/refresh/";
 
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')

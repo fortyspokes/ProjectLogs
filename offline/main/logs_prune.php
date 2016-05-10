@@ -354,7 +354,7 @@ function update_audit() {
 	if (!field_input_audit()) return false;
 
 	require_once ("lib/tables_list.php");
-	tables_list();
+	$_STATE->records = DB_tables($_DB->prefix);
 	$sql = "SELECT name FROM ".$_DB->prefix."a00_organization
 			WHERE organization_id=".$_SESSION["organization_id"].";";
 	$_STATE->orgname = $_DB->query($sql)->fetchObject()->name;

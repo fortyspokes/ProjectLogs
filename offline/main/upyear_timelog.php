@@ -12,7 +12,7 @@ require_once "lib/tables_list.php";
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
 case STATE::INIT:
-	tables_list();
+	$_STATE->records = DB_tables($_DB->prefix);
 	$_STATE->msgGreet = "Enter the new date";
 	$_STATE->status = STATE::SELECT; //prepare a 'goback'
 //	break 1; //do a re-switch
@@ -126,7 +126,7 @@ function upgrade(&$new_date) {
 	$diff = 1;
 	if ($max_date > $new_date->value) $diff = -1;
 
-	tables_list();
+	$_STATE->records = DB_tables($_DB->prefix);
 	foreach ($_POST["chkDate"] as $chkDate) {
 		up_date($chkDate, $interval, $diff);
 	}
