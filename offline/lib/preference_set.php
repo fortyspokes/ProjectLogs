@@ -37,6 +37,7 @@ class PREF_SET {
 
 	public $element; //the 3char table id
 	public $element_id;
+	public $category; //'cosmetic' or 'structural'
 	public $forwho; //element desc for msgGreet
 
 	public $pref_name;
@@ -44,16 +45,20 @@ class PREF_SET {
 	public $noSleep = array(); //clear out these user created vars when sleeping (to save memory)
 	private $records = array();
 
+	const COSMETIC = -11;
+	const STRUCTURAL = -1;
+
 	const PREF_INIT =	0;
 	const PREF_DISP	=	1;
 	const PREF_CHANGE =	2;
 
-function __construct(&$state, $element, $element_id, $forwho) {
+function __construct(&$state, $element, $element_id, $category, $forwho) {
 
 	$state->PREFSETgoback = "n"; //must pass state_gate test first time thru
 
 	$this->element = $element;
 	$this->element_id = $element_id;
+	$this->category = $category;
 	$this->forwho = $forwho;
 	$this->status = PREF_SET::PREF_INIT;
 	$this->setNoSleep("records");
@@ -99,7 +104,8 @@ private function get_recs() {
 	global $_DB;
 
 	$sql = "SELECT name, prefer FROM ".$_DB->prefix."d10_preferences
-			WHERE user_table='".$this->element."' AND user_idref=-1;"; //the 'templates'
+			WHERE user_table='".$this->element."'
+			AND user_idref<=".$this->category.";"; //the 'templates'
 	$stmt = $_DB->query($sql);
 	$this->records = array();
 	while ($row = $stmt->fetchObject()) {
@@ -112,7 +118,9 @@ private function get_recs() {
 			WHERE user_table='".$this->element."' AND user_idref=".$this->element_id.";";
 	$stmt = $_DB->query($sql);
 	while ($row = $stmt->fetchObject()) {
-		$this->records[$row->name]->value = $row->prefer;
+		if (isset($this->records[$row->name])) { //not there if only doing cosmetic?
+			$this->records[$row->name]->value = $row->prefer;
+		}
 	}
 	$stmt->closeCursor();
 }

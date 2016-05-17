@@ -12,6 +12,7 @@ define('CHANGE_PERSON',			LIST_PERSONS + 3);
 define('UPDATE_PERSON',			LIST_PERSONS + 4);
 define('ADD_PERSON',			LIST_PERSONS + 5);
 define('DELETE_PERSON',			LIST_PERSONS + 6);
+define('PREFERENCES',		STATE::INIT + 20);
 
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
@@ -63,6 +64,11 @@ case ADD_PERSON:
 	}
 	break 2;
 case CHANGE_PERSON:
+	if (isset($_POST["btnPrefs"])) {
+		$_STATE->status = PREFERENCES;
+		break 1; //re-switch to show preferences
+	}
+	//fall thru
 case UPDATE_PERSON:
 case DELETE_PERSON:
 	state_fields();
@@ -86,6 +92,20 @@ case DELETE_PERSON:
 		break 2;
 	}
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid Submit");
+case PREFERENCES:
+	require_once "lib/preference_set.php";
+	if (!isset($_STATE->prefset)) { //first time thru
+		$category = PREF_SET::COSMETIC;
+		$_STATE->prefset = serialize(new PREF_SET($_STATE,"c10", $_STATE->record_id, $category, $_STATE->forwho));
+	}
+	$prefset = unserialize($_STATE->prefset);
+	if (!$prefset->state_gate($_STATE)) {
+		$_STATE = $_STATE->loopback(SELECTED_PERSON);
+		break 1;
+	}
+	$_STATE->prefset = serialize(clone($prefset)); //leave $prefset intact for later services
+	$_STATE->replace();
+	break 2;
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
@@ -119,6 +139,7 @@ function record_info() {
 			$props->value($row->{$props->dbname});
 		}
 	}
+	$_STATE->forwho = $row->lastname.", ".$row->firstname; //PREFERENCES wants to see this
 	$stmt->closeCursor();
 }
 
@@ -308,7 +329,12 @@ function delete_audit() {
 
 //-------end function code; begin HTML------------
 
-EX_pageStart(array("call_server.js")); //standard HTML page start stuff - insert SCRIPTS here
+$scripts = array("call_server.js");
+if ($_STATE->status == PREFERENCES) {
+	$_STATE->msgGreet = $prefset->greeting();
+	$scripts = $prefset->set_script();
+}
+EX_pageStart($scripts); //standard HTML page start stuff - insert scripts here
 ?>
 <script language="JavaScript">
 function compare_pswds() {
@@ -334,7 +360,11 @@ case SELECT_PERSON:
 	echo $persons->set_list();
 
 	break; //end SELECT_PERSON status ----END STATUS PROCESSING----
-default:
+
+case CHANGE_PERSON:
+case UPDATE_PERSON:
+case ADD_PERSON:
+case DELETE_PERSON:
 ?>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <table align="center">
@@ -373,17 +403,22 @@ default:
 		echo FIELD_edit_buttons(FIELD_ADD);
 	} else {
 		echo Field_edit_buttons(FIELD_UPDATE);
+		echo "  <br><button type='submit' name='btnPrefs' id='btnPrefs_ID' value='preferences'>Preferences</button>\n";
 	}
 	if (($_STATE->status != ADD_PERSON) && ($_PERMITS->can_pass("person_edit"))
 &&( 1 == 0 ) //for now, no delete; use inactive instead
 				&& ($_SESSION["person_id"] != $_STATE->record_id)) { //note: can't delete yourself ?>
   <button type="submit" name="btnDelete" id="btnDelete_ID" value = "delete" onclick="return DeleteBtn()">Remove this person record</button>
+</form>
 <?php
 	}
-	//end default status ----END STATUS PROCESSING----
-} ?>
-</form>
+	break;
+//end SELECTED/ADD/UPDATE/DELETE_PERSON status ----END STATUS PROCESSING----
 
-<?php
+case PREFERENCES: //show preferences and allow update:
+	$prefset->set_HTML();
+
+} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
+
 EX_pageEnd(); //standard end of page stuff
 ?>

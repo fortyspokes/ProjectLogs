@@ -94,7 +94,8 @@ case GET_LOGO:
 case PREFERENCES:
 	require_once "lib/preference_set.php";
 	if (!isset($_STATE->prefset)) { //first time thru
-		$_STATE->prefset = serialize(new PREF_SET($_STATE,"a00", $_STATE->record_id, $_STATE->forwho));
+		$category = ($_PERMITS->can_pass(PERMITS::_SUPERUSER)) ? PREF_SET::STRUCTURAL : PREF_SET::COSMETIC;
+		$_STATE->prefset = serialize(new PREF_SET($_STATE,"a00", $_STATE->record_id, $category, $_STATE->forwho));
 	}
 	$prefset = unserialize($_STATE->prefset);
 	if (!$prefset->state_gate($_STATE)) {

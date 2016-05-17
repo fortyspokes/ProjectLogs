@@ -53,6 +53,14 @@
 			foreach ($menu_prefs as $key=>$value) $EX_staff[$key][MENU] = $value;
 		}
 	}
+	//	for person:
+	$sql = "SELECT prefer FROM ".$_DB->prefix."d10_preferences
+			WHERE user_idref=".$_SESSION["person_organization_id"]."
+			AND user_table='c10' AND name='menu';";
+	if ($row = $_DB->query($sql)->fetchObject()) {
+		$new_labels = parse_ini_string(str_replace("&","\n",$row->prefer));
+		foreach ($new_labels as $key=>$value) $EX_staff[$key][MENU] = $value;
+	}
 	//...now, add the sys admin, etc. stuff:
 	$MENU_LIST = array_merge($MENU_LIST, $ADMIN_LIST);
 
