@@ -42,6 +42,8 @@ INSERT INTO <PREFIX>d01_permit VALUES (13, 'accounting_edit', 'Add, change accou
 INSERT INTO <PREFIX>d01_permit VALUES (14, 'event_edit', 'Add, change events', 'Events are not deleted.  Only the INACTIVE_ASOF date is set.', 100);
 INSERT INTO <PREFIX>d01_permit VALUES (15, 'logs_prune', 'Delete stale logs records', '', 100);
 INSERT INTO <PREFIX>d01_permit VALUES (16, 'property_admin', 'administer properties and values', 'connecting values to elements occurs at the element admin page', 10);
+INSERT INTO <PREFIX>d01_permit VALUES (17, 'repository_get', 'Download from the repository', '', 10);
+INSERT INTO <PREFIX>d01_permit VALUES (18, 'repository_put', 'Insert into the repository', '', 10);
 
 -- d02_currency
 INSERT INTO <PREFIX>d02_currency VALUES (1, 'us dollar', '$', 2);

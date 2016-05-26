@@ -38,6 +38,8 @@ $EX_staff = array(
 "PI" => array('phpInfo',				"phpinfo.php",			PERMITS::_SUPERUSER,""		),
 "PJ" => array('Project Edit',			"project_edit.php",		'project_edit',		""		),
 "PM" => array('Grant/revoke permits',	"assign_permits.php",	'assign_permits',	""		),
+"RG" => array('Repository Get',			"repository.php",		'repository_get',	'$_UPLOAD=false;'),
+"RP" => array('Repository Put',			"repository.php",		'repository_put',	'$_UPLOAD=true;'),
 "PR" => array('Property Admin',			"property_admin.php",	'property_admin',	""		),
 "RC" => array('Refresh CSV',			"refresh_csv.php",		PERMITS::_SUPERUSER,""		),
 "SC" => array('Save CSV',				"save_csv.php",			PERMITS::_SUPERUSER,""		),
@@ -69,6 +71,8 @@ $MENU_LIST = array( //the standard application menu list: (altered/replaced by p
 	"AG", //Accounting group Edit
 	"AC", //Account Edit
 	"EV", //Event Edit
+	"RG", //Get repository
+	"RP", //Put repository
 	);
 $ADMIN_LIST = array( //the admin menu items:
 	"PM", //Grant/revoke permits

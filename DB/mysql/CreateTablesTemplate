@@ -391,6 +391,26 @@ FOR EACH ROW
 //
 delimiter ;
 
+-- Table: <PREFIX>d20_repository
+-- DROP TRIGGER `<DBNAME>`.`<PREFIX>d20_timestamp`;
+-- DROP TABLE `<DBNAME>`.`<PREFIX>d20_repository`;
+
+CREATE TABLE `<DBNAME>`.`<PREFIX>d20_repository` (
+  `repository_id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `organization_idref` INT NOT NULL DEFAULT '0',
+  `description` VARCHAR( 64 ) NOT NULL DEFAULT 'a report',
+  `filename` VARCHAR( 64 ) NOT NULL DEFAULT 'dummy.txt',
+  `deposit` MEDIUMBLOB,
+  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+) ENGINE = INNODB ;
+
+delimiter //
+CREATE TRIGGER `<DBNAME>`.`<PREFIX>d20_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>d20_repository`
+FOR EACH ROW
+  SET NEW.timestamp = UTC_TIMESTAMP()
+//
+delimiter ;
+
 -- Table: <PREFIX>e00_property
 -- DROP TRIGGER `<DBNAME>`.`<PREFIX>e00_timestamp`;
 -- DROP TABLE `<DBNAME>`.`<PREFIX>e00_property`;

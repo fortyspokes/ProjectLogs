@@ -432,6 +432,28 @@ COMMENT ON COLUMN <PREFIX>d10_preferences.user_table IS '3 char collating prefix
 COMMENT ON COLUMN <PREFIX>d10_preferences."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
 GRANT UPDATE ON TABLE <PREFIX>d10_preferences_preferences_id_seq TO <DBEDITOR>;
 
+-- Table: <PREFIX>d20_repository
+-- DROP TABLE <PREFIX>d20_repository;
+
+CREATE TABLE <PREFIX>d20_repository (
+  repository_id serial NOT NULL,
+  organization_idref integer NOT NULL DEFAULT 0,
+  description character varying(64) NOT NULL DEFAULT 'a report'::character varying,
+  filename character varying(64) NOT NULL DEFAULT 'dummy.txt'::character varying,
+  deposit oid NOT NULL DEFAULT 0,
+  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
+  CONSTRAINT <PREFIX>repository_Key PRIMARY KEY (repository_id)
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE <PREFIX>d20_repository OWNER TO <DBADMIN>;
+GRANT ALL ON TABLE <PREFIX>d20_repository TO <DBADMIN>;
+GRANT SELECT, UPDATE, INSERT, DELETE ON TABLE <PREFIX>d20_repository TO <DBEDITOR>;
+GRANT SELECT ON TABLE <PREFIX>d20_repository TO <DBREADER>;
+COMMENT ON COLUMN <PREFIX>d20_repository."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
+GRANT UPDATE ON TABLE <PREFIX>d20_repository_repository_id_seq TO <DBEDITOR>;
+
 -- Table: <PREFIX>e00_property
 -- DROP TABLE <PREFIX>e00_property;
 
