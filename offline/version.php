@@ -1,3 +1,5 @@
 <?php
-$_VERSION = "2.1.1";
+//Note that about.php expects to see github.com/ProjectLogs/tree/v<$_VERSION> so be sure to create
+//a tag name v<$_VERSION>
+$_VERSION = "2.1.2";
 ?>
