@@ -157,7 +157,7 @@ function audit_count(me, maxCount) {
 		me.focus;
 		submitRow = -1;
 		return false;
-	} else if ((me.value == 0) && (me.defaultValue != 0) && (me.id = 'txtSessions_ID')) {
+	} else if ((me.value == 0) && (me.defaultValue != 0) && (me.id == 'txtSessions_ID')) {
 		if (!confirm("Are you sure you want to delete this record?")) {
 			me.value = me.parentNode.value;
 			me.focus;
@@ -165,7 +165,7 @@ function audit_count(me, maxCount) {
 			return false;
 		}
 		if (submitRow > -1) {
-			new_info(submitRow);
+			changes(submitRow);
 		}
 	}
 	return true;

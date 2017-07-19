@@ -181,7 +181,7 @@ function audit_amount(me, maxAmount) {
 			return false;
 		}
 		if (submitRow > -1) {
-			new_info(submitRow);
+			changes(submitRow);
 		}
 	}
 	return true;

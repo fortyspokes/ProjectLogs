@@ -390,19 +390,6 @@ function log_put() {
 	$from = $_STATE->from_date->format('Y-m-d');
 	$to = $_STATE->to_date->format('Y-m-d');
 
-	$filename = "eventlog_".$orgname."_".$from."_to_".$to.".csv"; //for file_put...
-	require_once "lib/file_put.php";
-
-	$out = fopen('php://output', 'w');
-
-	$outline = array();
-	$outline[] = "eventlog";
-	$outline[] = $version;
-	$outline[] = $from;
-	$outline[] = $to;
-	$outline[] = $orgname;
-	fputcsv($out, $outline); //ID row
-
 	$sql_logs = "";
 	if (!$_PERMITS->can_pass("project_logs")) $sql_logs = "(b10.person_idref=".$_SESSION["person_id"].") AND ";
 	$sql_logs = "SELECT b10.logdate, b10.session_count, b10.attendance,
@@ -424,6 +411,20 @@ function log_put() {
 		$_STATE->msgStatus = "No logs were downloaded";
 		return;
 	}
+
+	$filename = "eventlog_".$orgname."_".$from."_to_".$to.".csv"; //for file_put...
+	require_once "lib/file_put.php";
+
+	$out = fopen('php://output', 'w');
+
+	$outline = array();
+	$outline[] = "eventlog";
+	$outline[] = $version;
+	$outline[] = $from;
+	$outline[] = $to;
+	$outline[] = $orgname;
+	fputcsv($out, $outline); //ID row
+
 	$outline = array();
 	$fields = "";
 	foreach ($row as $name=>$value) { //headings
@@ -705,10 +706,9 @@ function input_send(&$state, &$HTML) {
 	$HTML .= "document.getElementById('SN_".$state->row."').innerHTML = fill;\n";
 
 	$HTML .= "//Attendance...\n";
-	$HTML .= "cell = document.getElementById('AD_".$state->row."');\n";
 	$HTML .= "fill = \"<input type='text' name='txtAttendance' id='txtAttendance_ID' size='5'";
 	$HTML .= " maxlength='5' class='number' onblur='return audit_count(this,99)' value='".$attendance."'>\";\n";
-	$HTML .= "cell = document.getElementById('AD_".$state->row."').innerHTML = fill;\n";
+	$HTML .= "document.getElementById('AD_".$state->row."').innerHTML = fill;\n";
 
 }
 
