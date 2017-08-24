@@ -1,5 +1,5 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015,2017 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 //Some general field edit/update stuff:
 class FIELD {
@@ -146,6 +146,7 @@ class DATE_FIELD extends FIELD {
 	}
 
 	function audit($chkrecent=true) {
+		global $_PERMITS;
 		if (isset($_POST[$this->pagename."YYYY"])) $this->YYYY = COM_input_edit($this->pagename."YYYY",4);
 		if (isset($_POST[$this->pagename."MM"])) $this->MM = COM_input_edit($this->pagename."MM",2);
 		if (isset($_POST[$this->pagename."DD"])) $this->DD = COM_input_edit($this->pagename."DD",2);
@@ -162,7 +163,7 @@ class DATE_FIELD extends FIELD {
 		if (!is_numeric($this->YYYY) || !is_numeric($this->MM) || !is_numeric($this->DD)) {
 			return "dates must be all numeric";
 		}
-		if ($chkrecent) {
+		if ($chkrecent && !$_PERMITS->can_pass(PERMITS::_SUPERUSER)) {
 			$now = COM_NOW();
 			if (($this->YYYY < ($now->format('Y')-1)) || ($this->YYYY > ($now->format('Y')+1))) {
 				return "date must be recent";

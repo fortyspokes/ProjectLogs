@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2017 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("event_edit")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
@@ -95,11 +95,11 @@ case UPDATE_EVENT:
 	}
 	break 2;
 case PROPERTIES:
-	require_once "prop_set.php";
+	require_once "lib/prop_set.php";
 	$propset = PROP_SET_exec($_STATE, false);
 	break 2;
 case PROPERTIES_GOBACK:
-	require_once "prop_set.php";
+	require_once "lib/prop_set.php";
 	PROP_SET_exec($_STATE, true);
 	$_STATE = $_STATE->loopback(SELECTED_EVENT);
 	break 1;
