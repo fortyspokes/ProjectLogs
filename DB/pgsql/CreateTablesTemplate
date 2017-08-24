@@ -440,6 +440,8 @@ CREATE TABLE <PREFIX>d20_repository (
   organization_idref integer NOT NULL DEFAULT 0,
   description character varying(64) NOT NULL DEFAULT 'a report'::character varying,
   filename character varying(64) NOT NULL DEFAULT 'dummy.txt'::character varying,
+  depositor_idref integer NOT NULL DEFAULT 0,
+  deposit_date date NOT NULL DEFAULT now(),
   deposit oid NOT NULL DEFAULT 0,
   "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
   CONSTRAINT <PREFIX>repository_Key PRIMARY KEY (repository_id)

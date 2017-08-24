@@ -400,6 +400,8 @@ CREATE TABLE `<DBNAME>`.`<PREFIX>d20_repository` (
   `organization_idref` INT NOT NULL DEFAULT '0',
   `description` VARCHAR( 64 ) NOT NULL DEFAULT 'a report',
   `filename` VARCHAR( 64 ) NOT NULL DEFAULT 'dummy.txt',
+  `depositor_idref` INT NOT NULL DEFAULT '0',
+  `deposit_date` DATE NOT NULL,
   `deposit` MEDIUMBLOB,
   `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
 ) ENGINE = INNODB ;

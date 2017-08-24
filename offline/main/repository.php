@@ -1,5 +1,5 @@
 <?php
-//copyright 2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2016-2017 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if ($_UPLOAD) {
 	if (!$_PERMITS->can_pass("repository_put")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
@@ -45,7 +45,7 @@ case SELECTED_DEPOSIT:
 		$_STATE->status = ADD_DEPOSIT;
 	} else {
 		state_fields(false);
-		deposit_info();
+		$whois = deposit_info();
 		$_STATE->msgGreet = "Change this deposit";
 		$_STATE->status = CHANGE_DEPOSIT;
 	}
@@ -132,8 +132,12 @@ function list_setup() {
 function deposit_info() {
 	global $_DB, $_STATE;
 
-	$sql = "SELECT filename, description FROM ".$_DB->prefix."d20_repository
-			WHERE repository_id=".$_STATE->record_id.";";
+	$sql = "SELECT d20.filename, d20.description, d20.deposit_date,
+				c00.firstname, c00.lastname
+			FROM ".$_DB->prefix."d20_repository AS d20
+			JOIN ".$_DB->prefix."c00_person AS c00
+			ON d20.depositor_idref = c00.person_id
+			WHERE d20.repository_id=".$_STATE->record_id.";";
 	$stmt = $_DB->query($sql);
 	$row = $stmt->fetchObject();
 	foreach($_STATE->fields as $field => &$props) { //preset record info on the page
@@ -141,7 +145,9 @@ function deposit_info() {
 			$props->value($row->{$props->dbname});
 		}
 	}
+	$who = "by ".$row->firstname." ".$row->lastname."\non ".$row->deposit_date;
 	$stmt->closeCursor();
+	return $who;
 }
 
 function deposit_select() {
@@ -161,10 +167,9 @@ function deposit_download($id) {
 			WHERE repository_id=".$id.";";
 	$row = $_DB->query($sql)->fetchObject();
 
-
 	require_once "lib/file_put.php";
-	$out = FP_open($row->filename);
-	FP_putBLOB($out, $row->deposit);
+	FP_open($row->filename);
+	$_DB->BLOB_to_page($row->deposit);
 	FP_close($out); //does not return
 }
 
@@ -185,19 +190,28 @@ function deposit_audit() {
 		return FALSE;
 	}
 
-	$sql = "SELECT deposit FROM ".$_DB->prefix."d20_repository
+	$sql = "SELECT filename, deposit
+			FROM ".$_DB->prefix."d20_repository
 			WHERE repository_id=".$_STATE->record_id.";";
 	$stmt = $_DB->query($sql);
+	$stmt->bindColumn('filename', $filename, db_connect::PARAM_STR);
 	$stmt->bindColumn('deposit', $deposit, db_connect::PARAM_LOB);
 	$stmt->fetch(PDO::FETCH_BOUND);
 	$stmt->closeCursor();
 	if (!is_null($deposit)) {
 		$_DB->delete_BLOB($deposit);
 	}
+	if (isset($_POST["chkName"])) $filename = $_FILES["txtFile"]["name"];
 	$oid = $_DB->file_to_BLOB($_FILES["txtFile"]["tmp_name"]);
-	$sql = "UPDATE ".$_DB->prefix."d20_repository SET deposit=:deposit
+
+	$sql = "UPDATE ".$_DB->prefix."d20_repository
+			SET filename=:filename, depositor_idref=:depositor,
+				deposit_date=:dateof, deposit=:deposit
 			WHERE repository_id=".$_STATE->record_id.";";
 	$stmt = $_DB->prepare($sql);
+	$stmt->bindValue(':filename',$filename,db_connect::PARAM_STR);
+	$stmt->bindValue(':depositor',$_SESSION["person_id"],db_connect::PARAM_INT);
+	$stmt->bindValue(':dateof',COM_NOW()->format('Y-m-d'),db_connect::PARAM_DATE);
 	$stmt->bindValue(':deposit',$oid,db_connect::PARAM_LOB);
 	$stmt->execute();
 
@@ -325,7 +339,10 @@ case GET_DEPOSIT:
 	  <input type="hidden" name="MAX_FILE_SIZE" value="2000000" >
 	  <input type="file" name="txtFile" id="txtFile_ID">
 	  <button type="submit" name="btnUpload" id="btnUpload_ID" value="upload">Upload the file</button>
-	</td></td>
+    </td></td>
+    <tr><td>
+      <input type="checkbox" name="chkName" checked>Use uploaded filename
+    </td></tr>
   </table>
   </p>
 </form>
@@ -354,7 +371,7 @@ case DELETE_DEPOSIT:
   <table align="center">
     <tr>
       <td class="label"><?php echo $_STATE->fields['Name']->HTML_label("Filename: "); ?></td>
-      <td><?php echo $_STATE->fields['Name']->HTML_input(20) ?></td>
+      <td title="<?php echo $whois ?>"><?php echo $_STATE->fields['Name']->HTML_input(20) ?></td>
     </tr>
     <tr>
       <td class="label"><?php echo $_STATE->fields['Description']->HTML_label("Description: "); ?></td>
