@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2017 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("reports")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
@@ -139,7 +139,8 @@ function put_log() { //put the log to the download file
 	$to = $_STATE->to_date->format('Y-m-d');
 	$filename = "taskreport_".$_STATE->orgname."_".$_STATE->projname."_".$to.".csv"; //for file_put...
 	require_once "lib/file_put.php"; //start the file put
-	$out = fopen('php://output', 'w');
+
+	$out = FP_open($filename);
 
 	$outline = array();
 	$outline[] = "taskreport";
@@ -158,8 +159,8 @@ function put_log() { //put the log to the download file
 
 	$props_send->send_all($out);
 
-	fclose($out);
-	FP_end(); //finish off the file put
+	$_STATE->msgStatus = "Logs successfully downloaded";
+	FP_close($out); //does not return
 }
 
 function get_log(&$props_send, &$file=null) {

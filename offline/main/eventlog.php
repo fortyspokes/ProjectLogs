@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2017 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 require_once "lib/field_edit.php";
@@ -415,7 +415,7 @@ function log_put() {
 	$filename = "eventlog_".$orgname."_".$from."_to_".$to.".csv"; //for file_put...
 	require_once "lib/file_put.php";
 
-	$out = fopen('php://output', 'w');
+	$out = FP_open($filename);
 
 	$outline = array();
 	$outline[] = "eventlog";
@@ -470,10 +470,8 @@ function log_put() {
 
 	$props_send->send_all($out);
 
-	fclose($out);
-
-	FP_end();
 	$_STATE->msgStatus = "Logs successfully downloaded";
+	FP_close($out); //does not return
 }
 
 //	CALL BACK SECTION
