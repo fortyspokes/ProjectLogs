@@ -235,15 +235,27 @@ function DB_tables($prefix="") {
 
 	$fields = array(
 		"preferences_id" =>			new TFIELD(PDO::PARAM_INT),
-		"organization_idref" =>		new TFIELD(PDO::PARAM_INT),
-		"project_idref" =>			new TFIELD(PDO::PARAM_INT),
-		"person_idref" =>			new TFIELD(PDO::PARAM_INT),
+		"user_table" =>				new TFIELD(PDO::PARAM_STR),
+		"user_idref" =>				new TFIELD(PDO::PARAM_INT),
 		"name" =>					new TFIELD(PDO::PARAM_STR),
 		"prefer" =>					new TFIELD(PDO::PARAM_STR),
 		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
 		);
 	$list["preferences"] = new TABLE(
 		$prefix."d10_preferences","preferences_id", $fields);
+
+	$fields = array(
+		"repository_id" =>			new TFIELD(PDO::PARAM_INT),
+		"organization_idref" =>		new TFIELD(PDO::PARAM_INT),
+		"description" =>			new TFIELD(PDO::PARAM_STR,"string"),
+		"filename" =>				new TFIELD(PDO::PARAM_STR),
+		"depositor_idref" =>		new TFIELD(PDO::PARAM_INT),
+		"deposit_date"	=>			new TFIELD(db_connect::PARAM_DATE,"date"),
+//		"deposit" =>				new TFIELD(db_connect::PARAM_LOB),
+		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
+		);
+	$list["repository"] = new TABLE(
+		$prefix."d20_repository","repository_id", $fields);
 
 	$fields = array(
 		"property_id" =>			new TFIELD(PDO::PARAM_INT),
@@ -276,6 +288,5 @@ function DB_tables($prefix="") {
 		$prefix."e04_prop_element","prop_element_id", $fields);
 
 	return $list;
-
 }
 ?>
