@@ -1,5 +1,5 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015,2017 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 class db_connect extends PDO {
@@ -46,6 +46,13 @@ function BLOB_to_page(&$blob) {
 //	echo pack("H*",$blob);
 //	fpassthru($blob);
 	echo ($blob);
+}
+
+function BLOB_download($filename, &$blob) {
+	require_once "lib/file_put.php";
+	FP_headers($filename);
+	echo $blob;
+	FP_end(); //does not return
 }
 
 function file_to_BLOB($file) {

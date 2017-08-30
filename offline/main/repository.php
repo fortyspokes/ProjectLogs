@@ -163,14 +163,16 @@ function deposit_select() {
 function deposit_download($id) {
 	global $_DB;
 
-	$sql = "SELECT * FROM ".$_DB->prefix."d20_repository
+	$sql = "SELECT filename, deposit
+			FROM ".$_DB->prefix."d20_repository
 			WHERE repository_id=".$id.";";
-	$row = $_DB->query($sql)->fetchObject();
+	$stmt = $_DB->query($sql);
+	$stmt->bindColumn('filename', $filename, db_connect::PARAM_STR);
+	$stmt->bindColumn('deposit', $deposit, db_connect::PARAM_LOB);
+	$stmt->fetch(PDO::FETCH_BOUND);
+	$stmt->closeCursor();
 
-	require_once "lib/file_put.php";
-	FP_open($row->filename);
-	$_DB->BLOB_to_page($row->deposit);
-	FP_close($out); //does not return
+	$_DB->BLOB_download($filename, $deposit); //does not return
 }
 
 function deposit_audit() {
