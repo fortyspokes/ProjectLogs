@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2017 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 require_once "permits.php";
@@ -18,7 +18,6 @@ $EX_staff = array(
 "AG" => array('Accounting group Edit',	"accounting_edit.php",	'accounting_edit',	""		),
 "CG" => array('Css file get (service)',	"service/css_get.php",	'',					""		),
 "CF" => array('Site Config',			"config.php",			PERMITS::_SUPERUSER,""		),
-//"EE" => array('Event Log Edit',			"eventlog.php",			'edit_logs',		'$_EDIT=true;'),
 "EL" => array('Event Log Entry',		"eventlog.php",			'',					'$_EDIT=false;'),
 "EN" => array('Extension Executive',	"service/ext_exec.php",	'',					""		),
 "ET" => array('Experiment',				"experiment.php",		PERMITS::_SUPERUSER,""		),
@@ -50,7 +49,8 @@ $EX_staff = array(
 "TE" => array('Time Log Edit',			"timelog.php",			'edit_logs',		'$_EDIT=true;'),
 "TL" => array('Time Log Entry',			"timelog.php",			'',					'$_EDIT=false;'),
 "TR" => array('Download Task Report',	"taskreport_put.php",	'reports',			""		),
-"UP" => array('Upyear Timelog',			"upyear_timelog.php",	PERMITS::_SUPERUSER,""		),
+//"UP" => array('Upyear Timelog',			"upyear_timelog.php",	PERMITS::_SUPERUSER,""		),
+"UP" => array('Up Dates',				"up_dates.php",			PERMITS::_SUPERUSER,""		),
 "XE" => array('Expense Log Edit',		"expenselog.php",		'edit_logs',		'$_EDIT=true;'),
 "XL" => array('Expense Log Entry',		"expenselog.php",		'',					'$_EDIT=false;'),
 );
@@ -86,7 +86,7 @@ if ($_SESSION["_SITE_CONF"]["RUNLEVEL"] > 0) { //can't do this stuff in producti
 	$ADMIN_LIST = array_merge($ADMIN_LIST, array(
 		"RC", //Refresh CSV
 		"SC", //Save CSV
-		"UP", //Upyear Timelog
+		"UP", //Update dates
 		"ET", //Experiment
 		"PI", //phpInfo
 		));
