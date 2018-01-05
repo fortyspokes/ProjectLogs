@@ -1,0 +1,8 @@
+#!/bin/bash
+#An executeable script includes the first line and must be made executeable (Properties->Permissions)
+#To change from working directory to file dir:
+#  the following takes parm 0 (always this file dir) and removes everything (*) after last /
+cd ${0%/*}
+#Passing working dir to createJava starts the directory search here:
+java -jar createJava.jar ${0%/*}
+

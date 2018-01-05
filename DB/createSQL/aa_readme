@@ -1,0 +1,41 @@
+To build the tables creation SQL using Java,
+1. "Start your engines" by clicking on runCreateSQL
+2. Enter the DB name - it's used to create the creation SQL file name and by some DBMSes
+3. If wanted, enter a table name prefix (see the discussion of Virtual DBs in DiscussionDB.odt)
+4. Select the DBMS appropriate template
+5. Select the application config/ini file (see <DBMS>/CreateTables.ini for examples)
+6. If appropriate, change the creation SQL file name
+7. Click 'Build'
+8. Check your new file
+
+The "createJava" directory is the NetBeans java project.
+
+Create the Config.jar:
+  jar cvf0M Config.jar createConfig/Config.class
+0 -> no compression; M -> no manifest; must use the dir structure to track package name.
+In NetBeans, use Tools->Libraries to create new Config library with this jar file and add the library to the project libraries.
+
+Create a Java archive (.jar) file using NetBeans as follows:
+  1. Right-click on the Project name.
+  2. Select Properties.
+  3. Click Packaging.
+  4. Check Build JAR after Compiling.
+  5. Check Compress JAR File.
+  6. Click OK to accept changes.
+  7. Right-click on a Project name.
+  8. Select Build or Clean and Build.
+
+To run from the command line:
+java -jar "/home/common/ProjectLogs/DB/createSQL/createJava/dist/createJava.jar"
+or
+java -classpath createJava/build/classes createSQL.create ${0%/*}
+
+Deployment:
+copy createJava/dist/lib & createJava.jar to Deploy dir
+from Deploy dir:
+tar -cf createTables.tar runCreateSQL createJava.jar lib
+to list the tar:
+tar -tvf createTables.tar
+
+To deploy elsewhere, copy the tar and unzip:
+tar -xf createTables.tar
