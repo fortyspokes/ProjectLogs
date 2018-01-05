@@ -41,6 +41,7 @@ case SELECT_DEPOSIT:
 case SELECTED_DEPOSIT:
 	if ($_STATE->record_id == -1) {
 		state_fields(false); //false=not disabled
+		$whois = "New Deposit...";
 		$_STATE->msgGreet = "Create a new deposit";
 		$_STATE->status = ADD_DEPOSIT;
 	} else {
