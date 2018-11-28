@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016,2018 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 require_once "lib/field_edit.php";
@@ -170,7 +170,7 @@ function field_input_audit() {
 	if ($_POST["txtEmail"] != "" ) { //save the "@" that common::input_edit() took out
 		$email = explode("@",$_POST["txtEmail"]);
 		foreach ($email as &$part) {
-			$part = string_decode($part);
+			$part = COM_string_decode($part);
 		}
 		$_STATE->fields["Email"]->value(implode("@", $email));
 	}

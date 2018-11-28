@@ -144,10 +144,6 @@ function record_select() {
 		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid task id ".$_POST["selTask"]); //we're being spoofed
 	}
 	$_STATE->record_id = intval($_POST["selTask"]);
-	$sql = "SELECT name, description FROM ".$_DB->prefix."a12_task
-			WHERE task_id=".$_STATE->record_id.";";
-	$row = $_DB->query($sql)->fetchObject();
-	$_STATE->forwho = $row->name.": ".$row->description; //PROPERTIES wants to see this
 }
 
 function record_info() {
@@ -156,6 +152,7 @@ function record_info() {
 	$sql = "SELECT * FROM ".$_DB->prefix."a12_task WHERE task_id=".$_STATE->record_id.";";
 	$stmt = $_DB->query($sql);
 	$row = $stmt->fetchObject();
+	$_STATE->forwho = $row->name.": ".$row->description; //PROPERTIES wants to see this
 	foreach($_STATE->fields as $field=>&$props) { //preset record info on the page
 		if ($props->load_from_DB) {
 			$props->value($row->{$props->dbname});
@@ -314,7 +311,7 @@ case UPDATE_TASK:
   </table>
   <p>
  <?php
-	if ($_STATE->status == STATE::ADD ) {
+	if ($_STATE->status == ADD_TASK ) {
 		echo FIELD_edit_buttons(FIELD_ADD);
 	} else {
 		echo Field_edit_buttons(FIELD_UPDATE); ?>

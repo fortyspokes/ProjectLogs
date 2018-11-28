@@ -332,8 +332,7 @@ private function prop_send(&$HTML) {
 	$HTML .= "//Properties...\n"; //for debug display
 	if (count($this->state->records) == 1) {
 		reset($this->state->records);
-		$solo = each($this->state->records);
-		$this->state->prop_id = intval($solo["key"]); //prop_select wants to see this
+		$this->state->prop_id = key($this->state->records); //prop_select wants to see this
 
 	} else {
     	$HTML .= "document.getElementById('msgGreet_ID').innerHTML = 'Properties for ".$this->forwho.
@@ -396,8 +395,7 @@ private function value_send(&$HTML) {
 	$HTML .= "//Property values...\n"; //for debug display
 	if (count($this->state->records) == 1) {
 		reset($this->state->records);
-		$solo = each($this->state->records);
-		$this->state->value_id = intval($solo["key"]); //value_select wants to see this
+		$this->state->value_id = key($this->state->records); //value_select wants to see this
 
 	} else {
     	$HTML .= "document.getElementById('msgGreet_ID').innerHTML = 'Properties for ".$this->forwho.

@@ -198,10 +198,6 @@ function subtask_select($ID=-1) {
 		$ID = intval($_POST["selSubtask"]);
 	}
 	$_STATE->record_id = $ID;
-	$sql = "SELECT name, description FROM ".$_DB->prefix."a14_subtask
-			WHERE subtask_id=".$_STATE->record_id.";";
-	$row = $_DB->query($sql)->fetchObject();
-	$_STATE->forwho = $row->name.": ".$row->description; //PROPERTIES wants to see this
 }
 
 function subtask_info() {
@@ -210,6 +206,7 @@ function subtask_info() {
 	$sql = "SELECT * FROM ".$_DB->prefix."a14_subtask WHERE subtask_id=".$_STATE->record_id.";";
 	$stmt = $_DB->query($sql);
 	$row = $stmt->fetchObject();
+	$_STATE->forwho = $row->name.": ".$row->description; //PROPERTIES wants to see this
 	foreach($_STATE->fields as $field=>&$props) { //preset record info on the page
 		if ($props->load_from_DB) {
 			$props->value($row->{$props->dbname});
