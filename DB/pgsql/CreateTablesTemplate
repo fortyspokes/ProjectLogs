@@ -1,4 +1,6 @@
--- Create PostgreSql tables:
+-- create tables DBMS=PostgreSQL
+-- the creationSQL program expects to see the preceding line formatted exactly...
+
 -- note: the "DROP" statement must be a comment with two dashes + one space + "DROP" in order to be activated by
 -- the creation script, ie. the script will change "-- DROP" to "DROP" if the option to drop is selected.
 
@@ -375,7 +377,6 @@ CREATE TABLE <PREFIX>d01_permit (
   description character varying(128) NOT NULL DEFAULT 'new permit'::character varying,
   "comment" text,
   grade smallint NOT NULL DEFAULT 10, -- Security grade: 1 = system wide, 10 = organization specific, 100 = project specific
-  "timestamp" timestamp without time zone DEFAULT timezone('UTC'::text, now()), -- Time is UTC, alias GMT, alias Greenwich Mean Time
   CONSTRAINT <PREFIX>permit_KEY PRIMARY KEY (permit_id)
 )
 WITH (
@@ -388,7 +389,6 @@ GRANT SELECT ON TABLE <PREFIX>d01_permit TO <DBREADER>;
 GRANT UPDATE ON TABLE <PREFIX>d01_permit_permit_id_seq TO <DBEDITOR>;
 COMMENT ON TABLE <PREFIX>d01_permit IS 'List the possible user permissions';
 COMMENT ON COLUMN <PREFIX>d01_permit."grade" IS 'Security grade: 0 = system wide, 10 = organization specific, 100 = project specific';
-COMMENT ON COLUMN <PREFIX>d01_permit."timestamp" IS 'Time is UTC, alias GMT, alias Greenwich Mean Time';
 
 -- Table: <PREFIX>d02_currency
 -- DROP TABLE <PREFIX>d02_currency;

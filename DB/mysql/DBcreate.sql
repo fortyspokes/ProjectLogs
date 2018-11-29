@@ -19,9 +19,9 @@ CREATE DATABASE timesheets
     CHARACTER SET = utf8
     COLLATE = utf8_general_ci;
 
-GRANT ALL ON timesheets.* TO ts_admin;
-GRANT SELECT, UPDATE, INSERT, DELETE ON timesheets.* TO ts_editor;
-GRANT SELECT ON timesheets.* TO ts_reader;
+GRANT ALL ON timesheets.* TO 'ts_admin'@'localhost';
+GRANT SELECT, UPDATE, INSERT, DELETE ON timesheets.* TO 'ts_editor'@'localhost';
+GRANT SELECT ON timesheets.* TO 'ts_reader'@'localhost';
 -- ALTER privilege is necessary to load new data which contains autonumbers
-GRANT ALTER ON timesheets.* to ts_editor;
+GRANT ALTER ON timesheets.* to 'ts_editor'@'localhost';
 

@@ -1,8 +1,10 @@
--- to create triggers, must put DB name before trigger and table names...
+-- create tables DBMS=MySQL
+-- the creationSQL program expects to see the preceding line formatted exactly...
 
--- Create MySql tables:
 -- note: the "DROP" statement must be a comment with two dashes + one space + "DROP" in order to be activated by
 -- the creation script, ie. the script will change "-- DROP" to "DROP" if the option to drop is selected.
+
+-- to create triggers, must put DB name before trigger and table names...
 
 -- Table: <PREFIX>a00_organization
 -- DROP TRIGGER `<DBNAME>`.`<PREFIX>a00_timestamp`;
@@ -342,7 +344,6 @@ FOR EACH ROW
 delimiter ;
 
 -- Table: <PREFIX>d01_permit
--- DROP TRIGGER `<DBNAME>`.`<PREFIX>d01_timestamp`;
 -- DROP TABLE `<DBNAME>`.`<PREFIX>d01_permit`;
 
 CREATE TABLE `<DBNAME>`.`<PREFIX>d01_permit` (
@@ -350,15 +351,9 @@ CREATE TABLE `<DBNAME>`.`<PREFIX>d01_permit` (
   `name` VARCHAR( 16 ) NOT NULL DEFAULT 'new permit',
   `description` VARCHAR( 128 ) NOT NULL DEFAULT 'new permit',
   `comment` TEXT NULL,
-  `grade` SMALLINT NOT NULL DEFAULT '10' COMMENT 'Security grade: 1 = system wide, 10 = organization specific, 100 = project specific',
-  `timestamp` DATETIME NOT NULL COMMENT 'Time is UTC, alias GMT, alias Greenwich Mean Time (created by timestamp trigger)'
+  `grade` SMALLINT NOT NULL DEFAULT '10' COMMENT 'Security grade: 1 = system wide, 10 = organization specific, 100 = project specific'
 ) ENGINE = INNODB ;
 
-delimiter //
-CREATE TRIGGER `<DBNAME>`.`<PREFIX>d01_timestamp` BEFORE INSERT ON `<DBNAME>`.`<PREFIX>d01_permit`
-FOR EACH ROW
-  SET NEW.timestamp = UTC_TIMESTAMP()
-//
 delimiter ;
 
 -- Table: <PREFIX>d02_currency
@@ -370,6 +365,8 @@ CREATE TABLE `<DBNAME>`.`<PREFIX>d02_currency` (
   `symbol` VARCHAR( 8 ) NOT NULL DEFAULT '$',
   `decimal_cnt` INT NOT NULL DEFAULT '2'
 ) ENGINE = INNODB ;
+
+delimiter ;
 
 -- Table: <PREFIX>d10_preferences
 -- DROP TRIGGER `<DBNAME>`.`<PREFIX>d10_timestamp`;

@@ -9,8 +9,8 @@ VALUES (0,'Uhuru','U600','Micky','rootstock','$2y$10$SrCeMpgeKZC4JiMAKuJileeKZzs
 INSERT INTO <PREFIX>a00_organization (organization_id,name,description)
 VALUES (1,'seed','initial seed organization - please change');
 
-INSERT INTO <PREFIX>a10_project (project_id,organization_idref,accounting_idref,name,description)
-VALUES (1,1,1,'seed','initial seed project - please change');
+INSERT INTO <PREFIX>a10_project (project_id,organization_idref,accounting_idref,name,description,close_date)
+VALUES (1,1,1,'seed','initial seed project - please change',CURRENT_DATE);
 
 INSERT INTO <PREFIX>a12_task (task_id,project_idref,name,description)
 VALUES (1,1,'seed','initial seed task - please change');

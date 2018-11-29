@@ -218,8 +218,7 @@ function DB_tables($prefix="") {
 		"name" =>					new TFIELD(PDO::PARAM_STR),
 		"description" =>			new TFIELD(PDO::PARAM_STR,"string"),
 		"comment" =>				new TFIELD(PDO::PARAM_STR,"string"),
-		"grade" =>					new TFIELD(PDO::PARAM_INT),
-		"timestamp" =>				new TFIELD(db_connect::PARAM_DATE)
+		"grade" =>					new TFIELD(PDO::PARAM_INT)
 		);
 	$list["permit"] = new TABLE(
 		$prefix."d01_permit","permit_id", $fields);
