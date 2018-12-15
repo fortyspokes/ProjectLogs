@@ -14,7 +14,7 @@ an implememtation of<br><br>
 ProjectLogs<br><br>
 Version <?php echo $_VERSION; ?><br><br>
 </div>
-For more infomation, go to <a href="https://github.com/fortyspokes/ProjectLogs/tree/v<?php echo $_VERSION; ?>">github.com</a>
+For more infomation, go to <a href="https://github.com/fortyspokes/ProjectLogs/tree/v<?php echo $_VERSION; ?>" target="_blank">github.com</a>
 <br><br>Licensed under Apache License, Version 2.0<br><br>
 See license text at <a href="http://www.apache.org/licenses/LICENSE-2.0">apache.org</a><br><br>
 <?php

@@ -1,5 +1,5 @@
 <?php
-//copyright 2015,2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015,2016,2018 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 class PROJECT_SELECT {
@@ -23,7 +23,7 @@ const INACTIVE = 2;
 
 function __construct($restrict_to = array(0), $multiple=false) {
 	$this->restrict = $restrict_to;
-	if ($this->restrict[0] < 0) { //negative array is a blacklist
+	if ((count($restrict_to) > 0) && ($this->restrict[0] < 0)) { //negative array is a blacklist
 		$this->blacklist = true;
 		foreach ($this->restrict as $key=>$value) $this->restrict[$key] = abs($this->restrict[$key]);
 	}
@@ -54,6 +54,8 @@ function __wakeup() {
 
 private function get_recs() {
 	global $_DB;
+
+	if (count($this->restrict) == 0) return;
 
 	$where = "";
 	if ($this->restrict[0] != 0) {
@@ -97,6 +99,11 @@ public function __set($key, $value) { //set dynamic vars
 
 public function show_list() { //get the HTML for the list items (and inactive checkbox)
 	$HTML = array();
+
+	if (count($this->restrict) == 0) {
+		$HTML[] = "No projects available";
+		return $HTML;
+	}
 
 	$size = count($this->records);
 	if ($this->inactives > 0) {
@@ -157,6 +164,12 @@ public function refresh_list() { //re-display the list via Javascript
 
 public function set_list() { //set up initial form and select
 	$HTML = "";
+
+	if (count($this->restrict) == 0) {
+		$HTML .= "No projects available";
+		return $HTML;
+	}
+
 	if ($this->inactives > 0) {
 		$HTML .= "<script>\n";
 		$HTML .= "function project_list() {\n";
