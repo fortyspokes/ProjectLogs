@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("project_edit")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
@@ -11,6 +11,7 @@ define('SELECT_PROJECT',		LIST_PROJECTS + 1);
 define('SELECTED_PROJECT',		LIST_PROJECTS + 2);
 define('ADD_PROJECT',			LIST_PROJECTS + 3);
 define('UPDATE_PROJECT',		LIST_PROJECTS + 4);
+define('PREFERENCES',		STATE::INIT + 10);
 
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
@@ -58,6 +59,10 @@ case ADD_PROJECT:
 	}
 	break 2;
 case UPDATE_PROJECT:
+	if (isset($_POST["btnPrefs"])) {
+		$_STATE->status = PREFERENCES;
+		break 1; //re-switch to show preferences
+	}
 	state_fields(); //creates the accounting list for audit
 	$_STATE->msgGreet = "Edit project record";
 	if (isset($_POST["btnReset"])) {
@@ -68,6 +73,20 @@ case UPDATE_PROJECT:
 		$_STATE = $_STATE->loopback(SELECTED_PROJECT);
 		break 1; //re-switch
 	}
+	break 2;
+case PREFERENCES:
+	require_once "lib/preference_set.php";
+	if (!isset($_STATE->prefset)) { //first time thru
+		$category = ($_PERMITS->can_pass(PERMITS::_SUPERUSER)) ? PREF_SET::STRUCTURAL : PREF_SET::COSMETIC;
+		$_STATE->prefset = serialize(new PREF_SET($_STATE,"a10", $_STATE->record_id, $category, $_STATE->forwho));
+	}
+	$prefset = unserialize($_STATE->prefset);
+	if (!$prefset->state_gate($_STATE)) {
+		$_STATE = $_STATE->loopback(SELECTED_PROJECT);
+		break 1;
+	}
+	$_STATE->prefset = serialize(clone($prefset)); //leave $prefset intact for later services
+	$_STATE->replace();
 	break 2;
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
@@ -110,6 +129,7 @@ function record_info() {
 		}
 	}
 	$_STATE->accounting_id = $row->accounting_idref;
+	$_STATE->forwho = $row->name.": ".$row->description; //PREFERENCES wants to see this
 	$stmt->closeCursor();
 }
 
@@ -235,6 +255,9 @@ function new_audit() {
 
 if ($_STATE->status == SELECT_PROJECT) {
 	$scripts = array("call_server.js");
+} else if ($_STATE->status == PREFERENCES) {
+	$_STATE->msgGreet = $prefset->greeting();
+	$scripts = $prefset->set_script();
 } else {
 	$scripts = array();
 }
@@ -311,6 +334,9 @@ default:
       </td>
       <td>&nbsp</td>
     </tr>
+    <tr><td></td><td>
+      <button type="submit" name="btnPrefs" id="btnPrefs_ID" value="preferences">Preferences</button>
+    </td></tr>
   </table>
   <p>
 <?php
@@ -321,6 +347,12 @@ default:
 	} ?>
 </form>
 <?php //end default status ----END STATUS PROCESSING----
-}
+	break;
+
+case PREFERENCES: //show preferences and allow update:
+	$prefset->set_HTML();
+
+} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
+
 EX_pageEnd(); //standard end of page stuff
 ?>

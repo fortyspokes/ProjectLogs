@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2017 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2017,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 require_once "lib/field_edit.php";
@@ -24,8 +24,6 @@ define ('COMMENTS_PICK',	STATE::SELECTED + 4);
 define ('SESSIONS_DISP',	STATE::SELECT + 5);
 define ('BUTTON_DISP',		STATE::SELECT + 6);
 
-define ('EVENT_HEAD', "Class");
-
 //Define $_STATE->columns array: (a 'column' corresponds to one day within the date range)
 define ('COL_COUNT', 0); //total columns (1 rel)
 define ('COL_OPEN',1); //first open column (0 rel)
@@ -37,7 +35,6 @@ $version = "v2.0"; //goes with the downloaded logs file for client verification
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
 case LIST_PROJECTS:
-	$_STATE->title_singular = EVENT_HEAD;
 	$_STATE->project_id = 0;
 	$_STATE->accounting_id = 0;
 	$_STATE->accounting = "";
@@ -91,6 +88,9 @@ case SELECT_SPECS: //set the from and to dates
 case SELECTED_SPECS:
 	log_list($_STATE);
 	set_closedCols();
+	require_once "lib/project_select.php";
+	$projects = unserialize($_STATE->project_select);
+	$_STATE->title_singular = ucfirst($projects->get_label("event"));
 	$_STATE->msgGreet = "Add or change info: click on the lefthand column";
 	$_STATE->scion_start("SHEET"); //create the child state stack
 	$_STATE->backup = SHOW_SPECS; //set goback

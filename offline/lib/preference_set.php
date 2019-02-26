@@ -1,5 +1,5 @@
 <?php
-//copyright 2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 //Generalized processing to display/set/unset preferences.
@@ -225,6 +225,10 @@ private function display_staff() {
 	return $this->display_textarea();
 }
 
+private function display_label() {
+	return $this->display_textarea();
+}
+
 private function display_menu() {
 	return $this->display_textarea();
 }
@@ -277,6 +281,12 @@ function new_pref() {
 }
 
 function change_staff() {
+	$new = $_GET["what"];
+	$this->update($new);
+	return $new;
+}
+
+function change_label() {
 	$new = $_GET["what"];
 	$this->update($new);
 	return $new;

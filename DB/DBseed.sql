@@ -58,6 +58,7 @@ INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, nam
 INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (3, 'a00', -11, 'theme', 'select:..default..');
 INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (4, 'c10', -11, 'menu', 'text:');
 INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (5, 'c10', -11, 'theme', 'select:..default..');
+INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (6, 'a10', -11, 'label', 'text:');
 INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (100, '000', -1, 'dummy', 'save 100 slots for the templates');
 -- for postgreSQL:
 ALTER SEQUENCE <PREFIX>d10_preferences_preferences_id_seq RESTART WITH 101;

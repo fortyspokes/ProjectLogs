@@ -1,5 +1,5 @@
 <?php
-//copyright 2015,2016,2018 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015,2016,2018,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 class PROJECT_SELECT {
@@ -20,6 +20,7 @@ private $multiple = false; //allow multiple select
 const NAME = 0;
 const DESCRIPTION = 1;
 const INACTIVE = 2;
+const LABELS = 3;
 
 function __construct($restrict_to = array(0), $multiple=false) {
 	$this->restrict = $restrict_to;
@@ -63,10 +64,15 @@ private function get_recs() {
 		if ($this->blacklist) $not = " NOT";
 		$where = "AND (a10.project_id ".$not." IN (".implode(",", $this->restrict)."))";
 	}
-	$sql = "SELECT a10.* FROM ".$_DB->prefix."a10_project AS a10
-			WHERE (organization_idref=".$_SESSION["organization_id"].")
+	$sql = "SELECT a10.*, d10.prefer FROM
+			".$_DB->prefix."a10_project AS a10
+			LEFT OUTER JOIN
+			(SELECT d10.user_idref, d10.prefer FROM ".$_DB->prefix."d10_preferences AS d10
+				WHERE d10.user_table = 'a10' and d10.name = 'label') AS d10
+			ON a10.project_id = d10.user_idref
+			WHERE (a10.organization_idref=".$_SESSION["organization_id"].")
 			".$where."
-			ORDER BY timestamp;";
+			ORDER BY a10.timestamp;";
 	$stmt = $_DB->query($sql);
 	$today = COM_NOW();
 	$this->inactives = 0;
@@ -75,12 +81,20 @@ private function get_recs() {
 			$row->name,
 			$row->description,
 			'',
+			array(),
 			);
 		if (!is_null($row->inactive_asof)) {
 			$inactive = new DateTime($row->inactive_asof);
 			if ($inactive <= $today) {
 				$element[self::INACTIVE] = $inactive->format('Y-m-d');
 				++$this->inactives;
+			}
+		}
+		if (!is_null($row->prefer)) {
+			$labels = explode("&",$row->prefer);
+			foreach ($labels as $label) {
+				$replace = explode("=",$label);
+				$element[self::LABELS][$replace[0]] = explode("/",$replace[1]);
 			}
 		}
 		$this->records[strval($row->project_id)] = $element;
@@ -216,6 +230,18 @@ public function tabs() {
 
 public function selected_name() {
 	return $this->records[$this->project_id][self::NAME].": ".$this->records[$this->project_id][self::DESCRIPTION];
+}
+
+public function get_label($label, $plural=false) { //get the label from preferences if it exists
+	if (array_key_exists($label, $this->records[$this->project_id][self::LABELS])) {
+		if ($plural) {
+			return $this->records[$this->project_id][self::LABELS][$label][1];
+		} else {
+			return $this->records[$this->project_id][self::LABELS][$label][0];
+		}
+	} else {
+		return $label;
+	}
 }
 
 public function set_state($ID=-1) {
