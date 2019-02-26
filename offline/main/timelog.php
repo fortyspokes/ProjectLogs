@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2017 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2017,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 require_once "lib/field_edit.php";
@@ -1343,7 +1343,7 @@ foreach ($_STATE->records AS $ID=>$record) {
 	$logs[$col][LOG_ID] = $ID;
 	$totals[$col] += abs($amt);
 	if (($amt < 0) && ($_STATE->mode == "t")) { //dups in tabular are combined into one
-		$amt += -$logs[$col][LOG_DS]; //sum both hours as a neg number
+		$amt += -$logs[$col][LOG_DSP]; //sum both hours as a neg number
 		$ID = -$ID; //recID also shows as negative (we won't allow edit)
 	}
 	$logs[$col][LOG_DSP] = $amt;
