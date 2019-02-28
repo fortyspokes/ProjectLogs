@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("account_edit")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
@@ -23,8 +23,7 @@ case LIST_ACCOUNTING:
 	$_STATE->accounting_id = 0;
 	accounting_list();
 	if (count($_STATE->records) == 1) { //solo group?
-		$record = each($_STATE->records);
-		accounting_select($record[0]); //select this one
+		accounting_select(key($_STATE->records)); //select this one
 		$_STATE->init = LIST_ACCOUNTS; //no 'goback' at LIST_ACCOUNTS
 		$_STATE->status = SELECTED_ACCOUNTING;
 		break 1; //re-switch to SELECTED_ACCOUNTING

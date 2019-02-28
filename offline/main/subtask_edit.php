@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("subtask_edit")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
@@ -53,8 +53,7 @@ case SELECTED_PROJECT:
 case LIST_TASKS:
 	task_list();
 	if (count($_STATE->records) == 1) { //solo task?
-		$record = each($_STATE->records);
-		task_select($record[0]); //select this one
+		task_select(key($_STATE->records)); //select this one
 		$_STATE->status = SELECTED_TASK;
 		break 1; //re-switch to SELECTED_TASK
 	}

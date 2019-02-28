@@ -32,8 +32,7 @@ function __construct($restrict_to = array(0), $multiple=false) {
 	$this->get_recs();
 	if (count($this->records) == 1) {
 		$this->select_list = array(key($this->records));
-		$key = each($this->records);
-		$this->set_state($key[0]);
+		$this->set_state(key($this->records));
 	}
 }
 

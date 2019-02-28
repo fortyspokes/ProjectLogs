@@ -544,8 +544,7 @@ function event_send(&$state, &$HTML) {
 	$HTML .= "//Events...\n";
 	if (count($state->records) == 1) {
 		reset($state->records);
-		$solo = each($state->records); //get first available "key","value" pair
-		$state->event_id = intval($solo["key"]); //event_select wants to see this
+		$state->event_id = intval(key($state->records)); //event_select wants to see this
 
 	} else {
     	$HTML .= "document.getElementById('msgGreet_ID').innerHTML = 'Select the ".$state->title_singular."';\n";
@@ -632,8 +631,7 @@ function account_send(&$state, &$HTML) {
 	$HTML .= "//Accounts...\n";
 	if (count($state->records) == 1) {
 		reset($state->records);
-		$solo = each($state->records); //get first available "key","value" pair
-		$state->account_id = intval($solo["key"]); //account_select wants to see this
+		$state->account_id = intval(key($state->records)); //account_select wants to see this
 
 	} else {
     	$HTML .= "document.getElementById('msgGreet_ID').innerHTML = 'Select the ".$state->accounting."';\n";
