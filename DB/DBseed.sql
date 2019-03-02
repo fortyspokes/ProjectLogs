@@ -53,12 +53,17 @@ INSERT INTO <PREFIX>d02_currency VALUES (4, 'yen', '&yen', 2);
 
 -- d10_preferences
 -- list the 'template' preferences; user_idref < -10 are 'cosmetic'
-INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (1, 'a00', -1, 'staff', 'text:');
+-- a00_organization:
+INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (1, 'a00', -11, 'label', 'text:');
 INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (2, 'a00', -11, 'menu', 'text:');
-INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (3, 'a00', -11, 'theme', 'select:..default..');
-INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (4, 'c10', -11, 'menu', 'text:');
-INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (5, 'c10', -11, 'theme', 'select:..default..');
-INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (6, 'a10', -11, 'label', 'text:');
+INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (3, 'a00', -1, 'staff', 'text:');
+INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (4, 'a00', -11, 'theme', 'select:..default..');
+-- a10_project
+INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (11, 'a10', -11, 'label', 'text:');
+--Allow for preferences on other tables
+-- c10_person_organization
+INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (71, 'c10', -11, 'menu', 'text:');
+INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (72, 'c10', -11, 'theme', 'select:..default..');
 INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (100, '000', -1, 'dummy', 'save 100 slots for the templates');
 -- for postgreSQL:
 ALTER SEQUENCE <PREFIX>d10_preferences_preferences_id_seq RESTART WITH 101;

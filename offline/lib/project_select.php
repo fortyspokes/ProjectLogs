@@ -8,6 +8,7 @@ public $show_inactive = false;
 public $show_new = false; //show 'add new record'
 public $selected = false;
 public $list_ID = "project_list_ID"; //ID of HTML element containing the list
+public $label = array("project","projects"); //might be replaced by preferences
 public $noSleep = array(); //clear out these user created vars when sleeping (to save memory)
 private $records = array();
 private $select_list = array(-1);
@@ -23,6 +24,7 @@ const INACTIVE = 2;
 const LABELS = 3;
 
 function __construct($restrict_to = array(0), $multiple=false) {
+	global $_DB;
 	$this->restrict = $restrict_to;
 	if ((count($restrict_to) > 0) && ($this->restrict[0] < 0)) { //negative array is a blacklist
 		$this->blacklist = true;
@@ -34,6 +36,22 @@ function __construct($restrict_to = array(0), $multiple=false) {
 		$this->select_list = array(key($this->records));
 		$this->set_state(key($this->records));
 	}
+	//Get the "label" -> "project" preference:
+	$sql = "SELECT prefer FROM ".$_DB->prefix."d10_preferences
+			WHERE user_table = 'a00' AND name = 'label'
+				and user_idref=".$_SESSION["organization_id"].";";
+	$stmt = $_DB->query($sql);
+	if ($row = $stmt->fetchObject()) {
+		$labels = explode("&",$row->prefer);
+		foreach ($labels as $label) {
+			$replace = explode("=",$label);
+			if ($replace[0] == "project") {
+				$this->label = explode("/",$replace[1]);
+				break;
+			}
+		}
+	}
+	$stmt->closeCursor();
 }
 
 function __sleep() { //don't save this stuff - temporary and too long
@@ -114,7 +132,7 @@ public function show_list() { //get the HTML for the list items (and inactive ch
 	$HTML = array();
 
 	if (count($this->restrict) == 0) {
-		$HTML[] = "No projects available";
+		$HTML[] = "No ".$this->label[1]." available";
 		return $HTML;
 	}
 
@@ -131,8 +149,8 @@ public function show_list() { //get the HTML for the list items (and inactive ch
 		$HTML[] = "  <p>";
 	}
 	if ($this->multiple) {
-		$HTML[] = "<button type='submit' name='btnSome' value='some' title='use Ctrl/Click to select multiple items'>Use the selected projects</button>";
-		$HTML[] = "<button type='submit' name='btnAll' value='all'>Use ALL the projects</button>";
+		$HTML[] = "<button type='submit' name='btnSome' value='some' title='use Ctrl/Click to select multiple items'>Use the selected ".$this->label[0]."</button>";
+		$HTML[] = "<button type='submit' name='btnAll' value='all'>Use ALL the ".$this->label[1]."</button>";
 		$HTML[] = "<p>";
 		$insert = " multiple";
 		$title = "use Ctrl/Click to select multiple items";
@@ -179,7 +197,7 @@ public function set_list() { //set up initial form and select
 	$HTML = "";
 
 	if (count($this->restrict) == 0) {
-		$HTML .= "No projects available";
+		$HTML .= "No ".$this->label[1]." available";
 		return $HTML;
 	}
 
@@ -232,6 +250,13 @@ public function selected_name() {
 }
 
 public function get_label($label, $plural=false) { //get the label from preferences if it exists
+	if ($label == "project") { //we also store the org's label for "project"
+		if ($plural) {
+			return $this->label[1];
+		} else {
+			return $this->label[0];
+		}
+	}
 	if (array_key_exists($label, $this->records[$this->project_id][self::LABELS])) {
 		if ($plural) {
 			return $this->records[$this->project_id][self::LABELS][$label][1];

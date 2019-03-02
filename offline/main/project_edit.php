@@ -24,7 +24,7 @@ case LIST_PROJECTS:
 	$projects = new PROJECT_SELECT();
 	$projects->show_new = true;
 	$_STATE->project_select = serialize(clone($projects));
-	$_STATE->msgGreet = "Select a project record to edit";
+	$_STATE->msgGreet = "Select a ".ucfirst($projects->label[0])." record to edit";
 	$_STATE->status = SELECT_PROJECT;
 	break 2;
 case SELECT_PROJECT:

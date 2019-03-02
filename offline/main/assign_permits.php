@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("assign_permits")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
@@ -66,7 +66,7 @@ case LIST_PROJECTS:
 		$_STATE->status = SELECTED_PROJECT;
 		break 1; //re-switch to SELECTED_PROJECT
 	}
-	$_STATE->msgGreet = "Select the project";
+	$_STATE->msgGreet = "Select the ".ucfirst($projects->label[0]);
 	$_STATE->backup = LIST_PERSONS;
 	$_STATE->status = SELECT_PROJECT;
 	break 2;
