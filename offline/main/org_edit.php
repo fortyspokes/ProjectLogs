@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("org_edit")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
@@ -19,6 +19,9 @@ define('PREFERENCES',		STATE::INIT + 20);
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
 case LIST_ORGS:
+	$_STATE->currency_id = 0;
+	$_STATE->curr_list = array();
+	$_STATE->noSleep[] = "curr_list";
 	list_setup();
 	$_STATE->msgGreet = "Select an organization to edit";
 	$_STATE->status = SELECT_ORG;
@@ -110,13 +113,20 @@ default:
 } } //while & switch
 
 function state_fields($disabled=true) {
-	global $_STATE;
+	global $_DB, $_STATE;
 
 	$_STATE->fields = array( //pagename,DBname,load from DB?,write to DB?,required?,maxlength,disabled
 			"Name"=>new FIELD("txtName","name",TRUE,TRUE,TRUE,64,$disabled),
 			"Description"=>new AREA_FIELD("txtDesc","description",TRUE,TRUE,TRUE,256,$disabled),
 			"Time Zone"=>new FIELD("txtTZO","timezone",TRUE,TRUE,TRUE,3,$disabled),
 			);
+	$_STATE->curr_list = array();
+	$sql = "SELECT * FROM ".$_DB->prefix."d02_currency;";
+	$stmt = $_DB->query($sql);
+	while ($row = $stmt->fetchObject()) {
+		$_STATE->curr_list[strval($row->currency_id)] = $row->name." (".$row->symbol.")";
+	}
+	$stmt->closeCursor();
 }
 
 function list_setup() {
@@ -144,7 +154,7 @@ function list_setup() {
 function org_info() {
 	global $_DB, $_STATE;
 
-	$sql = "SELECT name, description,timezone FROM ".$_DB->prefix."a00_organization
+	$sql = "SELECT * FROM ".$_DB->prefix."a00_organization
 			WHERE organization_id=".$_STATE->record_id.";";
 	$stmt = $_DB->query($sql);
 	$row = $stmt->fetchObject();
@@ -153,6 +163,7 @@ function org_info() {
 			$props->value($row->{$props->dbname});
 		}
 	}
+	$_STATE->currency_id = $row->currency_idref;
 	$_STATE->forwho = $row->name.": ".$row->description; //PREFERENCES wants to see this
 	$stmt->closeCursor();
 }
@@ -237,6 +248,10 @@ function field_input_audit() {
 		$_STATE->msgStatus = "Error:".$errors;
 		return false;
 	}
+	if (!array_key_exists(strval($_POST["selCurrency"]), $_STATE->curr_list)) {
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid currency id ".$_POST["selCurrency"]); //we're being spoofed
+	}
+	$_STATE->currency_id = intval($_POST["selCurrency"]);
 
 	return TRUE;
 
@@ -246,11 +261,12 @@ function update_db() {
 	global $_DB, $_STATE;
 
 	$sql = "UPDATE ".$_DB->prefix."a00_organization
-			SET name=:name, description=:description, timezone=:TZO
+			SET name=:name, description=:description, currency_idref=:currency, timezone=:TZO
 			WHERE organization_id=".$_STATE->record_id.";";
 	$stmt = $_DB->prepare($sql);
 	$stmt->bindValue(':name',$_STATE->fields["Name"]->value(),PDO::PARAM_STR);
 	$stmt->bindValue(':description',$_STATE->fields["Description"]->value(),PDO::PARAM_STR);
+	$stmt->bindValue(':currency', $_STATE->currency_id, PDO::PARAM_INT);
 	$stmt->bindValue(':TZO',$_STATE->fields["Time Zone"]->value(),PDO::PARAM_STR);
 	$stmt->execute();
 }
@@ -530,6 +546,20 @@ case DELETE_ORG:
     <tr>
       <td class="label"><?php echo $_STATE->fields['Description']->HTML_label("Description: "); ?></td>
       <td><?php echo $_STATE->fields['Description']->HTML_input(32); ?></td>
+    </tr>
+    <tr>
+      <td class="label"><label for="selCurrency_ID" class='required'>*Currency:</label></td>
+      <td>
+        <select name='selCurrency' id='selCurrency_ID' size="<?php echo count($_STATE->acct_list); ?>">
+<?php
+	foreach($_STATE->curr_list as $value => $name) {
+  		echo "        <option value=\"".$value."\"";
+		if ($_STATE->currency_id == $value) echo " selected";
+		echo ">".$name."\n";
+	} ?>
+        </select>
+      </td>
+      <td>&nbsp</td>
     </tr>
     <tr>
       <td class="label"><?php echo $_STATE->fields['Time Zone']->HTML_label("Time Zone: "); ?></td>

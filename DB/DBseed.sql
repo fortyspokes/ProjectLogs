@@ -47,9 +47,10 @@ INSERT INTO <PREFIX>d01_permit VALUES (18, 'repository_put', 'Insert into the re
 
 -- d02_currency
 INSERT INTO <PREFIX>d02_currency VALUES (1, 'us dollar', '$', 2);
-INSERT INTO <PREFIX>d02_currency VALUES (2, 'euro', '&euro', 2);
-INSERT INTO <PREFIX>d02_currency VALUES (3, 'pound', '&pound', 2);
-INSERT INTO <PREFIX>d02_currency VALUES (4, 'yen', '&yen', 2);
+INSERT INTO <PREFIX>d02_currency VALUES (2, 'euro', '&euro;', 2);
+INSERT INTO <PREFIX>d02_currency VALUES (3, 'pound', '&pound;', 2);
+INSERT INTO <PREFIX>d02_currency VALUES (4, 'yen', '&yen;', 0);
+INSERT INTO <PREFIX>d02_currency VALUES (5, 'peso', '&#8369;', 2);
 
 -- d10_preferences
 -- list the 'template' preferences; user_idref < -10 are 'cosmetic'
