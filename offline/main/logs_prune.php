@@ -1,5 +1,5 @@
 <?php
-//copyright 2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("logs_prune")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
@@ -14,7 +14,7 @@ case STATE::INIT:
 	require_once "lib/project_select.php";
 	$projects = new PROJECT_SELECT();
 	$_STATE->project_select = serialize(clone($projects));
-	$_STATE->msgGreet = "Select the project to prune";
+	$_STATE->msgGreet = "Select the ".ucfirst($projects->get_label("project"))." to prune";
 	$_STATE->status = STATE::SELECT;
 	break 2;
 case STATE::SELECT:

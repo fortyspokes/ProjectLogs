@@ -29,7 +29,7 @@ case STATE::INIT:
 		$_STATE->status = SELECTED_PROJECT;
 		break 1; //re-switch to SELECTED_PROJECT
 	}
-	$_STATE->msgGreet = "Select the ".ucfirst($projects->label[0]);
+	$_STATE->msgGreet = "Select the ".ucfirst($projects->get_label("project"));
 	$_STATE->status = SELECT_PROJECT;
 	break 2;
 case SELECT_PROJECT:

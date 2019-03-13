@@ -1,5 +1,5 @@
 <?php
-//copyright 2010,2014-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2010,2014-2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 //The Main State Gate cases:
@@ -62,17 +62,13 @@ function entry_audit() {
 	init_setup(); //re-display the list
 	$_SESSION["organization_id"] = intval($_POST["selOrgs"]);
 	//Set theme for organization:
-	$_SESSION["THEME"] = $_SESSION["_SITE_CONF"]["THEME"]; //go back to default
-	$sql = "SELECT prefer FROM ".$_DB->prefix."d10_preferences
-			WHERE user_idref=".$_SESSION["organization_id"]."
-			AND user_table='a00' AND name='theme';";
-	$stmt = $_DB->query($sql);
-	if ($row = $stmt->fetchObject()) {
-		if ($row->prefer != "") {
-			$_SESSION["THEME"] = $row->prefer;
-		}
+	require_once "lib/preference_set.php";
+	$prefs = new PREF_GET("a00",$_SESSION["organization_id"]);
+	if ($theme = $prefs->preference("theme")) {
+		$_SESSION["THEME"] = $theme;
+	} else {
+		$_SESSION["THEME"] = $_SESSION["_SITE_CONF"]["THEME"]; //go back to default
 	}
-	$stmt->closeCursor();
 	$_SESSION["org_TZO"] = $_STATE->records[$_POST["selOrgs"]][1];
 	$_SESSION["UserPermits"] = $GLOBALS["_PERMITS"]->get_permits($_SESSION["person_id"]); //set the users's permissions
 	$_STATE->msgStatus = "Your organization has been changed";

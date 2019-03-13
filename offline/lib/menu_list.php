@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 	$sql = "SELECT COUNT(*) as org_count FROM ";
@@ -16,50 +16,27 @@
 	require_once "staff.php"; //sets $MENU_LIST array
 
 	//Set menu preferences:
+	require_once "lib/preference_set.php";
 	//	for organization:
-	$sql = "SELECT prefer FROM ".$_DB->prefix."d10_preferences
-			WHERE user_idref=".$_SESSION["organization_id"]."
-			AND user_table='a00' AND name='staff';";
-	if ($row = $_DB->query($sql)->fetchObject()) {
-		$new_list = explode("&",$row->prefer);
-		if (substr($new_list[0],0,1) == "-") { //negatives
-			$new_list[0] = substr($new_list[0],1); //strip the "-"
+	$prefs = new PREF_GET("a00",$_SESSION["organization_id"]);
+	if ($new_list = $prefs->preference("staff")) { //allowable menu items
+		if ($new_list[0] == "-") { //negatives - remove them from $MENU_LIST
 			$old_list = $MENU_LIST;
 			$MENU_LIST = array();
 			foreach ($old_list as $value) {
 				if (!in_array($value,$new_list)) $MENU_LIST[] = $value;
 			}
-		} else { //positives
+		} else { //positives - the new $MENU_LIST
 			$MENU_LIST = $new_list;
 		}
 	}
-	$sql = "SELECT prefer FROM ".$_DB->prefix."d10_preferences
-			WHERE user_idref=".$_SESSION["organization_id"]."
-			AND user_table='a00' AND name='menu';";
-	if ($row = $_DB->query($sql)->fetchObject()) {
-		$new_labels = parse_ini_string(str_replace("&","\n",$row->prefer));
-		foreach ($new_labels as $key=>$value) $EX_staff[$key][MENU] = $value;
-	}
-	//	for project:
-	$sql = "SELECT COUNT(*) as count FROM ".$_DB->prefix."a10_project
-			WHERE organization_idref=".$_SESSION["organization_id"].";";
-	if ($_DB->query($sql)->fetchObject()->count == 1) { //only one project
-		$sql = "SELECT d10.prefer FROM ".$_DB->prefix."d10_preferences as d10
-				INNER JOIN ".$_DB->prefix."a10_project AS a10 ON d10.user_idref = a10.project_ID
-				WHERE a10.organization_idref=".$_SESSION["organization_id"]."
-				AND d10.user_table='a1' AND d10.name='menu';";
-		if ($row = $_DB->query($sql)->fetchObject()) {
-			$menu_prefs = parse_ini_string(str_replace("&","\n",$row->prefer));
-			foreach ($menu_prefs as $key=>$value) $EX_staff[$key][MENU] = $value;
-		}
+	if ($new_list = $prefs->preference("menu")) { //new menu tags
+		foreach ($new_list as $key=>$value) $EX_staff[$key][MENU] = $value;
 	}
 	//	for person:
-	$sql = "SELECT prefer FROM ".$_DB->prefix."d10_preferences
-			WHERE user_idref=".$_SESSION["person_organization_id"]."
-			AND user_table='c10' AND name='menu';";
-	if ($row = $_DB->query($sql)->fetchObject()) {
-		$new_labels = parse_ini_string(str_replace("&","\n",$row->prefer));
-		foreach ($new_labels as $key=>$value) $EX_staff[$key][MENU] = $value;
+	$prefs = new PREF_GET("c10",$_SESSION["person_organization_id"]);
+	if ($new_list = $prefs->preference("menu")) { //new menu tags
+		foreach ($new_list as $key=>$value) $EX_staff[$key][MENU] = $value;
 	}
 	//...now, add the sys admin, etc. stuff:
 	$MENU_LIST = array_merge($MENU_LIST, $ADMIN_LIST);

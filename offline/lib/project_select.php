@@ -8,8 +8,8 @@ public $show_inactive = false;
 public $show_new = false; //show 'add new record'
 public $selected = false;
 public $list_ID = "project_list_ID"; //ID of HTML element containing the list
-public $label = array("project","projects"); //might be replaced by preferences
 public $noSleep = array(); //clear out these user created vars when sleeping (to save memory)
+private $labels = array("project"=>array("project","projects")); //might be replaced by preferences
 private $records = array();
 private $select_list = array(-1);
 private $project_id = 0;
@@ -21,7 +21,6 @@ private $multiple = false; //allow multiple select
 const NAME = 0;
 const DESCRIPTION = 1;
 const INACTIVE = 2;
-const LABELS = 3;
 
 function __construct($restrict_to = array(0), $multiple=false) {
 	global $_DB;
@@ -36,22 +35,10 @@ function __construct($restrict_to = array(0), $multiple=false) {
 		$this->select_list = array(key($this->records));
 		$this->set_state(key($this->records));
 	}
-	//Get the "label" -> "project" preference:
-	$sql = "SELECT prefer FROM ".$_DB->prefix."d10_preferences
-			WHERE user_table = 'a00' AND name = 'label'
-				and user_idref=".$_SESSION["organization_id"].";";
-	$stmt = $_DB->query($sql);
-	if ($row = $stmt->fetchObject()) {
-		$labels = explode("&",$row->prefer);
-		foreach ($labels as $label) {
-			$replace = explode("=",$label);
-			if ($replace[0] == "project") {
-				$this->label = explode("/",$replace[1]);
-				break;
-			}
-		}
-	}
-	$stmt->closeCursor();
+	//Get the "label" -> "project" preference (by org):
+	require_once "lib/preference_set.php";
+	$prefs = new PREF_GET("a00",$_SESSION["organization_id"]);
+	if ($label = $prefs->preference("label","project")) $this->labels["project"] = $label;
 }
 
 function __sleep() { //don't save this stuff - temporary and too long
@@ -81,12 +68,7 @@ private function get_recs() {
 		if ($this->blacklist) $not = " NOT";
 		$where = "AND (a10.project_id ".$not." IN (".implode(",", $this->restrict)."))";
 	}
-	$sql = "SELECT a10.*, d10.prefer FROM
-			".$_DB->prefix."a10_project AS a10
-			LEFT OUTER JOIN
-			(SELECT d10.user_idref, d10.prefer FROM ".$_DB->prefix."d10_preferences AS d10
-				WHERE d10.user_table = 'a10' and d10.name = 'label') AS d10
-			ON a10.project_id = d10.user_idref
+	$sql = "SELECT a10.* FROM ".$_DB->prefix."a10_project AS a10
 			WHERE (a10.organization_idref=".$_SESSION["organization_id"].")
 			".$where."
 			ORDER BY a10.timestamp;";
@@ -98,20 +80,12 @@ private function get_recs() {
 			$row->name,
 			$row->description,
 			'',
-			array(),
 			);
 		if (!is_null($row->inactive_asof)) {
 			$inactive = new DateTime($row->inactive_asof);
 			if ($inactive <= $today) {
 				$element[self::INACTIVE] = $inactive->format('Y-m-d');
 				++$this->inactives;
-			}
-		}
-		if (!is_null($row->prefer)) {
-			$labels = explode("&",$row->prefer);
-			foreach ($labels as $label) {
-				$replace = explode("=",$label);
-				$element[self::LABELS][$replace[0]] = explode("/",$replace[1]);
 			}
 		}
 		$this->records[strval($row->project_id)] = $element;
@@ -149,8 +123,8 @@ public function show_list() { //get the HTML for the list items (and inactive ch
 		$HTML[] = "  <p>";
 	}
 	if ($this->multiple) {
-		$HTML[] = "<button type='submit' name='btnSome' value='some' title='use Ctrl/Click to select multiple items'>Use the selected ".$this->label[0]."</button>";
-		$HTML[] = "<button type='submit' name='btnAll' value='all'>Use ALL the ".$this->label[1]."</button>";
+		$HTML[] = "<button type='submit' name='btnSome' value='some' title='use Ctrl/Click to select multiple items'>Use the selected ".$this->get_label("project")."</button>";
+		$HTML[] = "<button type='submit' name='btnAll' value='all'>Use ALL the ".$this->get_label("project",true)."</button>";
 		$HTML[] = "<p>";
 		$insert = " multiple";
 		$title = "use Ctrl/Click to select multiple items";
@@ -161,7 +135,7 @@ public function show_list() { //get the HTML for the list items (and inactive ch
 	if ($this->show_new) ++$size;
 	$HTML[] = "  <select name='selProject[]' size='".$size."'".$insert.">";
 	if ($this->show_new)
-		$HTML[] = "    <option value='-1' style='opacity:1.0'>--create a new project record--";
+		$HTML[] = "    <option value='-1' style='opacity:1.0'>--create a new ".$this->labels["project"][0]." record--";
 	if ($this->multiple) { $insert = " selected"; } else { $insert = ""; }
 	foreach ($this->records as $key => $record) {
 		$opacity = "1.0"; //opacity value = fully opaque
@@ -250,18 +224,11 @@ public function selected_name() {
 }
 
 public function get_label($label, $plural=false) { //get the label from preferences if it exists
-	if ($label == "project") { //we also store the org's label for "project"
+	if (array_key_exists($label, $this->labels)) {
 		if ($plural) {
-			return $this->label[1];
+			return $this->labels[$label][1];
 		} else {
-			return $this->label[0];
-		}
-	}
-	if (array_key_exists($label, $this->records[$this->project_id][self::LABELS])) {
-		if ($plural) {
-			return $this->records[$this->project_id][self::LABELS][$label][1];
-		} else {
-			return $this->records[$this->project_id][self::LABELS][$label][0];
+			return $this->labels[$label][0];
 		}
 	} else {
 		return $label;
@@ -318,6 +285,13 @@ public function set_state($ID=-1) {
 	$_STATE->accounting_id = $row->accounting_id;
 	$_STATE->accounting = $row->accounting;
 	$stmt->closeCursor();
+	//Get the label preferences
+	$this->labels = array("project" => $this->labels["project"]); //keep the 'projects' label
+	require_once "lib/preference_set.php";
+	$prefs = new PREF_GET("a10",$_STATE->project_id);
+	if ($labels = $prefs->preference("label")) {
+		$this->labels = array_merge($this->labels, $labels);
+	}
 }
 
 } //end class

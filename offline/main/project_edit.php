@@ -24,30 +24,32 @@ case LIST_PROJECTS:
 	$projects = new PROJECT_SELECT();
 	$projects->show_new = true;
 	$_STATE->project_select = serialize(clone($projects));
-	$_STATE->msgGreet = "Select a ".ucfirst($projects->label[0])." record to edit";
+	$_STATE->projLabel = ucfirst($projects->get_label("project"));
+	$_STATE->msgGreet = "Select a ".$_STATE->projLabel." record to edit";
 	$_STATE->status = SELECT_PROJECT;
 	break 2;
 case SELECT_PROJECT:
 	require_once "lib/project_select.php"; //catches $_GET list refresh (assumes break 2)
 	$projects = unserialize($_STATE->project_select);
 	$projects->set_state();
+	$_STATE->project_select = serialize(clone($projects));
 	$_STATE->record_id = $_STATE->project_id;
 	$_STATE->status = SELECTED_PROJECT; //for possible goback
 	$_STATE->replace();
 case SELECTED_PROJECT:
 	state_fields(); //creates the accounting list for display
 	if ($_STATE->record_id == -1) {
-		$_STATE->msgGreet = "New project record";
+		$_STATE->msgGreet = "New ".$_STATE->projLabel." record";
 		$_STATE->status = ADD_PROJECT;
 	} else {
 		record_info();
-		$_STATE->msgGreet = "Edit project record";
+		$_STATE->msgGreet = "Edit ".$_STATE->projLabel." record";
 		$_STATE->status = UPDATE_PROJECT;
 	}
 	break 2;
 case ADD_PROJECT:
 	state_fields(); //creates the accounting list for audit
-	$_STATE->msgGreet = "New project record";
+	$_STATE->msgGreet = "New ".$_STATE->projLabel." record";
 	if (isset($_POST["btnReset"])) {
 		break 2;
 	}
@@ -64,7 +66,7 @@ case UPDATE_PROJECT:
 		break 1; //re-switch to show preferences
 	}
 	state_fields(); //creates the accounting list for audit
-	$_STATE->msgGreet = "Edit project record";
+	$_STATE->msgGreet = "Edit ".$_STATE->projLabel." record";
 	if (isset($_POST["btnReset"])) {
 		record_info();
 		break 2;

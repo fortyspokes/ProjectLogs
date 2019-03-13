@@ -28,7 +28,7 @@ case STATE::INIT:
 		$_STATE->status = SELECTED_PROJECT;
 		break 1; //re-switch to SELECTED_PROJECT
 	}
-	$_STATE->msgGreet = "Select the ".ucfirst($projects->label[0]);
+	$_STATE->msgGreet = "Select the ".ucfirst($projects->get_label("project"));
 	$_STATE->status = SELECT_PROJECT;
 	break 2;
 case SELECT_PROJECT:
@@ -36,6 +36,7 @@ case SELECT_PROJECT:
 	$projects = unserialize($_STATE->project_select);
 	$projects->set_state();
 	$_STATE->project_select = serialize(clone($projects));
+	$_STATE->eventLabel = $projects->get_label("event");
 case SELECTED_PROJECT:
 	$_STATE->project_name = $projects->selected_name();
 
@@ -43,7 +44,7 @@ case SELECTED_PROJECT:
 	$_STATE->replace(); //so loopback() can find it
 case LIST_EVENTS:
 	list_setup();
-	$_STATE->msgGreet = $_STATE->project_name."<br>Select an event record to edit";
+	$_STATE->msgGreet = $_STATE->project_name."<br>Select the ".$_STATE->eventLabel." record to edit";
 	$_STATE->backup = LIST_PROJECTS; //set goback
 	$_STATE->status = SELECT_EVENT;
 	break 2;
@@ -55,17 +56,17 @@ case SELECTED_EVENT:
 	state_fields();
 	$_STATE->backup = LIST_EVENTS; //for goback
 	if ($_STATE->record_id == -1) {
-		$_STATE->msgGreet = "New event record";
+		$_STATE->msgGreet = "New ".$_STATE->eventLabel." record";
 		$_STATE->status = ADD_EVENT;
 	} else {
 		record_info();
-		$_STATE->msgGreet = "Edit event record?";
+		$_STATE->msgGreet = "Edit ".$_STATE->eventLabel." record?";
 		$_STATE->status = UPDATE_EVENT;
 	}
 	break 2;
 case ADD_EVENT:
 	state_fields();
-	$_STATE->msgGreet = "New event record";
+	$_STATE->msgGreet = "New ".$_STATE->eventLabel." record";
 	if (isset($_POST["btnReset"])) {
 		break 2;
 	}
@@ -78,7 +79,7 @@ case ADD_EVENT:
 	break 2;
 case UPDATE_EVENT:
 	state_fields();
-	$_STATE->msgGreet = "Edit event record";
+	$_STATE->msgGreet = "Edit ".$_STATE->eventLabel." record";
 	if (isset($_POST["btnReset"])) {
 		record_info();
 		break 2;
@@ -123,7 +124,7 @@ function list_setup() {
 	global $_DB, $_STATE;
 
 	$_STATE->records = array();
-	$_STATE->records["-1"] = "--create a new event record--";
+	$_STATE->records["-1"] = "--create a new ".$_STATE->eventLabel." record--";
 
 	$sql = "SELECT * FROM ".$_DB->prefix."a30_event
 			WHERE project_idref=".$_STATE->project_id." ORDER BY name;";

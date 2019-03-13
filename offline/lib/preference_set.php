@@ -33,6 +33,61 @@ function __construct($name,$type,$default) {
 
 } //end class
 
+class PREF_GET {
+	private $prefs = array(); //all preferences for this element/user as an array
+
+function __construct($element,$user) { //$element is table, $user is element_id
+	global $_DB;
+
+	$sql = "SELECT name, prefer FROM ".$_DB->prefix."d10_preferences
+			WHERE user_table='".$element."' AND user_idref=".$user.";";
+	$stmt = $_DB->query($sql);
+	while ($row = $stmt->fetchObject()) {
+		switch ($row->name) {
+		case "label":
+			$prefer = array();
+			$labels = explode("&",$row->prefer);
+			foreach ($labels as $label) {
+				$value = explode("=",$label);
+				$prefer[$value[0]] = explode("/",$value[1]); //singular and plural
+			}
+			break;
+		case "menu":
+			$prefer = array();
+			$labels = explode("&",$row->prefer);
+			foreach ($labels as $label) {
+				$value = explode("=",$label);
+				$prefer[$value[0]] = $value[1];
+			}
+			break;
+		case "staff":
+			$prefer = explode("&",$row->prefer);
+			array_unshift($prefer,"+"); //assume a positive list
+			if (substr($prefer[1],0,1) == "-") {
+				$prefer[0] = "-";
+				$prefer[1] = substr($prefer[1],1);
+			}
+			break;
+		case "theme":
+			$prefer = $row->prefer;
+			break;
+		default:
+			$prefer = $row->prefer;
+		}
+		$this->prefs[$row->name] = $prefer;
+	}
+	$stmt->closeCursor();
+}
+
+public function preference($name, $item=null) { //a preference can be an array; $item is an element of it
+	if (array_key_exists($name, $this->prefs)) {
+		if (is_null($item)) return $this->prefs[$name];
+		if (array_key_exists($item,$this->prefs[$name])) return $this->prefs[$name][$item];
+	}
+	return false;
+}
+} //end class PREF_GET
+
 class PREF_SET {
 
 	public $element; //the 3char table id
@@ -340,5 +395,5 @@ function update($pref) {
 	}
 }
 
-} //end class
+} //end class PREF_SET
 ?>

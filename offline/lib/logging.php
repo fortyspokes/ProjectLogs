@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016, 2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 function entry_audit() {
@@ -62,18 +62,11 @@ function entry_audit() {
 	$stmt->closeCursor();
 
 	//Set theme for organization/person:
-	$sql = "SELECT prefer FROM ".$_DB->prefix."d10_preferences
-			WHERE user_idref=".$_SESSION["organization_id"]."
-			AND user_table='a00' AND name='theme';";
-	$stmt = $_DB->query($sql);
-	if ($row = $stmt->fetchObject()) $_SESSION["THEME"] = $row->prefer;
-	$stmt->closeCursor();
-	$sql = "SELECT prefer FROM ".$_DB->prefix."d10_preferences
-			WHERE user_idref=".$_SESSION["person_organization_id"]."
-			AND user_table='c10' AND name='theme';";
-	$stmt = $_DB->query($sql);
-	if ($row = $stmt->fetchObject()) $_SESSION["THEME"] = $row->prefer;
-	$stmt->closeCursor();
+	require_once "lib/preference_set.php";
+	$prefs = new PREF_GET("a00",$_SESSION["organization_id"]);
+	if ($theme = $prefs->preference("theme")) $_SESSION["THEME"] = $theme;
+	$prefs = new PREF_GET("c10",$_SESSION["person_organization_id"]);
+	if ($theme = $prefs->preference("theme")) $_SESSION["THEME"] = $theme;
 	$_STATE->msgStatus = "";
 
 	$_SESSION["UserPermits"] = $_PERMITS->get_permits($_SESSION["person_id"]); //set the users's permissions
