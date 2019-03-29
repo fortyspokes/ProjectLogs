@@ -313,13 +313,13 @@ default:
       <td colspan="2"><?php echo $_STATE->fields['Mileage']->HTML_input(7) ?></td>
     </tr>
     <tr>
-      <td class="label"><?php echo $_STATE->fields['Close Date']->HTML_label("Log entry Close Date(YYYY-MM-DD): "); ?></td>
-      <td><?php echo $_STATE->fields['Close Date']->HTML_input(0) ?></td>
+      <td class="label"><?php echo $_STATE->fields['Close Date']->HTML_label("Log entry Close Date: "); ?></td>
+      <td><?php foreach ($_STATE->fields['Close Date']->HTML_input() as $line) echo $line."\n"; ?></td>
        <td>&nbsp</td>
     </tr>
     <tr>
-      <td class="label"><?php echo $_STATE->fields['Inactive As Of']->HTML_label("Inactive As Of(YYYY-MM-DD): "); ?></td>
-      <td><?php echo $_STATE->fields['Inactive As Of']->HTML_input(0) ?></td>
+      <td class="label"><?php echo $_STATE->fields['Inactive As Of']->HTML_label("Inactive As Of: "); ?></td>
+      <td><?php foreach ($_STATE->fields['Inactive As Of']->HTML_input() as $line) echo $line."\n"; ?></td>
       <td>&nbsp</td>
     </tr>
     <tr>

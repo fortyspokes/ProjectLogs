@@ -411,7 +411,7 @@ default:
   <table align="center">
     <tr>
       <td class="label"><?php echo $_STATE->fields['Cutoff Date']->HTML_label("Logs Cutoff Date(YYYY-MM-DD): "); ?></td>
-      <td><?php echo $_STATE->fields['Cutoff Date']->HTML_input(0) ?></td>
+      <td><?php foreach ($_STATE->fields['Cutoff Date']->HTML_input() as $line) echo $line."\n"; ?></td>
     </tr>
     <tr>
       <td style='text-align:right'><input type='checkbox' name='chkReport' value='report' checked></td>

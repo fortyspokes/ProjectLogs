@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016,2018 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016,2018,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 require_once "lib/field_edit.php";
@@ -393,8 +393,8 @@ case DELETE_PERSON:
       <td><?php echo $_STATE->fields['Email']->HTML_input(20) ?></td>
     </tr>
     <tr>
-      <td class="label"><?php echo $_STATE->fields['Inactive As Of']->HTML_label("Inactive As Of(yyyy-mm-dd): "); ?></td>
-      <td><?php echo $_STATE->fields['Inactive As Of']->HTML_input(10) ?></td>
+      <td class="label"><?php echo $_STATE->fields['Inactive As Of']->HTML_label("Inactive As Of: "); ?></td>
+      <td><?php foreach ($_STATE->fields['Inactive As Of']->HTML_input() as $line) echo $line."\n"; ?></td>
     </tr>
   </table>
   <p>

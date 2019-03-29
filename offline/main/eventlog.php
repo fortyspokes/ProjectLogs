@@ -239,17 +239,19 @@ function set_state(&$dates) {
 		$_STATE->columns[COL_COUNT] = 60;
 	}
 
+	$from = new DATE_FIELD($_STATE->from_date);
+	$to = new DATE_FIELD($_STATE->to_date);
 	switch ($dates->checked) {
 	case "w":
-		$_STATE->heading .= "<br>for the week of ".$_STATE->from_date->format('Y-m-d').
-							" to ".$_STATE->to_date->format('Y-m-d');
+		$_STATE->heading .= "<br>for the week of ".$from->format().
+							" to ".$to->format();
 		break;
 	case "m":
-		$_STATE->heading .= "<br>for the month of ".$_STATE->from_date->format("M-Y");
+		$_STATE->heading .= "<br>for the month of ".$from->format("M-Y");
 		break;
 	default:
-		$_STATE->heading .= "<br>for dates from ".$_STATE->from_date->format('Y-m-d').
-							" to ".$_STATE->to_date->format('Y-m-d');
+		$_STATE->heading .= "<br>for dates from ".$from->format().
+							" to ".$to->format();
 	}
 	return true;
 }
@@ -351,7 +353,7 @@ function log_list(&$state, $findrow=0) {
 			$row->logdate = new DateTime($row->logdate);
 			$record = array(
 				"ID" =>			$row->eventlog_id,
-				"logdate" =>	$row->logdate,
+				"logdate"=>		new DATE_FIELD("txtLog","logdate",FALSE,FALSE,FALSE,0,FALSE,$row->logdate),
 				"session_count" => $row->session_count,
 				"attendance" =>	$row->attendance,
 				"comments" =>	substr($row->comments,0,25),
@@ -977,7 +979,7 @@ function onerow(&$header, &$logs) {
 	echo ">".$row."</td>\n";
 	echo "    <td id='AC_".$row."' data-recid='".$header["account_id"]."'>".$header["account"]."</td>\n";
 	echo "    <td id='EV_".$row."' data-recid='".$header["event_id"]."'>".$header["event"]."</td>\n";
-	echo "    <td id='DT_".$row."' class='date'>".$header["logdate"]->format("Y-m-d")."</td>\n";
+	echo "    <td id='DT_".$row."' class='date'>".$header["logdate"]->format()."</td>\n";
 	echo "    <td id='SN_".$row."' data-recid='".$header["ID"]."' class='number'>".$header["session_count"]."</td>\n";
 	echo "    <td id='AD_".$row."' data-recid='".$header["ID"]."' class='number'>".$header["attendance"]."</td>\n";
 	echo "    <td id='CM_".$row."' data-recid='".$header["ID"]."' data-value='\\'>".

@@ -1,5 +1,5 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 //Populate the date pulldown selection list then collect the response via server call-back:
@@ -7,7 +7,6 @@ function date_send(&$state, &$HTML) {
 
 	$HTML .= "//Date...\n";
    	$HTML .= "document.getElementById('msgGreet_ID').innerHTML = 'Select the date';\n";
-	$HTML .= "cell = document.getElementById('DT_".$state->row."');\n";
 	$HTML .= "fill = \"<select name='selDate' id='selDate' size='1' onchange='proceed(this.parentNode,this.options[this.selectedIndex].value)'>\";\n";
 
 	$dayadd = new DateInterval('P1D');
@@ -32,10 +31,10 @@ function date_select(&$state, &$HTML) {
 	if (($rec < $state->columns[COL_OPEN]) || ($rec >= $state->columns[COL_INACTIVE])) {
 		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid date ".$rec,true);
 	}
-	$state->logdate = clone($state->from_date);
-	$state->logdate->add(new DateInterval('P'.$rec.'D'));
 	$state->msgStatus = "";
 	$HTML .= "cell = document.getElementById('DT_".$state->row."');\n";
-	$HTML .= "cell.innerHTML = '".$state->logdate->format("Y-m-d")."';\n";
+	$state->logdate = new DATE_FIELD("txtLog","logdate",FALSE,FALSE,FALSE,0,FALSE,clone($state->from_date));
+	$state->logdate->value->add(new DateInterval('P'.$rec.'D'));
+	$HTML .= "cell.innerHTML = '".$state->logdate->format()."';\n";
 }
 ?>

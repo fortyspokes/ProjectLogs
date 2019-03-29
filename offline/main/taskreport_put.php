@@ -87,13 +87,14 @@ function set_state(&$dates) {
 	$_STATE->from_date = clone($dates->from);
 	$_STATE->to_date = clone($dates->to);
 
+	$from = new DATE_FIELD($_STATE->from_date);
+	$to = new DATE_FIELD($_STATE->to_date);
 	switch ($dates->checked) {
 	case "b":
-		$_STATE->heading .= "<br>for all prior to ".$_STATE->to_date->format("Y-m-d");
+		$_STATE->heading .= "<br>for all prior to ".$to->format();
 		break;
 	case "p":
-		$_STATE->heading .= "<br>for dates from ".$_STATE->from_date->format('Y-m-d').
-							" to ".$_STATE->to_date->format('Y-m-d');
+		$_STATE->heading .= "<br>for dates from ".$from->format()." to ".$to->format();
 	}
 
 	$sql = "SELECT name FROM ".$_DB->prefix."a00_organization

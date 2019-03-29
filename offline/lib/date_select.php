@@ -1,16 +1,16 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 class DATE_SELECT {
 
 	//Captions:
-	public $aCap = ""; //all after
-	public $bCap = ""; //all before
-	public $mCap = ""; //month
-	public $pCap = ""; //period
-	public $sCap = ""; //single
-	public $wCap = ""; //week
+	public $aCap = ""; //all after	'a'
+	public $bCap = ""; //all before	'b'
+	public $mCap = ""; //month		'm'
+	public $pCap = ""; //period		'p' (from/to)
+	public $sCap = ""; //single		's'
+	public $wCap = ""; //week		'w'
 	public $sleepers; //truncate some objects, eg. DateTime
 	public $from;
 	public $to;
@@ -23,6 +23,8 @@ class DATE_SELECT {
 	const BOTH = 3; //binary 0011
 
 function __construct($list, $checked="") {
+	global $_STATE;
+
 	$this->ranges = array();
 	$this->uses = 0;
 	$ranges = array("a"=>2,"b"=>1,"m"=>3,"p"=>3,"s"=>2,"w"=>3);
@@ -48,9 +50,19 @@ function __construct($list, $checked="") {
 		break;
 	case "p": //from = 1st (Mon) of last week
 	case "w":
+		if (isset($_STATE->dateform)) {
+			$dateform = $_STATE->dateform;
+		} else {
+			$dateform = $_SESSION["dateform"];
+		}
+		$weekday = getdate($NOW->getTimestamp())["wday"]; //Sun=0
 		$this->from = clone($NOW);
-		$this->from->modify("last sunday");
-		$this->from->sub(new DateInterval('P6D')); //P=period, 6=number, D=days
+		if ($weekday < $dateform[0]) {
+			$sub = 14 - ($dateform[0] - $weekday);
+		} else {
+			$sub = 7 + ($weekday - $dateform[0]);
+		}
+		$this->from->sub(new DateInterval("P".$sub."D")); //P=period, ?=number, D=days
 		break;
 	case "s": //from = now
 		$this->from = clone($NOW);
@@ -63,8 +75,8 @@ function __construct($list, $checked="") {
 		break;
 	case "p": //to = last of last week
 	case "w":
-		$this->to = clone($NOW);
-		$this->to->modify("last sunday");
+		$this->to = clone($this->from);
+		$this->to->add(new DateInterval('P6D')); //P=period, 6=number, D=days
 		break;
 	case "a": //to = null
 	case "s":
@@ -91,28 +103,30 @@ function HTML() {
 		$HTML .= "    <td colspan='2' style='text-align:left'> ";
 		$window = "Data window: ";
 		switch ($range) {
-		case "a":
+		case "a": //all after
 			if ($this->aCap == "") { $window .= "on or after the From date"; }
 			else { $window = $this->aCap; }
 			break;
-		case "b":
+		case "b": //all before
 			if ($this->bCap == "") { $window .= "on or before the To date"; }
 			else { $window = $this->bCap; }
 			break;
-		case "m":
+		case "m": //month
 			if ($this->mCap == "") { $window .= "the month including the From date"; }
 			else { $window = $this->mCap; }
 			break;
-		case "p":
+		case "p": //period
 			if ($this->pCap == "") { $window .= "between From and To dates (inclusive)"; }
 			else { $window = $this->pCap; }
 			break;
-		case "s":
+		case "s": //single date
 			if ($this->sCap == "") { $window = "Use the From date"; }
 			else { $window = $this->sCap; }
 			break;
-		case "w":
-			if ($this->wCap == "") { $window .= "the week (Mon to Sun) including the From date"; }
+		case "w": //week
+			if ($this->wCap == "") {
+				$window .= COM_weekday("the week (<wd0> to <wd6>) including the From date");
+			}
 			else { $window = $this->wCap; }
 			break;
 		default:
@@ -126,16 +140,24 @@ function HTML() {
 							//pagename,DBname,load from DB?,write to DB?,required?,maxlength,disabled,value
 		$from = new DATE_FIELD("txtFrom","",FALSE,FALSE,FALSE,0,FALSE,$this->from);
 		$HTML .= "  <tr>\n";
-		$HTML .= "    <td class='label'>".$from->HTML_label("From Date(YYYY-MM-DD): ")."</td>\n";
-		$HTML .= "    <td style='text-align:left'>".$from->HTML_input(0)."</td>\n";
+		$HTML .= "    <td class='label'>".$from->HTML_label("From Date: ")."</td>\n";
+		$HTML .= "    <td style='text-align:left'>\n";
+		foreach ($from->HTML_input() as $line) {
+			$HTML .= "      ".$line."\n";
+		}
+		$HTML .= "    </td>\n";
 		$HTML .= "    <td>&nbsp</td>\n";
 		$HTML .= "  </tr>\n";
 	}
 	if ($this->uses & DATE_SELECT::TO) { //To date
 		$to = new DATE_FIELD("txtTo","",FALSE,FALSE,FALSE,0,FALSE,$this->to);
 		$HTML .= "  <tr>\n";
-		$HTML .= "    <td class='label'>".$to->HTML_label("To Date(YYYY-MM-DD): ")."</td>\n";
-		$HTML .= "    <td style='text-align:left'>".$to->HTML_input(0)."</td>\n";
+		$HTML .= "    <td class='label'>".$to->HTML_label("To Date: ")."</td>\n";
+		$HTML .= "    <td style='text-align:left'>\n";
+		foreach ($to->HTML_input() as $line) {
+			$HTML .= "      ".$line."\n";
+		}
+		$HTML .= "    </td>\n";
 		$HTML .= "    <td>&nbsp</td>\n";
 		$HTML .= "  </tr>\n";
 	}
@@ -183,8 +205,21 @@ function POST($chkrecent=3) { //1=to,2=from,3=logical OR
 	case "s":
 		break;
 	case "w":
-		if (($from->format("w") != 0) && ($from->format("N") != 1))
-			$from->value->modify("last monday");
+//		if (($from->format("w") != 0) && ($from->format("N") != 1)) {
+//			$from->value->modify("last monday");
+			if (isset($_STATE->dateform)) {
+				$dateform = $_STATE->dateform;
+			} else {
+				$dateform = $_SESSION["dateform"];
+			}
+			$weekday = getdate($from->value->getTimestamp())["wday"]; //Sun=0
+			if ($weekday < $dateform[0]) {
+				$sub = 7 - ($dateform[0] - $weekday);
+			} else {
+				$sub = ($weekday - $dateform[0]);
+			}
+			$from->value->sub(new DateInterval("P".$sub."D")); //P=period, ?=number, D=days
+//		}
 		$to->value = clone $from->value;
 		$to->value->add(new DateInterval('P6D')); //P=period, 6=number, D=days
 	}

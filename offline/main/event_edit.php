@@ -292,8 +292,8 @@ case UPDATE_EVENT:
       <td colspan="2"><?php echo $_STATE->fields['Budget']->HTML_input(10) ?></td>
     </tr>
     <tr>
-      <td class="label"><?php echo $_STATE->fields['Inactive As Of']->HTML_label("Inactive As Of(yyyy-mm-dd): "); ?></td>
-      <td><?php echo $_STATE->fields['Inactive As Of']->HTML_input(10) ?></td>
+      <td class="label"><?php echo $_STATE->fields['Inactive As Of']->HTML_label("Inactive As Of: "); ?></td>
+      <td><?php foreach ($_STATE->fields['Inactive As Of']->HTML_input() as $line) echo $line."\n"; ?></td>
       <td>&nbsp</td>
     </tr>
   </table>

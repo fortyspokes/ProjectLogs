@@ -24,6 +24,8 @@ class PREFERENCE {
 	public $type; //HTML element
 	public $default_value;
 
+	const DATE = array(0,"Y-m-d",365); //the default
+
 function __construct($name,$type,$default) {
 	$this->name = $name;
 	$this->type = $type;
@@ -44,6 +46,9 @@ function __construct($element,$user) { //$element is table, $user is element_id
 	$stmt = $_DB->query($sql);
 	while ($row = $stmt->fetchObject()) {
 		switch ($row->name) {
+		case "date":
+			$prefer = explode("&",$row->prefer);
+			break;
 		case "label":
 			$prefer = array();
 			$labels = explode("&",$row->prefer);
@@ -276,6 +281,10 @@ private function display_textarea() {
 	return $display;
 }
 
+private function display_date() {
+	return $this->display_textarea();
+}
+
 private function display_staff() {
 	return $this->display_textarea();
 }
@@ -333,6 +342,12 @@ private function get_themes() {
 function new_pref() {
 	$changer = "change_".$this->pref_name;
 	return $this->{$changer}();
+}
+
+function change_date() {
+	$new = $_GET["what"];
+	$this->update($new);
+	return $new;
 }
 
 function change_staff() {

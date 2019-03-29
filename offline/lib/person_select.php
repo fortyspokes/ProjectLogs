@@ -78,9 +78,10 @@ private function get_recs() {
 			'',
 			);
 		if (!is_null($row->inactive_asof)) {
-			$inactive = new DateTime($row->inactive_asof);
-			if ($inactive <= $today) {
-				$element[self::INACTIVE] = $inactive->format('Y-m-d');
+			require_once "lib/field_edit.php";
+			$inactive = new Date_FIELD($row->inactive_asof);
+			if ($inactive->value <= $today) {
+				$element[self::INACTIVE] = $inactive->format();
 				++$this->inactives;
 			}
 		}

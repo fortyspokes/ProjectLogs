@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016, 2019 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 function entry_audit() {
@@ -61,12 +61,17 @@ function entry_audit() {
 	$_SESSION["org_TZO"] = $row->timezone;
 	$stmt->closeCursor();
 
-	//Set theme for organization/person:
+	//Set preferences for organization/person:
 	require_once "lib/preference_set.php";
 	$prefs = new PREF_GET("a00",$_SESSION["organization_id"]);
-	if ($theme = $prefs->preference("theme")) $_SESSION["THEME"] = $theme;
+	if ($pref = $prefs->preference("theme")) $_SESSION["THEME"] = $pref;
+	if ($pref = $prefs->preference("date")) {
+		$_SESSION["dateform"] = $pref;
+	} else {
+		$_SESSION["dateform"] = PREFERENCE::DATE;
+	}
 	$prefs = new PREF_GET("c10",$_SESSION["person_organization_id"]);
-	if ($theme = $prefs->preference("theme")) $_SESSION["THEME"] = $theme;
+	if ($pref = $prefs->preference("theme")) $_SESSION["THEME"] = $pref;
 	$_STATE->msgStatus = "";
 
 	$_SESSION["UserPermits"] = $_PERMITS->get_permits($_SESSION["person_id"]); //set the users's permissions

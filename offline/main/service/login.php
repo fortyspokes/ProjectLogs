@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 //require_once ("../noparent.php");
 
@@ -104,5 +104,10 @@ Password: <input name="txtPswd" id="txtPswd_ID" type="password" class="formInput
 }
 ?>
 </p>
+<?php
+	if ($_SESSION["_SITE_CONF"]["RUNLEVEL"] == 1) {
+		require_once "lib/debug.php";
+		echo debug_session();
+	} ?>
 </body>
 </html>

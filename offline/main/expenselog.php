@@ -351,15 +351,17 @@ function set_state(&$dates) {
 		$_STATE->columns[COL_COUNT] = 60;
 	}
 
+	$from = new DATE_FIELD($_STATE->from_date);
+	$to = new DATE_FIELD($_STATE->to_date);
 	switch ($dates->checked) {
 	case "w":
-		$_STATE->heading .= ": for the week of ".$_STATE->from_date->format('Y-m-d')." to ".$_STATE->to_date->format('Y-m-d');
+		$_STATE->heading .= ": for the week of ".$from->format()." to ".$to->format();
 		break;
 	case "m":
-		$_STATE->heading .= "<br>for the month of ".$_STATE->from_date->format("M-Y");
+		$_STATE->heading .= "<br>for the month of ".$from->format("M-Y");
 		break;
 	default:
-		$_STATE->heading .= "<br>for dates from ".$_STATE->from_date->format('Y-m-d')." to ".$_STATE->to_date->format('Y-m-d');
+		$_STATE->heading .= "<br>for dates from ".$from->format()." to ".$to->format();
 	}
 }
 
@@ -539,7 +541,7 @@ function log_list(&$state, $findrow=0) {
 			$row->logdate = new DateTime($row->logdate);
 			$record = array(
 				"ID" =>			$row->expenselog_id,
-				"logdate" =>	$row->logdate,
+				"logdate"=>		new DATE_FIELD("txtLog","logdate",FALSE,FALSE,FALSE,0,FALSE,$row->logdate),
 				"amount" =>		$row->amount,
 				"row" =>		$row_count, //1 rel (0 => add row)
 				"column" =>		date_diff($state->from_date, $row->logdate)->days, //tabular column (0 rel)
@@ -877,7 +879,7 @@ function audit_amount(&$state, $recID, $amount, $day) {
 	return true;
 }
 
-function audit_amounts(&$state, &$logdate, &$status) {
+function audit_amounts(&$state, &$logdate, &$status) { //set status = '', 'a(dd)', 'u(pdate)', 'd(elete)'
 	global $_DB;
 
 	if ($state->row > 0) { //updating (0 is add row)
@@ -886,9 +888,9 @@ function audit_amounts(&$state, &$logdate, &$status) {
 			throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid POST 1",true);
 	}
 
-	$day = clone $logdate;
+	$day = clone($logdate);
 	$columns = ($state->mode == "l")?1:$state->columns[COL_COUNT];
-	for ($ndx=0; $ndx < $columns; $ndx++, $day->add(new DateInterval('P1D'))) {
+	for ($ndx=0; $ndx < $columns; $ndx++, $day->value->add(new DateInterval('P1D'))) {
 		if (!isset($_POST["amount".$ndx]) || ($_POST["amount".$ndx] == "")
 		 || (($ndx < $state->columns[COL_OPEN])) && ($state->mode =="t")) {
 			$status[] = ''; //no change to this record
@@ -900,13 +902,13 @@ function audit_amounts(&$state, &$logdate, &$status) {
 		$amount = $_POST["amount".$ndx];
 
 		$state->msgStatus = "!Please enter a valid amount (".$ndx.")";
-		if (!audit_amount($state, $recID, $amount, $day->format("Y-m-d"))) return false;
+		if (!audit_amount($state, $recID, $amount, $day->format())) return false;
 
 		if ($recID == 0) { //if adding hours, we're done
 			if ($amount == 0) {
-				$status[] = '';
+				$status[] = ''; //no change to this record
 			} else {
-				$status[] = 'a';
+				$status[] = 'a'; //add this record
 			}
 			continue;
 		}
@@ -917,11 +919,11 @@ function audit_amounts(&$state, &$logdate, &$status) {
 				throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid POST 5",true);
 		}
 		if ($amount == 0) {
-			$status[] = 'd';
+			$status[] = 'd'; //delete this record
 		} elseif ($amount == $record["amount"]) {
-			$status[] = '';
+			$status[] = ''; //no change to this record
 		} else {
-			$status[] = 'u';
+			$status[] = 'u'; //update this record
 		}
 	}
 
@@ -1023,7 +1025,7 @@ function new_amounts(&$state) {
 	$record = reset($state->records);
 	if ($state->type == "") $state->type = $record["type"];
 	if ($state->mode == "t") {
-		$logdate = clone $state->from_date;
+		$logdate = new DATE_FIELD("txtLog","logdate",FALSE,FALSE,FALSE,0,FALSE,clone($state->from_date));
 	} elseif ($state->row == 0) { //adding in List mode
 		$logdate = clone $state->logdate; //created by DATE_PICK
 	} else {
@@ -1036,7 +1038,7 @@ function new_amounts(&$state) {
 	//	adding a row but didn't select existing activity:
 	if (($state->row == 0) && ($state->activity_id == 0)) add_activity($state);
 	$columns = ($state->mode == "l")?1:$state->columns[COL_COUNT];
-	for ($ndx=0; $ndx < $columns; $ndx++, $logdate->add(new DateInterval('P1D'))) {
+	for ($ndx=0; $ndx < $columns; $ndx++, $logdate->value->add(new DateInterval('P1D'))) {
 		switch ($status[$ndx]) {
 		case 'a': //add
 			add_log($state, $logdate, $ndx);
@@ -1147,6 +1149,10 @@ function changes(&$state, &$response) {
 	case "BN": //button => adding/updating amounts
 		new_amounts($state);
 		$response = $state->msgStatus;
+/*$response = "!".$response."\n";;
+foreach ($_POST as $key => $value) {
+	$response .= $key."=".$value.";\n";
+}*/
 		break;
 	case "TK": //task
 	case "ST": //subtask
@@ -1349,7 +1355,7 @@ function onerow(&$header, &$logs) {
 	$max = ($_STATE->mode == "l")?1:$_STATE->columns[COL_COUNT];
 	for ($ndx=0; $ndx<$max; $ndx++) {
 		if ($_STATE->mode == "l") //add date in list mode
-			echo "    <td id='DT_".$row."' class='date'>".$header["logdate"]->format("Y-m-d")."</td>\n";
+			echo "    <td id='DT_".$row."' class='date'>".$header["logdate"]->format()."</td>\n";
 		echo "    <td id='AM_".$row."_".$ndx."' class='number'";
 		echo " data-recid='".$logs[$ndx][LOG_ID]."' data-value='".$logs[$ndx][LOG_AMT]."'";
 		if ($_STATE->mode == "l") {

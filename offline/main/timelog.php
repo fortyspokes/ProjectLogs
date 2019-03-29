@@ -336,15 +336,17 @@ function set_state(&$dates) {
 		$_STATE->columns[COL_COUNT] = 60;
 	}
 
+	$from = new DATE_FIELD($_STATE->from_date);
+	$to = new DATE_FIELD($_STATE->to_date);
 	switch ($dates->checked) {
 	case "w":
-		$_STATE->heading .= ": for the week of ".$_STATE->from_date->format('Y-m-d')." to ".$_STATE->to_date->format('Y-m-d');
+		$_STATE->heading .= ": for the week of ".$from->format()." to ".$to->format();
 		break;
 	case "m":
-		$_STATE->heading .= "<br>for the month of ".$_STATE->from_date->format("M-Y");
+		$_STATE->heading .= "<br>for the month of ".$from->format("M-Y");
 		break;
 	default:
-		$_STATE->heading .= "<br>for dates from ".$_STATE->from_date->format('Y-m-d')." to ".$_STATE->to_date->format('Y-m-d');
+		$_STATE->heading .= "<br>for dates from ".$from->format()." to ".$to->format();
 	}
 }
 
@@ -519,7 +521,7 @@ function log_list(&$state, $findrow=0) {
 			$row->logdate = new DateTime($row->logdate);
 			$record = array(
 				"ID" =>			$row->timelog_id,
-				"logdate" =>	$row->logdate,
+				"logdate"=>		new DATE_FIELD("txtLog","logdate",FALSE,FALSE,FALSE,0,FALSE,$row->logdate),
 				"hours" =>		$row->hours,
 				"row" =>		$row_count, //1 rel (0 => add row)
 				"column" =>		date_diff($state->from_date, $row->logdate)->days, //tabular column (0 rel)
@@ -832,7 +834,7 @@ function audit_hour(&$state, $recID, $hours, $day) {
 	return true;
 }
 
-function audit_hours(&$state, &$logdate, &$status) {
+function audit_hours(&$state, &$logdate, &$status) { //set status = '', 'a(dd)', 'u(pdate)', 'd(elete)'
 	global $_DB;
 
 	if ($state->row > 0) { //updating (0 is add row)
@@ -841,9 +843,9 @@ function audit_hours(&$state, &$logdate, &$status) {
 			throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid POST 1",true);
 	}
 
-	$day = clone $logdate;
+	$day = clone($logdate);
 	$columns = ($state->mode == "l")?1:$state->columns[COL_COUNT];
-	for ($ndx=0; $ndx < $columns; $ndx++, $day->add(new DateInterval('P1D'))) {
+	for ($ndx=0; $ndx < $columns; $ndx++, $day->value->add(new DateInterval('P1D'))) {
 		if (!isset($_POST["hours".$ndx]) || ($_POST["hours".$ndx] == "")
 		 || (($ndx < $state->columns[COL_OPEN])) && ($state->mode =="t")) {
 			$status[] = ''; //no change to this record
@@ -855,13 +857,13 @@ function audit_hours(&$state, &$logdate, &$status) {
 		$recID = $_POST["rec".$ndx]; //from data-recid attribute
 
 		$state->msgStatus = "!Please enter valid hours (".$ndx.")";
-		if (!audit_hour($state, $recID, $hours, $day->format("Y-m-d"))) return false;
+		if (!audit_hour($state, $recID, $hours, $day->format())) return false;
 
 		if ($recID == 0) { //if adding hours, we're done
 			if ($hours == 0) {
-				$status[] = '';
+				$status[] = ''; //no change to this record
 			} else {
-				$status[] = 'a';
+				$status[] = 'a'; //add this record
 			}
 			continue;
 		}
@@ -873,11 +875,11 @@ function audit_hours(&$state, &$logdate, &$status) {
 				throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid POST 4",true);
 		}
 		if ($hours == 0) {
-			$status[] = 'd';
+			$status[] = 'd'; //delete this record
 		} elseif ($hours == $record["hours"]) {
-			$status[] = '';
+			$status[] = ''; //no change to this record
 		} else {
-			$status[] = 'u';
+			$status[] = 'u'; //update this record
 		}
 	}
 
@@ -993,7 +995,7 @@ function new_hours(&$state) {
 
 	//Do audits:
 	if ($state->mode == "t") {
-		$logdate = clone $state->from_date;
+		$logdate = new DATE_FIELD("txtLog","logdate",FALSE,FALSE,FALSE,0,FALSE,clone($state->from_date));
 	} elseif ($state->row == 0) { //adding in List mode
 		$logdate = clone $state->logdate; //created by DATE_PICK
 	} else {
@@ -1007,7 +1009,7 @@ function new_hours(&$state) {
 	//	adding a row but didn't select existing activity:
 	if (($state->row == 0) && ($state->activity_id == 0)) add_activity($state);
 	$columns = ($state->mode == "l")?1:$state->columns[COL_COUNT];
-	for ($ndx=0; $ndx < $columns; $ndx++, $logdate->add(new DateInterval('P1D'))) {
+	for ($ndx=0; $ndx < $columns; $ndx++, $logdate->value->add(new DateInterval('P1D'))) {
 		switch ($status[$ndx]) {
 		case 'a': //add
 			add_log($state, $logdate, $ndx);
@@ -1300,7 +1302,7 @@ function onerow(&$header, &$logs) {
 	$max = ($_STATE->mode == "l")?1:$_STATE->columns[COL_COUNT];
 	for ($ndx=0; $ndx<$max; $ndx++) {
 		if ($_STATE->mode == "l") //add date in list mode
-			echo "    <td id='DT_".$row."' class='date'>".$header["logdate"]->format("Y-m-d")."</td>\n";
+			echo "    <td id='DT_".$row."' class='date'>".$header["logdate"]->format()."</td>\n";
 		echo "    <td id='HR_".$row."_".$ndx."' class='number'";
 		echo " data-recid='".$logs[$ndx][LOG_ID]."'";
 		if ($_STATE->mode == "l") {

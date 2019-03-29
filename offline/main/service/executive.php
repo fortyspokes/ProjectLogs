@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 require_once "prepend.php";
 require_once "lib/state.php";
@@ -101,29 +101,11 @@ function EX_pageEnd() {
 	&lt Goback</button>
 <?php
 	}
-	if ($_SESSION["_SITE_CONF"]["RUNLEVEL"] == 1) { ?>
-<br><textarea id='msgDebug' cols='100' rows='1' ondblclick='this.rows=this.rows+10;'></textarea>
-</p>
-<table cellpadding=2>
-<?php
-		echo "<tr><td align='right' valign='top'>Session: </td><td align='left'>";
-		foreach ($_SESSION as $key=>$value) echo $key.";"; echo "</td></tr>";
-		echo "<tr><td align='right' valign='top'>Permits: </td>";
-		echo "<td align='left'>";
-		echo serialize($_SESSION["UserPermits"]);
-		echo "</td></tr>";
-		echo "<tr><td colspan='2' align='left'>_STATE:</td></tr>";
-		$value = serialize(clone($_STATE));
-		echo ("<tr valign='top'><td></td><td align='left'>".$value."</td></tr>\n");
-		foreach ($_SESSION["STATE"] as $name=>$thread) {
-			echo "<tr><td colspan='2' align='left'>_SESSION[STATE][".$name."]:</td></tr>";
-			foreach ($thread as $key=>$value) {
-				echo ("<tr valign='top'><td align='right'>".$key."</td><td align='left'>".$value."</td></tr>\n");
-			}
-		}
-?>
-</table>
-<?php
+	if ($_SESSION["_SITE_CONF"]["RUNLEVEL"] == 1) {
+		require_once "lib/debug.php";
+		echo debug_area();
+		echo "</p>\n";
+		echo debug_session();
 	} ?>
 </body>
 </html>

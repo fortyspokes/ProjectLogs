@@ -3,6 +3,8 @@
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("set_rates")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
+require_once "lib/field_edit.php";
+
 //The Main State Gate cases:
 define('LIST_PROJECTS',		STATE::INIT);
 define('SELECT_PROJECT',		LIST_PROJECTS + 1);
@@ -10,7 +12,8 @@ define('SELECTED_PROJECT',		LIST_PROJECTS + 2);
 define('LIST_PERSONS',		STATE::INIT + 10);
 define('SELECT_PERSON',			LIST_PERSONS + 1);
 define('SELECTED_PERSON',		LIST_PERSONS + 2);
-define('RATE_CHANGE',		STATE::INIT + 20);
+define('RATE_DISPLAY',		STATE::INIT + 20);
+define('RATE_CHANGE',			RATE_DISPLAY + 1);
 
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
@@ -58,7 +61,14 @@ case SELECT_PERSON:
 case SELECTED_PERSON:
 	$_STATE->backup = LIST_PERSONS; //set goback
 	$_STATE->msgGreet = $_STATE->project_name."<br>Rate history for ".$_STATE->records[strval($_STATE->record_id)]["name"];
+	$_STATE->status = RATE_DISPLAY;
+	break 2;
+case RATE_DISPLAY:
+	echo input_display($_GET["row"]); //the XMLHttpRequest responseText
 	$_STATE->status = RATE_CHANGE;
+	$_STATE->replace();
+	$_STATE->push();
+	exit();
 	break 2;
 case RATE_CHANGE:
 	if (isset($_GET["reset"])) {
@@ -66,7 +76,9 @@ case RATE_CHANGE:
 		person_list();
 		break 1;
 	}
-	ob_clean();
+	//The executive 'pulls' the state but it doesn't have the DATE_FIELD object def so that the
+	//un-serialize doesn't work; may be a better way than re-doing the pull but it works for now:
+	$_STATE = STATE_pull(); //'pull' the working state
 	rate_change();
 	echo $_STATE->msgStatus; //the XMLHttpRequest responseText
 	$_STATE->replace();
@@ -108,7 +120,7 @@ function person_list($person_id=-1) {
 			$record = array(
 				"ID" => $row_sav->person_id,
 				"name" => $row_sav->lastname.", ".$row_sav->firstname,
-				"inactive_asof" => $row_sav->inactive_asof,
+				"inactive_asof"=>new DATE_FIELD($row_sav->inactive_asof), //provides formatting only
 				"rates" => $rates,
 				);
 			$_STATE->records[strval($row_sav->person_id)] = $record;
@@ -120,8 +132,9 @@ function person_list($person_id=-1) {
 			"ID" => $row->rate_id,
 			"update" => false,
 			"rate" => $row->rate,
-			"eff" => $row->effective_asof,
-			"exp" => $row->expire_after,
+							//pagename,DBname,load from DB?,write to DB?,required?,maxlength,disabled,value
+			"eff"=>new DATE_FIELD("txtEff","effective_asof",FALSE,FALSE,FALSE,0,FALSE,$row->effective_asof),
+			"exp"=>new DATE_FIELD("txtExp","expire_after",FALSE,FALSE,FALSE,0,FALSE,$row->expire_after),
 			);
 	}
 	$stmt->closeCursor();
@@ -137,6 +150,61 @@ function record_select() {
 	$_STATE->record_id = intval($_POST["txtPerson"]);
 }
 
+function input_display($row) { //fill out the line with input boxes then return
+	global $_STATE;
+
+	if ($row == 0) {
+		$eff = new DATE_FIELD("txtEff","effective_asof",FALSE,FALSE,FALSE,0,FALSE,"");
+		$exp = new DATE_FIELD("txtExp","expire_after",FALSE,FALSE,FALSE,0,FALSE,"");
+	} else {
+		person_list($_STATE->record_id); //get only this person's rates
+		$eff = $_STATE->records[$_STATE->record_id]["rates"][$row - 1]["eff"];
+		$exp = $_STATE->records[$_STATE->record_id]["rates"][$row - 1]["exp"];
+	}
+
+	$HTML = "@"; //eval
+	$HTML .= "var cell = document.getElementById('BN_".$row."');\n";
+	$HTML .= "var cellGuts = \"<button type='button' onclick='new_rate(".$row.")'>\";\n";
+	if ($row == 0) {
+		$HTML .= "cellGuts += \"Submit the new rate\";\n";
+	} else {
+		$HTML .= "cellGuts += \"Submit rate changes\";\n";
+	}
+	$HTML .= "cellGuts += \"</button>\";\n";
+	$HTML .= "cellGuts += \"<br><button type='button' name='btnReset' onclick='return Reset()'>Cancel</button>\";\n";
+	$HTML .= "cell.innerHTML = cellGuts;\n";
+
+	$HTML .= "cell = document.getElementById('RT_".$row."');\n";
+	$HTML .= "cellGuts = \"<input type='text' name='txtRate' id='txtRate_ID' size='6' maxlength='6' class='number' value='\";\n";
+	if ($row == 0) {
+		$HTML .= "cellGuts += \"0\";\n";
+	} else {
+		$HTML .= "cellGuts += cell.innerHTML;\n";
+	}
+	$HTML .= "cellGuts += \"'>\";\n";
+	$HTML .= "cell.innerHTML = cellGuts;\n";
+
+	$HTML .= "cell = document.getElementById('EF_".$row."');\n";
+	$HTML .= "cellGuts = \"\";\n";
+	foreach ($eff->HTML_input() as $line) {
+		$HTML .= "cellGuts += \"".$line."\";\n";
+	}
+	$HTML .= "cell.innerHTML = cellGuts;\n";
+
+	$HTML .= "cell = document.getElementById('EX_".$row."');\n";
+	$HTML .= "cellGuts = \"\";\n";
+	foreach ($exp->HTML_input() as $line) {
+		$HTML .= "cellGuts += \"".$line."\";\n";
+	}
+	$HTML .= "cell.innerHTML = cellGuts;\n";
+
+	if ($row != 0) {
+		$HTML .= "document.getElementById('msgGreet_ID').innerHTML += \":<br>To delete, enter 0 for effective\";\n";
+	}
+
+	return $HTML;
+}
+
 function add_rate() {
 	global $_DB, $_STATE;
 
@@ -147,14 +215,14 @@ function add_rate() {
 
 	$eff = DateTime::createFromFormat('Y-m-d', $_STATE->new_rate["eff"]);
 	if (!is_null($_STATE->rates[1]["ID"])) { //have an existing rate
-		if ($_STATE->rates[1]["exp"] != "") { //rates[0] is the new rate
-			$prior = DateTime::createFromFormat('Y-m-d', $_STATE->rates[1]["exp"]);
+		if (!is_null($_STATE->rates[1]["exp"])) { //rates[0] is the new rate
+			$prior = $_STATE->rates[1]["exp"]->value;
 			if (($eff <= $prior) && !isset($_STATE->replies["AP"])) {
 				$_STATE->msgStatus = "?APEffective date precedes prior expiration, adjust the prior date?";
 				return false;
 			}
 		}
-		$prior = DateTime::createFromFormat('Y-m-d', $_STATE->rates[1]["eff"]);
+		$prior = $_STATE->rates[1]["eff"]->value;
 		if ($eff <= $prior) {
 			$_STATE->msgStatus = "!**New effective date must follow prior effective date**";
 			return false;
@@ -219,7 +287,7 @@ function update_rate() {
 	$eff_old = DateTime::createFromFormat('Y-m-d', $row->effective_asof);
 	if ($eff_new != $eff_old) {
 		if ($_STATE->new_rate["exp"] != "") {
-			if ($eff_new < DateTime::createFromFormat('Y-m-d', $_STATE->new_rate["exp"])) {
+			if ($eff_new > DateTime::createFromFormat('Y-m-d', $_STATE->new_rate["exp"])) {
 				$_STATE->msgStatus = "!**Update denied: effective date later than expiration**";
 				return;
 			}
@@ -227,20 +295,20 @@ function update_rate() {
 		if ($eff_new < $eff_old) {
 			$prior = $_STATE->rate_ndx + 1;
 			if ($prior < count($_STATE->rates)) { //a prior rate exists
-				$prior_exp = DateTime::createFromFormat('Y-m-d', $_STATE->rates[$prior]["exp"]);
+				$prior_exp = $_STATE->rates[$prior]["exp"]->value;
 				if (($eff_new <= $prior_exp) && !isset($_STATE->replies["UP"])) {
 					$_STATE->msgStatus = "?UPEffective date precedes prior expiration, adjust the prior date?";
 					return;
 				}
 				$prior_exp = DateTime::createFromFormat('Y-m-d', $eff_new->format('Y-m-d')); //new prior expiration
 				$prior_exp->sub(new DateInterval('P1D')); //subtract a day
-				$prior_eff = DateTime::createFromFormat('Y-m-d', $_STATE->rates[$prior]["eff"]);
+				$prior_eff = $_STATE->rates[$prior]["eff"]->value;
 				if ($prior_exp < $prior_eff) {
 					$_STATE->msgStatus = "!**Update denied: adjusted prior expiration precedes prior effective**";
 					return;
 				}
 				$_STATE->rates[$prior]["update"] = true;
-				$_STATE->rates[$prior]["exp"] = $prior_exp->format('Y-m-d');
+				$_STATE->rates[$prior]["exp"] = $prior_exp;
 			}
 		} else { //$eff_new > $eff_old
 			$sql = "SELECT timelog_id FROM ".$_DB->prefix."v00_timelog
@@ -257,7 +325,7 @@ function update_rate() {
 			$stmt->closeCursor();
 		}
 		$_STATE->rates[$_STATE->rate_ndx]["update"] = true;
-		$_STATE->rates[$_STATE->rate_ndx]["eff"] = $eff_new->format('Y-m-d');
+		$_STATE->rates[$_STATE->rate_ndx]["eff"] = $eff_new;
 	}
 
 	//Expiration date:
@@ -275,7 +343,9 @@ function update_rate() {
 			}
 			$stmt->closeCursor();
 		}
-		$_STATE->rates[$_STATE->rate_ndx]["exp"] = $_STATE->new_rate["exp"];
+							//pagename,DBname,load from DB?,write to DB?,required?,maxlength,disabled,value
+		$_STATE->rates[$_STATE->rate_ndx]["exp"] =
+				new DATE_FIELD("txtExp","expire_after",FALSE,FALSE,FALSE,0,FALSE,$_STATE->new_rate["exp"]);
 		$_STATE->rates[$_STATE->rate_ndx]["update"] = true;
 	} else {
 		$exp_new = DateTime::createFromFormat('Y-m-d', $_STATE->new_rate["exp"]);
@@ -283,15 +353,15 @@ function update_rate() {
 		if ($exp_new != $exp_old) {
 			if ($exp_new > $exp_old) {
 				$next = $_STATE->rate_ndx - 1;
-				$next_eff = DateTime::createFromFormat('Y-m-d', $_STATE->rates[$next]["eff"]);
+				$next_eff = $_STATE->rates[$next]["eff"]->value;
 				if (($exp_new >= $next_eff) && !isset($_STATE->replies["UN"])) {
 					$_STATE->msgStatus = "?UNExpiration date later than next effective, adjust the next date?";
 					return;
 				}
 				$next_eff = DateTime::createFromFormat('Y-m-d', $exp_new->format('Y-m-d')); //new next effective
 				$next_eff->add(new DateInterval('P1D')); //add a day
-				if ($_STATE->rates[$next]["exp"] != '') {
-					$next_exp = DateTime::createFromFormat('Y-m-d', $_STATE->rates[$next]["exp"]);
+				if (!is_null($_STATE->rates[$next]["exp"])) {
+					$next_exp = $_STATE->rates[$next]["exp"]->value;
 				} else {
 					$next_exp = $next_eff;
 				}
@@ -300,7 +370,9 @@ function update_rate() {
 					return;
 				}
 				$_STATE->rates[$next]["update"] = true;
-				$_STATE->rates[$next]["eff"] = $next_eff->format('Y-m-d');
+							//pagename,DBname,load from DB?,write to DB?,required?,maxlength,disabled,value
+				$_STATE->rates[$next]["eff"] =
+						new DATE_FIELD("txtEff","effective_asof",FALSE,FALSE,FALSE,0,FALSE,$next_eff);
 			} else { //$exp_new < $exp_old
 				$sql = "SELECT timelog_id FROM ".$_DB->prefix."v00_timelog
 						WHERE (person_id=".$_STATE->record_id.") AND (project_id=".$_STATE->project_id.")
@@ -316,7 +388,9 @@ function update_rate() {
 				$stmt->closeCursor();
 			}
 			$_STATE->rates[$_STATE->rate_ndx]["update"] = true;
-			$_STATE->rates[$_STATE->rate_ndx]["exp"] = $exp_new->format('Y-m-d');
+							//pagename,DBname,load from DB?,write to DB?,required?,maxlength,disabled,value
+			$_STATE->rates[$_STATE->rate_ndx]["exp"] =
+							new DATE_FIELD("txtExp","expire_after",FALSE,FALSE,FALSE,0,FALSE,$exp_new);
 		}
 	}
 
@@ -338,11 +412,11 @@ function update_rate() {
 	foreach($_STATE->rates as $rate) {
 		if ($rate["update"]) {
 			$stmt->bindValue(':rate',$rate["rate"], PDO::PARAM_STR);
-			$stmt->bindValue(':eff', $rate["eff"], db_connect::PARAM_DATE);
+			$stmt->bindValue(':eff', $rate["eff"]->format(), db_connect::PARAM_DATE);
 			if ($rate["exp"] == "") {
 				$stmt->bindValue(':exp', null, db_connect::PARAM_DATE);
 			} else {
-				$stmt->bindValue(':exp', $rate["exp"], db_connect::PARAM_DATE);
+				$stmt->bindValue(':exp', $rate["exp"]->format(), db_connect::PARAM_DATE);
 			}
 			$stmt->bindValue(':ID', $rate["ID"], PDO::PARAM_INT);
 			$stmt->execute();
@@ -453,8 +527,63 @@ function rate_change() {
 	}
 }
 
-$scripts = array("call_server.js", "set_rates.js");
+$scripts = array("call_server.js");
 EX_pageStart($scripts); //standard HTML page start stuff - insert SCRIPTS here
+
+switch ($_STATE->status) { //add javascript
+case SELECT_PERSON:
+?>
+<script language="JavaScript">
+function select_person(me) {
+	var myText = document.getElementById("txtPerson_ID");
+	var myForm = document.getElementById("frmAction_ID");
+	myText.innerHTML = me.id;
+	myText.value = me.id;
+	myForm.submit();
+}
+</script>
+<?php
+	break;
+case RATE_DISPLAY:
+?>
+<script language="JavaScript">
+var selectedRow;
+function open_row(me) {
+	selectedRow = me.id.charAt(3);
+	var row;
+	for (var ndx=0; ndx<=<?php echo count($_STATE->records[strval($_STATE->record_id)]["rates"]) ?>; ndx++) {
+		row = document.getElementById("BN_"+ndx);
+		row.title = "";
+		row.onclick = null;
+		row.style.cursor = "default";
+	}
+	server_call("GET", "row="+selectedRow);
+}
+function new_rate(row) {
+	var content;
+
+	if (document.getElementById("txtEff_ID").value == "0") {
+		if (!confirm("Are you sure you want to delete this rate record?")) return;
+	}
+	var content = "ID=" + document.getElementById("BN_"+selectedRow).getAttribute("data-recid");
+	content += "&rate=" + document.getElementById("txtRate_ID").value;
+	content += "&eff=" + document.getElementById("txtEffYYYY_ID").value;
+	content += "-" + document.getElementById("txtEffMM_ID").value;
+	content += "-" + document.getElementById("txtEffDD_ID").value;
+	content += "&exp=" + document.getElementById("txtExpYYYY_ID").value;
+	content += "-" + document.getElementById("txtExpMM_ID").value;
+	content += "-" + document.getElementById("txtExpDD_ID").value;
+	server_call("POST", content);
+}
+function Reset() {
+	var URL_delim = "&"; if (IAm.indexOf("?") == -1 ) URL_delim = "?";
+	window.location = IAm + URL_delim + "reset";
+}
+</script>
+<?php
+	break;
+} //end switch ($_STATE->status) for javascript
+
 EX_pageHead(); //standard page headings - after any scripts
 
 //forms and display depend on process state; note, however, that the state was probably changed after entering
@@ -479,34 +608,39 @@ Show inactive persons
   <tr><th>&nbsp;</th><th>Rate</th><th>Effective as of</th><th>Expires after</th></tr>
 <?php
 	$today = COM_NOW();
+	$title = "Click to select";
 	foreach($_STATE->records as $person_id => $record) {
 		$opacity = "1.0"; //opacity value
-		if (!is_null($record["inactive_asof"])) {
-			if (new DateTime($record["inactive_asof"]) <= $today) {
+		$inact = "";
+		if (!is_null($record["inactive_asof"]->value)) {
+			if ($record["inactive_asof"]->value <= $today) {
 				if (!$_STATE->show_inactive) continue;
 				$opacity = "0.5";
+			$inact = "; inactive as of ".$record["inactive_asof"]->format();
 			}
 		}
 ?>
-  <tr style='opacity:<?php echo $opacity; ?>'>
-    <td ID='<?php echo($person_id);?>' onclick='return submit_it(this);'><?php echo($record["name"]);?></td>
+  <tr title='<?php echo($title.$inact); ?>' style='opacity:<?php echo $opacity; ?>'>
+    <td ID='<?php echo($person_id);?>' onclick='return select_person(this);'><?php echo($record["name"]);?></td>
     <td><?php echo(number_format($record["rates"][0]["rate"],2));?></td>
-    <td><?php echo($record["rates"][0]["eff"]);?></td>
-    <td><?php echo($record["rates"][0]["exp"]);?></td>
+    <td><?php echo($record["rates"][0]["eff"]->format());?></td>
+    <td><?php echo($record["rates"][0]["exp"]->format());?></td>
   </tr>
 <?php
-	} ?>
+	} //end foreach ?>
 </table>
 </p>
 <?php //end SELECT_PERSON status ----END STATUS PROCESSING----
 	break;
-case RATE_CHANGE:
+case RATE_DISPLAY:
 ?>
 <p>
 <table align='center' cellpadding='4' border='2' class="list">
   <tr><th style="width:100px">&nbsp;</th><th>Rate</th><th>Effective as of</th><th>Expires after</th></tr>
   <tr>
-    <td id="BN_0" data-recid="0" onclick="init_row(this)" title="Click to add new rate"><img src="<?php echo $_SESSION["BUTLER"]; ?>?IAm=IG&file=add.png&ver=<?php echo $_VERSION; ?>"></td>
+    <td id="BN_0" data-recid="0" onclick="open_row(this)" title="Click to add new rate" style="cursor:pointer">
+      <img src="<?php echo $_SESSION["BUTLER"]; ?>?IAm=IG&file=add.png&ver=<?php echo $_VERSION; ?>">
+    </td>
     <td id="RT_0"></td>
     <td id="EF_0"></td>
     <td id="EX_0"></td>
@@ -516,10 +650,10 @@ case RATE_CHANGE:
 	foreach($_STATE->records[strval($_STATE->record_id)]["rates"] as $rate) {
 		if (!isset($rate["rate"])) continue; ?>
   <tr>
-    <td id='BN_<?php echo($counter."' data-recid='".$rate["ID"]);?>' onclick='return init_row(this)'><?php echo($counter);?></td>
+    <td id='BN_<?php echo($counter."' data-recid='".$rate["ID"]);?>' onclick='return open_row(this)' title='Click to update rate' style='cursor:pointer'><?php echo($counter);?></td>
     <td id='RT_<?php echo($counter."'>".number_format($rate["rate"],2));?></td>
-    <td id='EF_<?php echo($counter."'>".$rate["eff"]);?></td>
-    <td id='EX_<?php echo($counter."'>".$rate["exp"]);?></td>
+    <td id='EF_<?php echo($counter."'>".$rate["eff"]->format());?></td>
+    <td id='EX_<?php echo($counter."'>".$rate["exp"]->format());?></td>
 <?php
 		++$counter;
 	} ?>

@@ -1,5 +1,5 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 //some stuff that has wide applicability...
 
@@ -38,6 +38,30 @@ function COM_NOW() { //adjust server time zone to org's TZO
 	$interval->invert = $invert;
 	$now->add($interval);
 	return $now;
+}
+
+function COM_weekday($line, $days=array("Sun","Mon","Tue","Wed","Thu","Fri","Sat")) {
+	global $_STATE;
+
+	$start = $_SESSION["dateform"][0];
+	if (isset($_STATE->dateform)) $start = $_STATE->dateform[0];
+	$days = array_merge($days, $days);
+	$days = array_slice($days, $start, 7); //now have array of names starting with week start
+	$ndx = 0;
+	$out = "";
+	while (1==1) {
+		if ($ndx = strpos($line, "<wd")) { //look for <wdn> (n is a digit)
+			$day = substr($line, $ndx + 3, 1);
+			$out .= substr($line, 0, $ndx).$days[$day];
+			$line = substr($line, $ndx + 5);
+		} else {
+			break;
+		}
+	}
+	$out .= $line;
+
+	return $out;
+
 }
 
 function COM_sleep($who) { //called by obects when sleeping

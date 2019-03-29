@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 require_once "prepend.php";
 require_once "lib/common.php";
@@ -29,6 +29,11 @@ window.onload = function() {
 <div class="status"><?php echo $msgStatus; ?></div>
 </p>
 <div class="greet">To continue, select an action from the menu...</div>
+<?php
+	if ($_SESSION["_SITE_CONF"]["RUNLEVEL"] == 1) {
+		require_once "lib/debug.php";
+		echo debug_session();
+	} ?>
 </body>
 </html>
 <?php

@@ -61,13 +61,18 @@ function entry_audit() {
 	}
 	init_setup(); //re-display the list
 	$_SESSION["organization_id"] = intval($_POST["selOrgs"]);
-	//Set theme for organization:
+	//Set preferences for organization:
 	require_once "lib/preference_set.php";
 	$prefs = new PREF_GET("a00",$_SESSION["organization_id"]);
-	if ($theme = $prefs->preference("theme")) {
-		$_SESSION["THEME"] = $theme;
+	if ($pref = $prefs->preference("theme")) {
+		$_SESSION["THEME"] = $pref;
 	} else {
 		$_SESSION["THEME"] = $_SESSION["_SITE_CONF"]["THEME"]; //go back to default
+	}
+	if ($pref = $prefs->preference("date")) {
+		$_SESSION["dateform"] = $pref;
+	} else {
+		$_SESSION["dateform"] = PREFERENCE::DATE;
 	}
 	$_SESSION["org_TZO"] = $_STATE->records[$_POST["selOrgs"]][1];
 	$_SESSION["UserPermits"] = $GLOBALS["_PERMITS"]->get_permits($_SESSION["person_id"]); //set the users's permissions
