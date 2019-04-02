@@ -1,20 +1,10 @@
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 var CS_callback;
 var CS_whoWas;
-//var IAm must be defined by the page if 'who' not specified
-function server_call(type, content, who, service) { //type: "POST", "GET"
-	//set defaults:
-	if (who === undefined) {
-		if (IAm === undefined) {
-			alert('System error: caller not defined');
-			return;
-		} else {
-			who = IAm;
-		}
-	}
-	service = service !== undefined ?  service : server_answer;
+//var IAm must be defined by the page if 'who' not specified by caller
+function server_call(type, content, who=IAm, service=server_answer) { //type: "POST", "GET"
 	//set callbacks:
 	CS_callback = service;
 	CS_whoWas = who;
@@ -71,18 +61,16 @@ function server_set_dbug() { //clear out the debug area
 	dbugmsg = document.getElementById('msgDebug');
 	if (dbugmsg !== undefined) {
 		try {
-			dbugmsg.innerText = ''; //IE
-			dbugmsg.innerHTML = ''; //Firefox
+			dbugmsg.innerHTML = '';
 		} catch(dummy){}
 	}
 }
 function server_put_debug(resp) { //add this stuff to debug
-  var dbugmsg = document.getElementById('msgDebug');
-  if (dbugmsg !== undefined) {
-    try {
-    dbugmsg.innerText += resp; //IE
-    dbugmsg.innerHTML += resp; //Firefox
-    } catch(dummy){}
-  }
+	var dbugmsg = document.getElementById('msgDebug');
+	if (dbugmsg !== undefined) {
+		try {
+			dbugmsg.innerHTML += resp;
+		} catch(dummy){}
+	}
 }
 
