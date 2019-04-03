@@ -274,6 +274,14 @@ function HTML_input($length=0, $extra=NULL) {
 
 	return $HTML;
 }
+
+function POSTring() {
+	$HTML = array();
+	$HTML[] = array($this->pagename."YYYY","document.getElementById('".$this->pagename."YYYY_ID').value");
+	$HTML[] = array($this->pagename."MM","document.getElementById('".$this->pagename."MM_ID').value");
+	$HTML[] = array($this->pagename."DD","document.getElementById('".$this->pagename."DD_ID').value");
+	return $HTML;
+}
 } //end class DATE_FIELD
 
 define('FIELD_ADD', 1);

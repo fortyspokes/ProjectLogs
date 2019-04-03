@@ -198,8 +198,15 @@ function input_display($row) { //fill out the line with input boxes then return
 	}
 	$HTML .= "cell.innerHTML = cellGuts;\n";
 
+	foreach ($eff->POSTring() as $line) {
+		$HTML .= "POSTdates.push(new Array(\"".$line[0]."\",\"".$line[1]."\"));\n";
+	}
+	foreach ($exp->POSTring() as $line) {
+		$HTML .= "POSTdates.push(new Array(\"".$line[0]."\",\"".$line[1]."\"));\n";
+	}
+
 	if ($row != 0) {
-		$HTML .= "document.getElementById('msgGreet_ID').innerHTML += \":<br>To delete, enter 0 for effective\";\n";
+		$HTML .= "document.getElementById('msgGreet_ID').innerHTML += \":<br>To delete, erase effective date\";\n";
 	}
 
 	return $HTML;
@@ -208,14 +215,14 @@ function input_display($row) { //fill out the line with input boxes then return
 function add_rate() {
 	global $_DB, $_STATE;
 
-	if ($_STATE->new_rate["eff"] == 0) {
+	if (is_null($_STATE->new_rate["eff"]->value)) {
 		$_STATE->msgStatus = "!**Adding a new rate with 0 effective date makes no sense**";
 		return false;
 	}
 
-	$eff = DateTime::createFromFormat('Y-m-d', $_STATE->new_rate["eff"]);
+	$eff = $_STATE->new_rate["eff"]->value;
 	if (!is_null($_STATE->rates[1]["ID"])) { //have an existing rate
-		if (!is_null($_STATE->rates[1]["exp"])) { //rates[0] is the new rate
+		if (!is_null($_STATE->rates[1]["exp"]->value)) { //rates[0] is the new rate
 			$prior = $_STATE->rates[1]["exp"]->value;
 			if (($eff <= $prior) && !isset($_STATE->replies["AP"])) {
 				$_STATE->msgStatus = "?APEffective date precedes prior expiration, adjust the prior date?";
@@ -234,14 +241,16 @@ function add_rate() {
 		$_DB->exec($sql);
 	}
 
-	if (($_STATE->new_rate["exp"] == 0) || ($_STATE->new_rate["exp"] == ""))
-		$_STATE->new_rate["exp"] = null;
 	$sql = "INSERT INTO ".$_DB->prefix."c02_rate (person_idref, project_idref, rate, effective_asof, expire_after)
 			VALUES (".$_STATE->record_id.",".$_STATE->project_id.",".$_STATE->new_rate["rate"].
 					",:effective,:expire);";
 	$stmt = $_DB->prepare($sql);
-	$stmt->bindValue(':effective', $_STATE->new_rate["eff"], db_connect::PARAM_DATE);
-	$stmt->bindValue(':expire', $_STATE->new_rate["exp"], db_connect::PARAM_DATE);
+	$stmt->bindValue(':effective', $_STATE->new_rate["eff"]->format("Y-m-d"), db_connect::PARAM_DATE);
+	if (is_null($_STATE->new_rate["exp"]->value)) {
+		$stmt->bindValue(':expire', null, db_connect::PARAM_DATE);
+	} else {
+		$stmt->bindValue(':expire', $_STATE->new_rate["exp"]->format('Y-m-d'), db_connect::PARAM_DATE);
+	}
 	$stmt->execute();
 	$stmt->closeCursor();
 }
@@ -283,11 +292,11 @@ function update_rate() {
 		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid rate id"); //we're being spoofed
 
 	//effective date:
-	$eff_new = DateTime::createFromFormat('Y-m-d', $_STATE->new_rate["eff"]);
-	$eff_old = DateTime::createFromFormat('Y-m-d', $row->effective_asof);
+	$eff_new = $_STATE->new_rate["eff"]->value;
+	$eff_old = DateTime::createFromFormat('!Y-m-d', $row->effective_asof);
 	if ($eff_new != $eff_old) {
-		if ($_STATE->new_rate["exp"] != "") {
-			if ($eff_new > DateTime::createFromFormat('Y-m-d', $_STATE->new_rate["exp"])) {
+		if (!is_null($_STATE->new_rate["exp"]->value)) {
+			if ($eff_new > $_STATE->new_rate["exp"]->value) {
 				$_STATE->msgStatus = "!**Update denied: effective date later than expiration**";
 				return;
 			}
@@ -300,7 +309,7 @@ function update_rate() {
 					$_STATE->msgStatus = "?UPEffective date precedes prior expiration, adjust the prior date?";
 					return;
 				}
-				$prior_exp = DateTime::createFromFormat('Y-m-d', $eff_new->format('Y-m-d')); //new prior expiration
+				$prior_exp = clone($eff_new); //new prior expiration
 				$prior_exp->sub(new DateInterval('P1D')); //subtract a day
 				$prior_eff = $_STATE->rates[$prior]["eff"]->value;
 				if ($prior_exp < $prior_eff) {
@@ -308,7 +317,7 @@ function update_rate() {
 					return;
 				}
 				$_STATE->rates[$prior]["update"] = true;
-				$_STATE->rates[$prior]["exp"] = $prior_exp;
+				$_STATE->rates[$prior]["exp"]->value = $prior_exp;
 			}
 		} else { //$eff_new > $eff_old
 			$sql = "SELECT timelog_id FROM ".$_DB->prefix."v00_timelog
@@ -325,17 +334,17 @@ function update_rate() {
 			$stmt->closeCursor();
 		}
 		$_STATE->rates[$_STATE->rate_ndx]["update"] = true;
-		$_STATE->rates[$_STATE->rate_ndx]["eff"] = $eff_new;
+		$_STATE->rates[$_STATE->rate_ndx]["eff"]->value = $eff_new;
 	}
 
 	//Expiration date:
 	if ($_STATE->rate_ndx == 0) { //updating most recent rate record expiration
-		if ($_STATE->new_rate["exp"] != "") {
+		if (!is_null($_STATE->new_rate["exp"]->value)) {
 			$sql = "SELECT logdate FROM ".$_DB->prefix."v00_timelog
 					WHERE (person_id=".$_STATE->record_id.") AND (project_id=".$_STATE->project_id.")
 					AND logdate >= :expdate;";
 			$stmt = $_DB->prepare($sql);
-			$stmt->bindValue(':expdate', $_STATE->new_rate["exp"], db_connect::PARAM_DATE);
+			$stmt->bindValue(':expdate', $_STATE->new_rate["exp"]->value, db_connect::PARAM_DATE);
 			$stmt->execute();
 			if ($stmt->fetchObject()) {
 				$_STATE->msgStatus = "!**Update denied: time has been logged after this expiration**";
@@ -343,13 +352,11 @@ function update_rate() {
 			}
 			$stmt->closeCursor();
 		}
-							//pagename,DBname,load from DB?,write to DB?,required?,maxlength,disabled,value
-		$_STATE->rates[$_STATE->rate_ndx]["exp"] =
-				new DATE_FIELD("txtExp","expire_after",FALSE,FALSE,FALSE,0,FALSE,$_STATE->new_rate["exp"]);
+		$_STATE->rates[$_STATE->rate_ndx]["exp"] = $_STATE->new_rate["exp"];
 		$_STATE->rates[$_STATE->rate_ndx]["update"] = true;
 	} else {
-		$exp_new = DateTime::createFromFormat('Y-m-d', $_STATE->new_rate["exp"]);
-		$exp_old = DateTime::createFromFormat('Y-m-d', $row->expire_after);
+		$exp_new = $_STATE->new_rate["exp"]->value;
+		$exp_old = DateTime::createFromFormat('!Y-m-d', $row->expire_after);
 		if ($exp_new != $exp_old) {
 			if ($exp_new > $exp_old) {
 				$next = $_STATE->rate_ndx - 1;
@@ -358,9 +365,9 @@ function update_rate() {
 					$_STATE->msgStatus = "?UNExpiration date later than next effective, adjust the next date?";
 					return;
 				}
-				$next_eff = DateTime::createFromFormat('Y-m-d', $exp_new->format('Y-m-d')); //new next effective
+				$next_eff = clone($exp_new); //new next effective
 				$next_eff->add(new DateInterval('P1D')); //add a day
-				if (!is_null($_STATE->rates[$next]["exp"])) {
+				if (!is_null($_STATE->rates[$next]["exp"]->value)) {
 					$next_exp = $_STATE->rates[$next]["exp"]->value;
 				} else {
 					$next_exp = $next_eff;
@@ -370,9 +377,7 @@ function update_rate() {
 					return;
 				}
 				$_STATE->rates[$next]["update"] = true;
-							//pagename,DBname,load from DB?,write to DB?,required?,maxlength,disabled,value
-				$_STATE->rates[$next]["eff"] =
-						new DATE_FIELD("txtEff","effective_asof",FALSE,FALSE,FALSE,0,FALSE,$next_eff);
+				$_STATE->rates[$next]["eff"]->value = $next_eff;
 			} else { //$exp_new < $exp_old
 				$sql = "SELECT timelog_id FROM ".$_DB->prefix."v00_timelog
 						WHERE (person_id=".$_STATE->record_id.") AND (project_id=".$_STATE->project_id.")
@@ -388,14 +393,8 @@ function update_rate() {
 				$stmt->closeCursor();
 			}
 			$_STATE->rates[$_STATE->rate_ndx]["update"] = true;
-							//pagename,DBname,load from DB?,write to DB?,required?,maxlength,disabled,value
-			$_STATE->rates[$_STATE->rate_ndx]["exp"] =
-							new DATE_FIELD("txtExp","expire_after",FALSE,FALSE,FALSE,0,FALSE,$exp_new);
+			$_STATE->rates[$_STATE->rate_ndx]["exp"]->value = $exp_new;
 		}
-	}
-
-	if (($_STATE->new_rate["exp"] == 0) || ($_STATE->new_rate["exp"] == "")) {
-		$_STATE->new_rate["exp"] = null;
 	}
 
 	if ($_STATE->new_rate["rate"] != $row->rate) {
@@ -412,11 +411,11 @@ function update_rate() {
 	foreach($_STATE->rates as $rate) {
 		if ($rate["update"]) {
 			$stmt->bindValue(':rate',$rate["rate"], PDO::PARAM_STR);
-			$stmt->bindValue(':eff', $rate["eff"]->format(), db_connect::PARAM_DATE);
-			if ($rate["exp"] == "") {
+			$stmt->bindValue(':eff', $rate["eff"]->format('Y-m-d'), db_connect::PARAM_DATE);
+			if (is_null($rate["exp"]->value)) {
 				$stmt->bindValue(':exp', null, db_connect::PARAM_DATE);
 			} else {
-				$stmt->bindValue(':exp', $rate["exp"]->format(), db_connect::PARAM_DATE);
+				$stmt->bindValue(':exp', $rate["exp"]->format('Y-m-d'), db_connect::PARAM_DATE);
 			}
 			$stmt->bindValue(':ID', $rate["ID"], PDO::PARAM_INT);
 			$stmt->execute();
@@ -438,27 +437,21 @@ function audit_input() {
 	$_STATE->new_rate["rate"] = number_format($_STATE->new_rate["rate"], 2);  //2 decimal places
 
 	$today = COM_NOW();
-	if ($_STATE->new_rate["eff"] != 0) {
-		if (!($eff = DateTime::createFromFormat('Y-m-d', $_STATE->new_rate["eff"]))) {
-			$_STATE->msgStatus = "!**Invalid effective date**";
-			return false;
-		}
+	$eff = $_STATE->new_rate["eff"]->value;
+	$exp = $_STATE->new_rate["exp"]->value;
+	if (!is_null($eff)) {
 		if (($today->diff($eff, true)->days > 365) && !isset($_STATE->replies["EF"])) {
 			$_STATE->msgStatus = "?EFEffective date is more than a year away, accept it?";
 			return false;
 		}
 	}
 
-	if (($_STATE->new_rate["exp"] != 0) && ($_STATE->new_rate["exp"] != "") && ($_STATE->new_rate["eff"] != 0)) {
-		if (!($exp = DateTime::createFromFormat('Y-m-d', $_STATE->new_rate["exp"]))) {
-			$_STATE->msgStatus = "!**Invalid expiration date**";
-			return false;
-		}
+	if ((!is_null($exp)) && (!is_null($eff))) {
 		if (($today->diff($exp, true)->days > 365) && !isset($_STATE->replies["EX"])) {
 			$_STATE->msgStatus = "?EXExpiration date is more than a year away, accept it?";
 			return false;
 		}
-		if (isset($eff) && ($exp <= $eff)) {
+		if ($exp <= $eff) {
 			$_STATE->msgStatus = "!**New expiration date must follow effective date**";
 			return false;
 		}
@@ -471,17 +464,26 @@ function audit_input() {
 function save_input() {
 	global $_STATE;
 
+	person_list($_STATE->record_id); //get only this person's rates
+	if (!array_key_exists($_STATE->record_id, $_STATE->records))
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid person id"); //we're being spoofed
+
 	$_STATE->new_rate = array(
 		"ID" => $_POST["ID"],
 		"update" => false,
 		"rate" => $_POST["rate"],
-		"eff" => $_POST["eff"],
-		"exp" => $_POST["exp"],
+		"eff" => new DATE_FIELD("txtEff","effective_asof",FALSE,FALSE,FALSE,0,FALSE,""),
+		"exp" => new DATE_FIELD("txtExp","expire_after",FALSE,FALSE,FALSE,0,FALSE,""),
 		);
-
-	person_list($_STATE->record_id); //get only this person's rates
-	if (!array_key_exists($_STATE->record_id, $_STATE->records))
-		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid person id"); //we're being spoofed
+	//this 'audit' inits the DATE_FIELD
+	if (($msg = $_STATE->new_rate["eff"]->audit(false)) !== true) {
+		$_STATE->msgStatus = "!Effective date: ".$msg;
+		return false;
+	}
+	if (($msg = $_STATE->new_rate["exp"]->audit(false)) !== true) {
+		$_STATE->msgStatus = "!Expiration date: ".$msg;
+		return false;
+	}
 
 	$rates = $_STATE->records[$_STATE->record_id]["rates"];
 	$ndx = 0;
@@ -500,16 +502,18 @@ function save_input() {
 		if (!$found)
 			throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid rate id");
  	}
-	$_STATE->rates = $rates; //rates for this person
+	$_STATE->rates = $rates; //rates for this person (+ a possible new one)
 	$_STATE->rate_ndx = $ndx;
+
+	return true;
 }
 
 function rate_change() {
 	global $_STATE;
 
 	if ($_SERVER['REQUEST_METHOD'] == "POST") { //POST carries rate data
-		save_input();
-		$_STATE->replies = array();
+		if (!save_input()) return;
+		$_STATE->replies = array(); //prepare for warnings
 	} else {
 		foreach ($_GET as $field => $reply) { //GET carries replies
 			$_STATE->replies[$field] = $reply;
@@ -520,7 +524,7 @@ function rate_change() {
 
 	if ($_STATE->rates[$_STATE->rate_ndx]["ID"] == 0) {
 		add_rate();
-	} elseif ($_STATE->new_rate["eff"] == 0) {
+	} elseif (is_null($_STATE->new_rate["eff"]->value)) {
 		delete_rate();
 	} else {
 		update_rate();
@@ -549,16 +553,18 @@ case RATE_DISPLAY:
 <script language="JavaScript">
 var selectedRow;
 function open_row(me) {
-	selectedRow = me.id.charAt(3);
+	selectedRow = me.id.substr(3);
 	var row;
 	for (var ndx=0; ndx<=<?php echo count($_STATE->records[strval($_STATE->record_id)]["rates"]) ?>; ndx++) {
 		row = document.getElementById("BN_"+ndx);
+		if (row == null) break; //happens if no rates
 		row.title = "";
 		row.onclick = null;
 		row.style.cursor = "default";
 	}
 	server_call("GET", "row="+selectedRow);
 }
+var POSTdates = []; //filled in by server call above
 function new_rate(row) {
 	var content;
 
@@ -567,12 +573,10 @@ function new_rate(row) {
 	}
 	var content = "ID=" + document.getElementById("BN_"+selectedRow).getAttribute("data-recid");
 	content += "&rate=" + document.getElementById("txtRate_ID").value;
-	content += "&eff=" + document.getElementById("txtEffYYYY_ID").value;
-	content += "-" + document.getElementById("txtEffMM_ID").value;
-	content += "-" + document.getElementById("txtEffDD_ID").value;
-	content += "&exp=" + document.getElementById("txtExpYYYY_ID").value;
-	content += "-" + document.getElementById("txtExpMM_ID").value;
-	content += "-" + document.getElementById("txtExpDD_ID").value;
+	POSTdates.forEach(function(line) {
+		content += "&" + line[0] + "=" + eval(line[1]);
+	});
+
 	server_call("POST", content);
 }
 function Reset() {
