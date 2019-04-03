@@ -1,5 +1,5 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 //Populate the task pulldown selection list then collect the response via server call-back:
@@ -38,9 +38,7 @@ function task_send(&$state, &$HTML) {
 	$HTML .= "//Tasks...\n";
 	if (count($state->records) == 1) {
 		reset($state->records);
-		$solo = each($state->records);
-		$state->task_id = intval($solo["key"]); //task_select wants to see this
-
+		$state->task_id = intval(key($state->records)); //subtask_select wants to see this
 	} else {
     	$HTML .= "document.getElementById('msgGreet_ID').innerHTML = 'Select the task';\n";
 		$HTML .= "fill = \"<select name='selTask' id='selTask' size='1' onchange='proceed(this.parentNode,this.options[this.selectedIndex].value)'>\";\n";
