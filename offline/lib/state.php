@@ -1,5 +1,5 @@
 <?php
-//copyright 2015, 2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015, 2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 class STATE {
@@ -116,6 +116,7 @@ function cut() { //remove the stack
 
 public function goback($levels) {
 //	$child = "";
+	$pull = $this;
 	while ($levels > 0) {
 		if (count($_SESSION["STATE"][$this->thread]) < 2 ) break;
 		$junk = unserialize(array_pop($_SESSION["STATE"][$this->thread]));
