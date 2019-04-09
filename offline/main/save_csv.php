@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (($_SESSION["_SITE_CONF"]["RUNLEVEL"] < 1) || (!$_PERMITS->can_pass(PERMITS::_SUPERUSER)))
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
@@ -64,23 +64,33 @@ function entry_audit() {
 		$_STATE->msgStatus = "No tables were saved";
 		return;
 	}
-
 	foreach ($_POST["chkTable"] as $ID => $value) {
 		if (!array_key_exists($ID, $_STATE->records)) {
-			throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid table name ".$_POST["chkTable"]);
+			throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid table name ".$ID);
 		}
-		if ($value == "on") {
-			$_STATE->msgStatus .= "<br>".$ID;
-			if (!save($_STATE->records[$ID])) {
-				$_STATE->msgStatus .= ": attempted save failed";
-			}
+		$_STATE->msgStatus .= "<br>".$ID;
+		if (!save($_STATE->records[$ID])) {
+			$_STATE->msgStatus .= ": attempted save failed";
 		}
 	}
 	return;
 }
 
 EX_pageStart(); //standard HTML page start stuff - insert scripts here
-
+?>
+<script language="JavaScript">
+var all = true;
+function select_all() {
+	var boxes = document.getElementsByTagName("INPUT");
+	for (var i=0; i<boxes.length; ++i) {
+		if(boxes[i].value == 'table') {
+			boxes[i].checked = all;
+		}
+	}
+	all = !all;
+}
+</script>
+<?php
 EX_pageHead(); //standard page headings - after any scripts
 
 //forms and display depend on process state; note, however, that the state was probably changed after entering
@@ -89,13 +99,14 @@ switch ($_STATE->status) {
 case STATE::UPDATE:
 ?>
 
+<br><button onclick='return select_all()')>Select all on/off</button><br>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
 <table align='center'>
 <?php
 	foreach($_STATE->records as $ID => $name) {
 		if ($name->type != "t") continue; //tables only
 		echo "  <tr>\n";
-  		echo "    <td><input type=\"checkbox\" name=\"chkTable[".strval($ID)."]\"></td>\n";
+  		echo "    <td><input type=\"checkbox\" name=\"chkTable[".$ID."]\" value=\"table\"></td>\n";
 		echo "    <td style='text-align:left'>".$ID."</td>\n";
 		echo "  </tr>\n";
 	} ?>
