@@ -8,23 +8,25 @@ require_once "lib/db_".$_SESSION['_SITE_CONF']['DBMANAGER'].".php";
 $_DB = new db_connect($_SESSION['_SITE_CONF']['DBEDITOR']);
 $EX_servercall = false;
 
-//A non-blank $_GET["init"] tells us to create a new state object with status=STATE::INIT;
+$_STATE = STATE_pull(); //'pull' the working state
+//A non-blank $_GET["init"] tells us to replace the state object with new status & ID;
 //many processes rely on that STATE::INIT being set so they know to create initial setup:
 if (isset($_GET["init"])) {
-	$_STATE = new STATE($_GET["init"]); //create a new state object with status=STATE::INIT
 	if (isset($_GET["head"])) {
 		$_STATE->heading = $_GET["head"];
-		$_STATE->replace();
 	}
+	$_STATE->status = STATE::INIT;
+	$_STATE->ID = $_GET["init"]; //the staff module
+	$_STATE->replace();
 	$_SESSION["IAm"] = $_SESSION["BUTLER"]."?IAm=".$_GET["IAm"]; //for form action
 
 } else {
-	$_STATE = STATE_pull(); //'pull' the working state
 	if (isset($_GET["goback"])) {
+		if ($_GET["goback"] != "") $_STATE->backup = -($_GET["goback"]);
 		if ($_STATE->backup < 0) {
-			$_STATE = $_STATE->goback(-$_STATE->backup);
+			$_STATE = $_STATE->goback(-$_STATE->backup); //goback x levels
 		} else {
-			$_STATE = $_STATE->loopback($_STATE->backup);
+			$_STATE = $_STATE->loopback($_STATE->backup); //loopback to given status
 		}
 	} else if (isset($_GET["servercall"]) || isset($_POST["servercall"])) {
 		$EX_servercall = true;

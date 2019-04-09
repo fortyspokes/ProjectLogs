@@ -66,9 +66,9 @@ function entry_audit() {
 	$prefs = new PREF_GET("a00",$_SESSION["organization_id"]);
 	if ($pref = $prefs->preference("theme")) $_SESSION["THEME"] = $pref;
 	if ($pref = $prefs->preference("date")) {
-		$_SESSION["dateform"] = $pref;
+		$_STATE->dateform = $pref;
 	} else {
-		$_SESSION["dateform"] = PREFERENCE::DATE;
+		$_STATE->dateform = PREFERENCE::DATE;
 	}
 	$prefs = new PREF_GET("c10",$_SESSION["person_organization_id"]);
 	if ($pref = $prefs->preference("theme")) $_SESSION["THEME"] = $pref;
@@ -76,7 +76,6 @@ function entry_audit() {
 
 	$_SESSION["UserPermits"] = $_PERMITS->get_permits($_SESSION["person_id"]); //set the users's permissions
 	$_SESSION["UserPermits"]["_LEGAL_"] = TRUE; //can now pass the 'logged in' gate
-
 	error_log("Login: by ".$_STATE->fields["txtName"]."; id=".$_SESSION["person_id"]); //not an error but the best place to put it
 	return true;
 }

@@ -50,11 +50,7 @@ function __construct($list, $checked="") {
 		break;
 	case "p": //from = 1st (Mon) of last week
 	case "w":
-		if (isset($_STATE->dateform)) {
-			$dateform = $_STATE->dateform;
-		} else {
-			$dateform = $_SESSION["dateform"];
-		}
+		$dateform = $_STATE->dateform;
 		$weekday = getdate($NOW->getTimestamp())["wday"]; //Sun=0
 		$this->from = clone($NOW);
 		if ($weekday < $dateform[0]) {
@@ -207,11 +203,7 @@ function POST($chkrecent=3) { //1=to,2=from,3=logical OR
 	case "w":
 //		if (($from->format("w") != 0) && ($from->format("N") != 1)) {
 //			$from->value->modify("last monday");
-			if (isset($_STATE->dateform)) {
-				$dateform = $_STATE->dateform;
-			} else {
-				$dateform = $_SESSION["dateform"];
-			}
+			$dateform = $_STATE->dateform;
 			$weekday = getdate($from->value->getTimestamp())["wday"]; //Sun=0
 			if ($weekday < $dateform[0]) {
 				$sub = 7 - ($dateform[0] - $weekday);

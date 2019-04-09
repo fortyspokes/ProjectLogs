@@ -39,6 +39,7 @@ case STATE::ENTRY:
 		$_STATE->msgGreet = "";
 		$_STATE->msgStatus = "";
 		$reload = TRUE; //reload other frames to get current login info
+		$_STATE->ID = "MA"; //re-load main.php instead of this mod
 		$_STATE->status = STATE::DONE;
 	} else {
 		error_log("Logerr: by ".$_STATE->fields["txtName"]);

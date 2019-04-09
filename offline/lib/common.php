@@ -43,8 +43,7 @@ function COM_NOW() { //adjust server time zone to org's TZO
 function COM_weekday($line, $days=array("Sun","Mon","Tue","Wed","Thu","Fri","Sat")) {
 	global $_STATE;
 
-	$start = $_SESSION["dateform"][0];
-	if (isset($_STATE->dateform)) $start = $_STATE->dateform[0];
+	$start = $_STATE->dateform[0];
 	$days = array_merge($days, $days);
 	$days = array_slice($days, $start, 7); //now have array of names starting with week start
 	$ndx = 0;

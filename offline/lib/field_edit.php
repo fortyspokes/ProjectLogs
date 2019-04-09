@@ -156,14 +156,15 @@ private function set_value($new) {
 }
 
 function format($format="") {
+	global $_STATE;
+
 	if (is_null($this->value)) return "";
 	if ($format != "") return $this->value->format($format);
-	if (isset($_STATE->dateform)) return $this->value->format($_STATE->dateform[1]);
-	return $this->value->format($_SESSION["dateform"][1]);
+	return $this->value->format($_STATE->dateform[1]);
 }
 
 function audit($chkrecent=true) {
-	global $_PERMITS;
+	global $_STATE, $_PERMITS;
 
 	if (isset($_POST[$this->pagename."YYYY"])) $this->YYYY = COM_input_edit($this->pagename."YYYY",4);
 	if (isset($_POST[$this->pagename."MM"])) $this->MM = COM_input_edit($this->pagename."MM",2);
@@ -192,8 +193,7 @@ function audit($chkrecent=true) {
 	$value = new DateTime($this->YYYY."-".$this->MM."-".$this->DD);
 	if ($chkrecent && !$_PERMITS->can_pass(PERMITS::_SUPERUSER)) {
 		$now = COM_NOW();
-		$gap = $_SESSION["dateform"][2]; //days before date considered suspicious
-		if (isset($_STATE->dateform)) $gap = $_STATE->dateform[2];
+		$gap = $_STATE->dateform[2]; //days before date considered suspicious
 		$diff = $now->diff($value,true)->days;
 		if ($diff > $gap) {
 			return "date must be recent".", allowed days gap =".$gap.", this gap =".$diff;
@@ -230,8 +230,7 @@ function HTML_label($label) {
 function HTML_input($length=0, $extra=NULL) {
 	global $_STATE;
 
-	$form = $_SESSION["dateform"][1]; //'Y-m-d' or 'm-d-Y'
-	if (isset($_STATE->dateform)) $form = $_STATE->dateform[1];
+	$form = $_STATE->dateform[1]; //'Y-m-d' or 'm-d-Y'
 	$form = substr($form, 0, 1);
 
 	$HTML = array();

@@ -69,11 +69,8 @@ function entry_audit() {
 	} else {
 		$_SESSION["THEME"] = $_SESSION["_SITE_CONF"]["THEME"]; //go back to default
 	}
-	if ($pref = $prefs->preference("date")) {
-		$_SESSION["dateform"] = $pref;
-	} else {
-		$_SESSION["dateform"] = PREFERENCE::DATE;
-	}
+	if ($pref = $prefs->preference("date"))
+		$_STATE->dateform = $pref; //override
 	$_SESSION["org_TZO"] = $_STATE->records[$_POST["selOrgs"]][1];
 	$_SESSION["UserPermits"] = $GLOBALS["_PERMITS"]->get_permits($_SESSION["person_id"]); //set the users's permissions
 	$_STATE->msgStatus = "Your organization has been changed";
