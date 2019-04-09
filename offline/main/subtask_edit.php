@@ -175,13 +175,17 @@ function subtask_list() {
 	global $_DB, $_STATE;
 
 	$_STATE->records = array();
-	$_STATE->records["-1"] = "--create a new subtask record--";
+	$_STATE->records["-1"] = array("--create a new subtask record--", "");
 
 	$sql = "SELECT * FROM ".$_DB->prefix."a14_subtask
 			WHERE task_idref=".$_STATE->task_id." ORDER BY description;";
 	$stmt = $_DB->query($sql);
+	$today = COM_now();
 	while ($row = $stmt->fetchObject()) {
-		$_STATE->records[strval($row->subtask_id)] = substr($row->name.": ".$row->description,0,25);
+		$inactive = new DATE_FIELD("null","null",FALSE,FALSE,FALSE,0,FALSE,$row->inactive_asof);
+		$title = $inactive->format();
+		if (($title != "") && ($today < $inactive->value)) $title = "";
+		$_STATE->records[strval($row->subtask_id)] = array(substr($row->name.": ".$row->description,0,25), $title);
 	}
 	$stmt->closeCursor();
 }
@@ -329,9 +333,17 @@ case SELECT_SUBTASK:
 ?>
   <p>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
-  <select name='selSubtask' size="<?php echo count($_STATE->records); ?>" onclick="this.form.submit()">
-<?php	foreach($_STATE->records as $value => $name) {
-  		echo "    <option value=\"".$value."\">".$name."\n";
+  <select name='selSubtask' size="<?php echo count($_STATE->records); ?>" onclick="this.form.submit()" style='cursor:pointer'>
+<?php
+	$title = "Click to select";
+	foreach($_STATE->records as $value => $name) {
+		$opacity = "1.0"; //opacity value = fully opaque
+		$inact = "";
+		if ($name[1] != "") {
+			$opacity = "0.5";
+			$inact = "; inactive as of ".$name[1];
+		}
+		echo "    <option value=\"".$value."\" title='".$title.$inact."' style='opacity:".$opacity."'>".$name[0]."\n";
 	} ?>
   </select>
   </p>
