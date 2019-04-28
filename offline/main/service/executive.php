@@ -12,6 +12,9 @@ $_STATE = STATE_pull(); //'pull' the working state
 //A non-blank $_GET["init"] tells us to replace the state object with new status & ID;
 //many processes rely on that STATE::INIT being set so they know to create initial setup:
 if (isset($_GET["init"])) {
+	while($_STATE->position > 0) { //if selecting from menu without 'return to menu',
+		$_STATE = $_STATE->goback(1); //  cut back the state stack
+	}
 	if (isset($_GET["head"])) {
 		$_STATE->heading = $_GET["head"];
 	}
