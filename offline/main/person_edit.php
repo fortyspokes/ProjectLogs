@@ -12,6 +12,8 @@ define('CHANGE_PERSON',			LIST_PERSONS + 3);
 define('UPDATE_PERSON',			LIST_PERSONS + 4);
 define('ADD_PERSON',			LIST_PERSONS + 5);
 define('DELETE_PERSON',			LIST_PERSONS + 6);
+define('LIST_ALIENS',		LIST_PERSONS + 10); //'aliens' are persons not connected to this org
+define('ADD_ALIEN',				LIST_ALIENS + 1);
 define('PREFERENCES',		STATE::INIT + 20);
 
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
@@ -19,6 +21,7 @@ while (1==1) { switch ($_STATE->status) {
 case LIST_PERSONS:
 	$_STATE->person_organization_id = 0;
 	$_STATE->person_id = 0;
+	$_STATE->backup = LIST_PERSONS;
 	require_once "lib/person_select.php";
 	$persons = new PERSON_SELECT();
 	if (!$_PERMITS->can_pass("person_edit")) {
@@ -34,8 +37,15 @@ case LIST_PERSONS:
 case SELECT_PERSON:
 	require_once "lib/person_select.php"; //catches $_GET list refresh
 	$persons = unserialize($_STATE->person_select);
+	$persons->selected = false; //if only one in list, will be set true at object construct
 	$persons->set_state();
 	$_STATE->person_select = serialize(clone($persons));
+	if ($_STATE->person_id == -1) { //adding...
+		if (list_aliens()) { //aliens to connect
+			$_STATE->status = LIST_ALIENS;
+			break 1; //go list 'em
+		}
+	}
 	$_STATE->status = SELECTED_PERSON; //for possible goback
 	$_STATE->replace();
 case SELECTED_PERSON:
@@ -79,19 +89,46 @@ case DELETE_PERSON:
 	}
 	if (isset($_POST["btnSubmit"])) {
 		if (update_audit()) {
+			$msg = $_STATE->msgStatus;
 			$_STATE = $_STATE->loopback(SELECTED_PERSON);
+			$_STATE->msgStatus = $msg;
+			break 1; //re-switch
+		}
+		break 2;
+	}
+	if (isset($_POST["btnRemove"])) {
+		if (remove_audit()) {
+			$msg = $_STATE->msgStatus;
+			$_STATE = $_STATE->loopback(LIST_PERSONS);
+			$_STATE->msgStatus = $msg;
 			break 1; //re-switch
 		}
 		break 2;
 	}
 	if (isset($_POST["btnDelete"])) {
 		if (delete_audit()) {
+			$msg = $_STATE->msgStatus;
 			$_STATE = $_STATE->loopback(LIST_PERSONS);
+			$_STATE->msgStatus = $msg;
 			break 1; //re-switch
 		}
 		break 2;
 	}
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid Submit");
+	break 2;
+case LIST_ALIENS:
+	$_STATE->msgGreet = "Connect to this organization - or create a new person";
+	$_STATE->status = ADD_ALIEN;
+	break 2;
+case ADD_ALIEN:
+	if ($_POST["selPerson"][0] == -1) { //create a new person
+		$_STATE->status = SELECTED_PERSON;
+		break 1;
+	}
+	list_aliens();
+	connect_alien();
+	$_STATE = $_STATE->loopback(LIST_PERSONS);
+	break 1; //re-switch
 case PREFERENCES:
 	require_once "lib/preference_set.php";
 	if (!isset($_STATE->prefset)) { //first time thru
@@ -110,6 +147,48 @@ default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
 //End Main State Gate
+
+function list_aliens() {
+	global $_DB, $_STATE;
+
+	$aliens = array();
+	$sql = "SELECT c00.*, c10.organization_idref FROM ".$_DB->prefix."c00_person AS c00
+			LEFT OUTER JOIN ".$_DB->prefix."c10_person_organization AS c10
+			ON (c00.person_id = c10.person_idref)
+			ORDER BY c00.lastname, c00.firstname, c00.person_id;";
+	$stmt = $_DB->query($sql);
+	$person = array("last","first",-1,false);
+	while ($row = $stmt->fetchObject()) {
+		if ($row->person_id == 0) continue; //superduper user
+		if ($person[2] != $row->person_id) {
+			if ($person[3] == true) {
+				$aliens[strval($person[2])] = array($person[0], $person[1]);
+			}
+			$person = array($row->lastname, $row->firstname, $row->person_id, true);
+		}
+		if ($row->organization_idref == $_SESSION["organization_id"]) $person[3] = false;
+	}
+	$stmt->closeCursor();
+	if ($person[3] == true) {
+		$aliens[strval($person[2])] = array($person[0], $person[1]);
+	}
+	if (count($aliens) == 0) return false;
+	$_STATE->aliens = $aliens;
+	$_STATE->noSleep[] = "aliens"; //don't save
+	return true;
+}
+
+function connect_alien() {
+	global $_DB, $_STATE;
+
+	$alien = $_POST["selPerson"][0];
+	if (!array_key_exists($alien, $_STATE->aliens)) {
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid person id ".$alien);
+	}
+	$sql = "INSERT INTO ".$_DB->prefix."c10_person_organization (person_idref, organization_idref)
+			VALUES (".$alien.", ".$_SESSION["organization_id"].");";
+	$_DB->exec($sql);
+}
 
 function state_fields() {
 	global $_STATE;
@@ -131,7 +210,7 @@ function record_info() {
 	$sql = "SELECT c00.*, c10.inactive_asof FROM ".$_DB->prefix."c00_person AS c00
 			INNER JOIN ".$_DB->prefix."c10_person_organization AS c10
 			ON (c00.person_id = c10.person_idref)
-			WHERE person_id=".$_STATE->record_id.";";
+			WHERE person_id=".$_STATE->record_id." AND c10.organization_idref=".$_SESSION["organization_id"].";";
 	$stmt = $_DB->query($sql);
 	$row = $stmt->fetchObject();
 	foreach($_STATE->fields as $field=>&$props) { //preset record info on the page
@@ -250,6 +329,17 @@ function update_audit() {
 			return false;
 		}
 		$stmt->closeCursor();
+		$sql = "SELECT * FROM ".$_DB->prefix."v01_expenselog
+				WHERE person_id=".$_STATE->record_id."
+				AND organization_id=".$_SESSION["organization_id"]."
+				AND logdate >= '".$_STATE->fields["Inactive As Of"]->format("Y-m-d")."';";
+		$stmt = $_DB->query($sql);
+		if ($row = $stmt->fetchObject()) {
+			$stmt->closeCursor();
+			$_STATE->msgStatus = "There are active expense logs subsequent to this inactive date";
+			return false;
+		}
+		$stmt->closeCursor();
 	}
 
 	update_db();
@@ -292,6 +382,113 @@ function new_audit() {
 	return TRUE;
 }
 
+function remove_audit() {
+	global $_DB, $_STATE;
+
+	record_info(); //set state fields for display
+
+	if ($_SESSION["person_id"] == $_STATE->record_id) {  //actually, won't get here because remove button
+		$_STATE->msgStatus = "You can't remove yourself!";//won't show for yourself
+		return FALSE;
+	}
+
+	if ((is_null($_STATE->fields["Inactive As Of"]->value)) ||
+		($_STATE->fields["Inactive As Of"]->value > COM_NOW())) {
+		$_STATE->msgStatus = "This person is still active and cannot be removed";
+		return false;
+	}
+
+	//delete time logs and collect activities
+	$logs = array();
+	$activities = array();
+	$sql = "SELECT timelog_id, activity_id FROM ".$_DB->prefix."v00_timelog
+			WHERE person_id=".$_STATE->record_id."
+			AND organization_id=".$_SESSION["organization_id"].";";
+	$stmt = $_DB->query($sql);
+	while ($row = $stmt->fetchObject()) {
+		$logs[] = $row->timelog_id;
+		if (!array_search($row->activity_id, $activities)) {
+			$activities[] = $row->activity_id;
+		}
+	}
+	$stmt->closeCursor();
+	foreach ($logs as $log) {
+		$_DB->exec("DELETE FROM ".$_DB->prefix."b00_timelog WHERE timelog_id=".$log.";");
+	}
+	//delete expense logs and collect activities
+	$logs = array();
+	$sql = "SELECT expenselog_id, activity_id FROM ".$_DB->prefix."v01_expenselog
+			WHERE person_id=".$_STATE->record_id."
+			AND organization_id=".$_SESSION["organization_id"].";";
+	$stmt = $_DB->query($sql);
+	while ($row = $stmt->fetchObject()) {
+		$logs[] = $row->expenselog_id;
+		if (!array_search($row->activity_id, $activities)) {
+			$activities[] = $row->activity_id;
+		}
+	}
+	$stmt->closeCursor();
+	foreach ($logs as $log) {
+		$_DB->exec("DELETE FROM ".$_DB->prefix."b20_expenselog WHERE expenselog_id=".$log.";");
+	}
+	//delete orphaned activities
+	$orphans = array();
+	foreach ($activities as $activity) {
+		$sql = "SELECT activity_idref FROM ".$_DB->prefix."b00_timelog
+				WHERE activity_idref = ".$activity.";";
+		$stmt = $_DB->query($sql);
+		if (!($row = $stmt->fetchObject())) $orphans[] = $activity;
+		$stmt->closeCursor();
+		$sql = "SELECT activity_idref FROM ".$_DB->prefix."b00_expenselog
+				WHERE activity_idref = ".$activity.";";
+		$stmt = $_DB->query($sql);
+		if (!($row = $stmt->fetchObject())) {
+			if (!array_search($activity, $orphans)) {
+				$orphans[] = $activity;
+			}
+	 	}
+		$stmt->closeCursor();
+	}
+	foreach ($orphans as $orphan) {
+		$_DB->exec("DELETE FROM ".$_DB->prefix."b02_activity WHERE activity_id=".$orphan.";");
+	}
+	//don't delete eventlogs - may be needed independent of person
+	//delete rates
+	$rates = array();
+	$sql = "SELECT rate_id FROM ".$_DB->prefix."c02_rate AS c02
+			JOIN ".$_DB->prefix."a10_project AS a10 ON a10.project_id = c02.project_idref
+			WHERE c02.person_idref=".$_STATE->record_id."
+			AND a10.organization_idref=".$_SESSION["organization_id"].";";
+	$stmt = $_DB->query($sql);
+	while ($row = $stmt->fetchObject()) {
+		$rates[] = $row->rate_id;
+	}
+	$stmt->closeCursor();
+	foreach ($rates as $rate) {
+		$_DB->exec("DELETE FROM ".$_DB->prefix."c02_rate WHERE rate_id=".$rate.";");
+	}
+	//delete permits
+	$permits = array();
+	$sql = "SELECT person_permit_id FROM ".$_DB->prefix."c20_person_permit
+			WHERE person_idref=".$_STATE->record_id."
+			AND organization_idref=".$_SESSION["organization_id"].";";
+	$stmt = $_DB->query($sql);
+	while ($row = $stmt->fetchObject()) {
+		$permits[] = $row->person_permit_id;
+	}
+	$stmt->closeCursor();
+	foreach ($permits as $permit) {
+		$_DB->exec("DELETE FROM ".$_DB->prefix."c20_person_permit WHERE person_permit_id=".$permit.";");
+	}
+	//delete person/org
+	$_DB->exec("DELETE FROM ".$_DB->prefix."c10_person_organization
+				WHERE person_organization_id = ".$_STATE->person_organization_id.";");
+
+	$_STATE->msgStatus = "The person record for \"".$_STATE->fields["First Name"]->value()." ".$_STATE->fields["Last Name"]->value()."\" has been removed from your organization";
+	return true;
+
+} //end function remove_audit()
+
 function delete_audit() {
 	return false; //for now, no delete; use inactive instead
 	global $_DB, $_STATE;
@@ -302,6 +499,8 @@ function delete_audit() {
 		$_STATE->msgStatus = "You can't delete yourself!";//won't show for yourself
 		return FALSE;
 	}
+
+//delete event logs
 
 	$name = $_STATE->fields["First Name"]->value()." ".$_STATE->fields["Last Name"]->value();
 
@@ -343,6 +542,10 @@ function compare_pswds() {
     return false;
   }
   return true;
+}
+
+function RemoveBtn() {
+	return(confirm("Removing this person will delete all their logs.  Continue?"));
 }
 
 function DeleteBtn() {
@@ -403,17 +606,32 @@ case DELETE_PERSON:
 		echo FIELD_edit_buttons(FIELD_ADD);
 	} else {
 		echo Field_edit_buttons(FIELD_UPDATE);
+		//note: can't remove or delete yourself
+		if (($_PERMITS->can_pass("person_edit")) && ($_SESSION["person_id"] != $_STATE->record_id)) {
+			echo "  <br><button type='submit' name='btnRemove' id='btnRemove_ID' value = 'remove' onclick='return RemoveBtn()'>Remove this person record</button><br>\n";
+			//for now, no delete; use inactive instead
+//			echo "<button type='submit' name='btnDelete' id='btnDelete_ID' value = 'delete' onclick='return DeleteBtn()'>Delete this person record</button>\n";
+		}
 		echo "  <br><button type='submit' name='btnPrefs' id='btnPrefs_ID' value='preferences'>Preferences</button>\n";
 	}
-	if (($_STATE->status != ADD_PERSON) && ($_PERMITS->can_pass("person_edit"))
-&&( 1 == 0 ) //for now, no delete; use inactive instead
-				&& ($_SESSION["person_id"] != $_STATE->record_id)) { //note: can't delete yourself ?>
-  <button type="submit" name="btnDelete" id="btnDelete_ID" value = "delete" onclick="return DeleteBtn()">Remove this person record</button>
+?>
 </form>
 <?php
-	}
+	break; //end SELECTED/ADD/UPDATE/DELETE_PERSON status ----END STATUS PROCESSING----
+
+case ADD_ALIEN:
+?>
+<form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
+  <select name="selPerson[]" size="<?php echo count($_STATE->aliens) + 1; ?>" onclick='this.form.submit()'>
+    <option value='-1' style='opacity:1.0'>--create another person--
+<?php
+	foreach ($_STATE->aliens as $key => $record) {
+		echo "    <option value='".$key."'>".$record[0].", ".$record[1]."\n";
+	} ?>
+   </select>
+</form>
+<?php
 	break;
-//end SELECTED/ADD/UPDATE/DELETE_PERSON status ----END STATUS PROCESSING----
 
 case PREFERENCES: //show preferences and allow update:
 	$prefset->set_HTML();
