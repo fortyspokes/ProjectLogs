@@ -94,16 +94,22 @@ function person_list($person_id=-1) {
 
 	//get each person in this org, then get their rate records; if no rate, return NULLs
 	$sql = "SELECT c00.person_id, c00.lastname, c00.firstname,
-					c02.rate_id, c02.rate, c02.effective_asof, c02.expire_after,
-					c10.inactive_asof
-			FROM ".$_DB->prefix."c00_person AS c00
-			INNER JOIN ".$_DB->prefix."c10_person_organization AS c10
+						c02.rate_id, c02.rate, c02.effective_asof, c02.expire_after,
+						c00.inactive_asof
+			FROM (
+				SELECT * FROM ".$_DB->prefix."c00_person AS c00
+				INNER JOIN ".$_DB->prefix."c10_person_organization AS c10
 				ON c10.person_idref = c00.person_id
-			LEFT OUTER JOIN
-				(SELECT * FROM ".$_DB->prefix."c02_rate WHERE project_idref = ".$_STATE->project_id.") AS c02
-				ON c10.person_idref = c02.person_idref";
-	if ($person_id > 0) $sql .= " WHERE person_id = ".$person_id;
-	$sql .= " ORDER BY c00.lastname, c00.person_id, c02.effective_asof DESC;";
+				WHERE c10.organization_idref = ".$_SESSION["organization_id"]."
+				) AS c00
+				LEFT OUTER JOIN (
+				SELECT * FROM ".$_DB->prefix."c02_rate WHERE project_idref = ".$_STATE->project_id."
+				) AS c02
+				ON c00.person_id = c02.person_idref";
+	if ($person_id > 0) $sql .= "
+			WHERE c00.person_id = ".$person_id;
+	$sql .= "
+			ORDER BY c00.lastname, c00.person_id, c02.effective_asof DESC;";
 	$stmt = $_DB->query($sql);
 	$_STATE->records = array();
 	$rates = array();

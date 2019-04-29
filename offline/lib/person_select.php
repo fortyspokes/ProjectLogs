@@ -1,5 +1,5 @@
 <?php
-//copyright 2015,2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015,2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 class PERSON_SELECT {
@@ -30,9 +30,7 @@ function __construct($restrict_to = array(0), $multiple=false) {
 	$this->multiple = $multiple;
 	$this->get_recs();
 	if (count($this->records) == 1) {
-//		$this->select_list = array(key($this->records));
-		$key = each($this->records);
-		$this->set_state($key[0]);
+		$this->set_state(key($this->records));
 	}
 }
 
@@ -135,7 +133,7 @@ function show_list() { //get the HTML for the list items (and inactive checkbox)
 	if ($this->show_new) ++$size;
 	$HTML[] = "  <select name='selPerson[]' size='".$size."'".$insert.">";
 	if ($this->show_new)
-		$HTML[] = "    <option value='-1' style='opacity:1.0'>--create a new person record--";
+		$HTML[] = "    <option value='-1' style='opacity:1.0'>--add another person--";
 	if ($this->multiple) { $insert = " selected"; } else { $insert = ""; }
 	foreach ($this->records as $key => $record) {
 		$opacity = "1.0"; //opacity value = fully opaque

@@ -37,9 +37,9 @@ function init_setup() {
 	if (!$GLOBALS["_PERMITS"]->can_pass(PERMITS::_SUPERUSER)) {
 		$sql .= " INNER JOIN ".$_DB->prefix."c10_person_organization AS c10
 				ON (a00.organization_id = c10.organization_idref)
-				WHERE c10.person_idref=".$_SESSION["person_id"].";";
+				WHERE c10.person_idref=".$_SESSION["person_id"];
 	}
-	$sql .= " ORDER BY a00.timestamp";
+	$sql .= " ORDER BY a00.timestamp;";
 	$stmt = $_DB->query($sql);
 	$_STATE->records = array();
 	while ($row = $stmt->fetchObject()) {
@@ -73,6 +73,7 @@ function entry_audit() {
 		$_STATE->dateform = $pref; //override
 	$_SESSION["org_TZO"] = $_STATE->records[$_POST["selOrgs"]][1];
 	$_SESSION["UserPermits"] = $GLOBALS["_PERMITS"]->get_permits($_SESSION["person_id"]); //set the users's permissions
+	$_SESSION["UserPermits"]["_LEGAL_"] = TRUE; //continue to pass the 'logged in' gate
 	$_STATE->msgStatus = "Your organization has been changed";
 
 	return true;

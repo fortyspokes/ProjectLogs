@@ -62,7 +62,7 @@ case LIST_PROJECTS:
 	$projects = new PROJECT_SELECT();
 	$_STATE->project_select = serialize(clone($projects));
 	if ($projects->selected) {
-		$_STATE->init = SELECT_SPECS;
+		$_STATE->init = LIST_PERMITS;
 		$_STATE->status = SELECTED_PROJECT;
 		break 1; //re-switch to SELECTED_PROJECT
 	}

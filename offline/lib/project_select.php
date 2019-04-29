@@ -172,7 +172,7 @@ public function set_list() { //set up initial form and select
 	$HTML = "";
 
 	if (count($this->restrict) == 0) {
-		$HTML .= "No ".$this->label[1]." available";
+		$HTML .= "No ".$this->labels["project"][1]." available";
 		return $HTML;
 	}
 
