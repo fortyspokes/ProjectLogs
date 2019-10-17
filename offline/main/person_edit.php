@@ -8,10 +8,9 @@ require_once "lib/field_edit.php";
 define('LIST_PERSONS',		STATE::INIT);
 define('SELECT_PERSON',			LIST_PERSONS + 1);
 define('SELECTED_PERSON',		LIST_PERSONS + 2);
-define('CHANGE_PERSON',			LIST_PERSONS + 3);
-define('UPDATE_PERSON',			LIST_PERSONS + 4);
-define('ADD_PERSON',			LIST_PERSONS + 5);
-define('DELETE_PERSON',			LIST_PERSONS + 6);
+define('UPDATE_PERSON',			LIST_PERSONS + 3);
+define('ADD_PERSON',			LIST_PERSONS + 4);
+define('DELETE_PERSON',			LIST_PERSONS + 5);
 define('LIST_ALIENS',		LIST_PERSONS + 10); //'aliens' are persons not connected to this org
 define('ADD_ALIEN',				LIST_ALIENS + 1);
 define('PREFERENCES',		STATE::INIT + 20);
@@ -30,62 +29,71 @@ case LIST_PERSONS:
 		break 1; //re-switch to SELECTED_PERSON
 	}
 	$persons->show_new = true;
+	$persons->show_inactive = true;
 	$_STATE->person_select = serialize(clone($persons));
 	$_STATE->msgGreet = "Select a person record to edit";
+	Page_out();
 	$_STATE->status = SELECT_PERSON;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_PERSON:
 	require_once "lib/person_select.php"; //catches $_GET list refresh
 	$persons = unserialize($_STATE->person_select);
 	$persons->selected = false; //if only one in list, will be set true at object construct
 	$persons->set_state();
 	$_STATE->person_select = serialize(clone($persons));
+	$_STATE->status = SELECTED_PERSON; //for possible goback
+	$_STATE->replace();
 	if ($_STATE->person_id == -1) { //adding...
 		if (list_aliens()) { //aliens to connect
-			$_STATE->status = LIST_ALIENS;
+			$_STATE->push(); //save this state for a loopback
+			$_STATE->status = LIST_ALIENS; //new state to list aliens
 			break 1; //go list 'em
 		}
 	}
-	$_STATE->status = SELECTED_PERSON; //for possible goback
-	$_STATE->replace();
 case SELECTED_PERSON:
 	state_fields();
 	$_STATE->record_id = $_STATE->person_id;
 	if ($_STATE->record_id == -1) {
 		$_STATE->msgGreet = "New person record";
+		Page_out();
 		$_STATE->status = ADD_PERSON;
 	} else {
 		record_info();
 		$_STATE->msgGreet = "Edit person record?";
-		$_STATE->status = CHANGE_PERSON;
+		Page_out();
+		$_STATE->status = UPDATE_PERSON;
 	}
-	break 2;
+	break 2; //return to executive
+
 case ADD_PERSON:
 	state_fields();
 	$_STATE->msgGreet = "New person record";
 	if (isset($_POST["btnReset"])) {
-		break  2;
+		$_STATE = $_STATE->loopback(SELECTED_PERSON);
+		break  1;
 	}
 	if (new_audit()) {
 		$record_id = $_STATE->record_id;
 		$_STATE = $_STATE->loopback(SELECTED_PERSON);
-		$_STATE->record_id = $record_id;
+		$_STATE->person_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
-	break 2;
-case CHANGE_PERSON:
+	Page_out(); //errors...
+	break 2; //return to executive
+
+case UPDATE_PERSON:
 	if (isset($_POST["btnPrefs"])) {
 		$_STATE->status = PREFERENCES;
 		break 1; //re-switch to show preferences
 	}
 	//fall thru
-case UPDATE_PERSON:
 case DELETE_PERSON:
 	state_fields();
 	$_STATE->msgGreet = "Edit person record";
 	if (isset($_POST["btnReset"])) {
-		record_info();
-		break 2;
+		$_STATE = $_STATE->loopback(SELECTED_PERSON);
+		break  1;
 	}
 	if (isset($_POST["btnSubmit"])) {
 		if (update_audit()) {
@@ -94,7 +102,8 @@ case DELETE_PERSON:
 			$_STATE->msgStatus = $msg;
 			break 1; //re-switch
 		}
-		break 2;
+		Page_out(); //errors...
+		break 2; //return to executive
 	}
 	if (isset($_POST["btnRemove"])) {
 		if (remove_audit()) {
@@ -103,7 +112,8 @@ case DELETE_PERSON:
 			$_STATE->msgStatus = $msg;
 			break 1; //re-switch
 		}
-		break 2;
+		Page_out(); //disallowed...
+		break 2; //return to executive
 	}
 	if (isset($_POST["btnDelete"])) {
 		if (delete_audit()) {
@@ -112,17 +122,20 @@ case DELETE_PERSON:
 			$_STATE->msgStatus = $msg;
 			break 1; //re-switch
 		}
-		break 2;
+		Page_out(); //disallowed...
+		break 2; //return to executive
 	}
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid Submit");
-	break 2;
+//	break 2;
 case LIST_ALIENS:
 	$_STATE->msgGreet = "Connect to this organization - or create a new person";
+	Page_out();
 	$_STATE->status = ADD_ALIEN;
 	break 2;
 case ADD_ALIEN:
 	if ($_POST["selPerson"][0] == -1) { //create a new person
-		$_STATE->status = SELECTED_PERSON;
+		$_STATE = $_STATE->loopback(SELECTED_PERSON);
+		$_STATE->person_id = -1;		
 		break 1;
 	}
 	list_aliens();
@@ -142,11 +155,13 @@ case PREFERENCES:
 	}
 	$_STATE->prefset = serialize(clone($prefset)); //leave $prefset intact for later services
 	$_STATE->replace();
-	break 2;
+	Page_out();
+	break 2; //return to executive
+
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
-//End Main State Gate
+//End Main State Gate & return to executive
 
 function list_aliens() {
 	global $_DB, $_STATE;
@@ -242,10 +257,6 @@ function field_input_audit() {
 		}
 	}
 
-	foreach ($_STATE->fields as $name => $field) {
-		$field->disabled = true;
-	}
-
 	if ($_POST["txtEmail"] != "" ) { //save the "@" that common::input_edit() took out
 		$email = explode("@",$_POST["txtEmail"]);
 		foreach ($email as &$part) {
@@ -267,6 +278,7 @@ function find_login() { //check for dup loginname
 			WHERE loginname=:loginname;";
 	$stmt = $_DB->prepare($sql);
 	$stmt->bindValue(':loginname',$_STATE->fields["Log ID"]->value(),PDO::PARAM_STR);
+	$stmt->execute();
 	if (!($row = $stmt->fetchObject())) return -1;
 	$stmt->closeCursor();
 	return $row->person_id;
@@ -305,7 +317,7 @@ function update_db() {
 		$stmt->bindValue(':inactive',$_STATE->fields["Inactive As Of"]->value(),db_connect::PARAM_DATE);
 	}
 	$stmt->execute();
-}
+} //update_db()
 
 function update_audit() {
 	global $_DB, $_STATE;
@@ -346,7 +358,7 @@ function update_audit() {
 
 	$_STATE->msgStatus = "The person record for \"".$_STATE->fields["First Name"]->value()." ".$_STATE->fields["Last Name"]->value()."\" has been updated";
 	return TRUE;
-}
+} //update_audit()
 
 function new_audit() {
 	global $_DB, $_STATE;
@@ -357,7 +369,7 @@ function new_audit() {
 		$_STATE->msgStatus = "This login name already exists";
 		return false;
 	}
-	
+
 	$hash = md5($_STATE->fields["First Name"]->value().$_STATE->fields["Last Name"]->value());
 	$sql = "INSERT INTO ".$_DB->prefix."c00_person (lastname) VALUES (:hash);";
 	$stmt = $_DB->prepare($sql);
@@ -380,7 +392,7 @@ function new_audit() {
 	$_STATE->msgStatus = "The person record for \"".$_STATE->fields["First Name"]->value()." ".$_STATE->fields["Last Name"]->value()."\" has been added to your organization";
 	$_STATE->msgStatus .= "<br>Add a RATE record before entering hours";
 	return TRUE;
-}
+} //new_audit()
 
 function remove_audit() {
 	global $_DB, $_STATE;
@@ -524,24 +536,26 @@ function delete_audit() {
 
 	$_STATE->msgStatus = "The person record for \"".$name."\" has been deleted";
 	return TRUE;
-}
+} //delete_audit()
 
-//-------end function code; begin HTML------------
+function Page_out() {
+	global $_DB, $_STATE;
 
-$scripts = array("call_server.js");
-if ($_STATE->status == PREFERENCES) {
-	$_STATE->msgGreet = $prefset->greeting();
-	$scripts = $prefset->set_script();
-}
-EX_pageStart($scripts); //standard HTML page start stuff - insert scripts here
+	$scripts = array("call_server.js");
+	if ($_STATE->status == PREFERENCES) {
+		global $prefset;
+		$_STATE->msgGreet = $prefset->greeting();
+		$scripts = $prefset->set_script();
+	}
+	EX_pageStart($scripts); //standard HTML page start stuff - insert scripts here
 ?>
 <script language="JavaScript">
 function compare_pswds() {
-  if (document.getElementById("txtPswd_ID").value != document.getElementById("txtRePswd_ID").value) {
-    alert ("Passwords do not match!");
-    return false;
-  }
-  return true;
+	if (document.getElementById("txtPswd_ID").value != document.getElementById("txtRePswd_ID").value) {
+		alert ("Passwords do not match!");
+		return false;
+	}
+	return true;
 }
 
 function RemoveBtn() {
@@ -553,21 +567,20 @@ function DeleteBtn() {
 }
 </script>
 <?php
-EX_pageHead(); //standard page headings - after any scripts
+	EX_pageHead(); //standard page headings - after any scripts
 
-//forms and display depend on process state; note, however, that the state was probably changed after entering
-//the Main State Gate so this switch will see the next state in the process:
-switch ($_STATE->status) {
-case SELECT_PERSON:
+	switch ($_STATE->status) {
+	case LIST_PERSONS:
 
-	echo $persons->set_list();
+		global $persons;
+		echo $persons->set_list();
 
-	break; //end SELECT_PERSON status ----END STATUS PROCESSING----
+		break; //end LIST_PERSONS status ----END STATUS PROCESSING----
 
-case CHANGE_PERSON:
-case UPDATE_PERSON:
-case ADD_PERSON:
-case DELETE_PERSON:
+	case SELECTED_PERSON:
+	case ADD_PERSON:		//comes back here if error...
+	case UPDATE_PERSON:
+	case DELETE_PERSON:
 ?>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <table align="center">
@@ -602,41 +615,45 @@ case DELETE_PERSON:
   </table>
   <p>
 <?php
-	if ($_STATE->status == ADD_PERSON ) {
-		echo FIELD_edit_buttons(FIELD_ADD);
-	} else {
-		echo Field_edit_buttons(FIELD_UPDATE);
-		//note: can't remove or delete yourself
-		if (($_PERMITS->can_pass("person_edit")) && ($_SESSION["person_id"] != $_STATE->record_id)) {
-			echo "  <br><button type='submit' name='btnRemove' id='btnRemove_ID' value = 'remove' onclick='return RemoveBtn()'>Remove this person record</button><br>\n";
-			//for now, no delete; use inactive instead
+		if ($_STATE->record_id == -1 ) {
+			echo FIELD_edit_buttons(FIELD_ADD);
+		} else {
+			echo Field_edit_buttons(FIELD_UPDATE);
+			//note: can't remove or delete yourself
+			global $_PERMITS;
+			if (($_PERMITS->can_pass("person_edit")) && ($_SESSION["person_id"] != $_STATE->record_id)) {
+				echo "  <br><button type='submit' name='btnRemove' id='btnRemove_ID' value = 'remove' onclick='return RemoveBtn()'>Remove this person record</button><br>\n";
+				//for now, no delete; use inactive instead
 //			echo "<button type='submit' name='btnDelete' id='btnDelete_ID' value = 'delete' onclick='return DeleteBtn()'>Delete this person record</button>\n";
+			}
+			echo "  <br><button type='submit' name='btnPrefs' id='btnPrefs_ID' value='preferences'>Preferences</button>\n";
 		}
-		echo "  <br><button type='submit' name='btnPrefs' id='btnPrefs_ID' value='preferences'>Preferences</button>\n";
-	}
 ?>
 </form>
 <?php
-	break; //end SELECTED/ADD/UPDATE/DELETE_PERSON status ----END STATUS PROCESSING----
+		break; //end SELECTED_PERSON/ADD/UPDATE/DELETE_PERSON status ----END STATUS PROCESSING----
 
-case ADD_ALIEN:
+	case LIST_ALIENS:
 ?>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <select name="selPerson[]" size="<?php echo count($_STATE->aliens) + 1; ?>" onclick='this.form.submit()'>
     <option value='-1' style='opacity:1.0'>--create another person--
 <?php
-	foreach ($_STATE->aliens as $key => $record) {
-		echo "    <option value='".$key."'>".$record[0].", ".$record[1]."\n";
-	} ?>
+		foreach ($_STATE->aliens as $key => $record) {
+			echo "    <option value='".$key."'>".$record[0].", ".$record[1]."\n";
+		}
+?>
    </select>
 </form>
 <?php
-	break;
+		break; //end LIST_ALIENS status
 
-case PREFERENCES: //show preferences and allow update:
-	$prefset->set_HTML();
+	case PREFERENCES: //show preferences and allow update:
+		$prefset->set_HTML();
 
-} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
+	} //end select ($_STATE->status)
 
-EX_pageEnd(); //standard end of page stuff
+	EX_pageEnd(); //standard end of page stuff
+
+} //Page_out()
 ?>
