@@ -26,8 +26,10 @@ case LIST_PROJECTS:
 	$_STATE->project_select = serialize(clone($projects));
 	$_STATE->projLabel = ucfirst($projects->get_label("project"));
 	$_STATE->msgGreet = "Select a ".$_STATE->projLabel." record to edit";
+	Page_out();
 	$_STATE->status = SELECT_PROJECT;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_PROJECT:
 	require_once "lib/project_select.php"; //catches $_GET list refresh (assumes break 2)
 	$projects = unserialize($_STATE->project_select);
@@ -46,12 +48,15 @@ case SELECTED_PROJECT:
 		$_STATE->msgGreet = "Edit ".$_STATE->projLabel." record";
 		$_STATE->status = UPDATE_PROJECT;
 	}
-	break 2;
+	Page_out();
+	break 2; //return to executive
+
 case ADD_PROJECT:
 	state_fields(); //creates the accounting list for audit
 	$_STATE->msgGreet = "New ".$_STATE->projLabel." record";
 	if (isset($_POST["btnReset"])) {
-		break 2;
+		$_STATE = $_STATE->loopback(SELECTED_PROJECT);
+		break 1;
 	}
 	if (new_audit()) {
 		$record_id = $_STATE->record_id;
@@ -59,7 +64,9 @@ case ADD_PROJECT:
 		$_STATE->record_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
-	break 2;
+	Page_out(); //errors...
+	break 2; //return to executive
+
 case UPDATE_PROJECT:
 	if (isset($_POST["btnPrefs"])) {
 		$_STATE->status = PREFERENCES;
@@ -68,14 +75,16 @@ case UPDATE_PROJECT:
 	state_fields(); //creates the accounting list for audit
 	$_STATE->msgGreet = "Edit ".$_STATE->projLabel." record";
 	if (isset($_POST["btnReset"])) {
-		record_info();
-		break 2;
+		$_STATE = $_STATE->loopback(SELECTED_PROJECT);
+		break 1;
 	}
 	if (update_audit()) {
 		$_STATE = $_STATE->loopback(SELECTED_PROJECT);
 		break 1; //re-switch
 	}
-	break 2;
+	Page_out(); //errors...
+	break 2; //return to executive
+
 case PREFERENCES:
 	require_once "lib/preference_set.php";
 	if (!isset($_STATE->prefset)) { //first time thru
@@ -89,11 +98,13 @@ case PREFERENCES:
 	}
 	$_STATE->prefset = serialize(clone($prefset)); //leave $prefset intact for later services
 	$_STATE->replace();
-	break 2;
+	Page_out();
+	break 2; //return to executive
+
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
-//End Main State Gate
+//End Main State Gate & return to executive
 
 function state_fields() {
 	global $_DB, $_STATE;
@@ -253,28 +264,30 @@ function new_audit() {
 	return TRUE;
 }
 
-//-------end function code; begin HTML------------
+function Page_out() {
+	global $_DB, $_STATE;
 
-if ($_STATE->status == SELECT_PROJECT) {
-	$scripts = array("call_server.js");
-} else if ($_STATE->status == PREFERENCES) {
-	$_STATE->msgGreet = $prefset->greeting();
-	$scripts = $prefset->set_script();
-} else {
-	$scripts = array();
-}
-EX_pageStart($scripts); //standard HTML page start stuff - insert SCRIPTS here
-EX_pageHead(); //standard page headings - after any scripts
+	if ($_STATE->status == LIST_PROJECTS) {
+		$scripts = array("call_server.js");
+	} else if ($_STATE->status == PREFERENCES) {
+		global $prefset;
+		$_STATE->msgGreet = $prefset->greeting();
+		$scripts = $prefset->set_script();
+	} else {
+		$scripts = array();
+	}
+	EX_pageStart($scripts); //standard HTML page start stuff - insert SCRIPTS here
+	EX_pageHead(); //standard page headings - after any scripts
 
-//forms and display depend on process state; note, however, that the state was probably changed after entering
-//the Main State Gate so this switch will see the next state in the process:
-switch ($_STATE->status) {
-case SELECT_PROJECT:
+	switch ($_STATE->status) {
 
-	echo $projects->set_list();
+	case LIST_PROJECTS:
+		global $projects;
+		echo $projects->set_list();
+		break; //end LIST_PROJECTS status ----END STATUS PROCESSING----
 
-	break; //end SELECT_PROJECT status ----END STATUS PROCESSING----
-default:
+	case ADD_PROJECT:
+	case UPDATE_PROJECT:
 ?>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <table align="center">
@@ -299,11 +312,12 @@ default:
       <td>
         <select name='selBudgetBy' id='selBudgetBy_ID' size="<?php echo count($_STATE->BudgetBy_list); ?>">
 <?php
-	foreach($_STATE->BudgetBy_list as $value => $name) {
-  		echo "        <option value=\"".$value."\"";
-		if ($_STATE->fields["Budget_by"]->value == $value) echo " selected";
-		echo ">".$name."\n";
-	} ?>
+		foreach($_STATE->BudgetBy_list as $value => $name) {
+	  		echo "        <option value=\"".$value."\"";
+			if ($_STATE->fields["Budget_by"]->value == $value) echo " selected";
+			echo ">".$name."\n";
+		}
+?>
         </select>
       </td>
       <td>&nbsp</td>
@@ -327,11 +341,12 @@ default:
       <td>
         <select name='selAccounting' id='selAccounting_ID' size="<?php echo count($_STATE->acct_list); ?>">
 <?php
-	foreach($_STATE->acct_list as $value => $name) {
-  		echo "        <option value=\"".$value."\"";
-		if ($_STATE->accounting_id == $value) echo " selected";
-		echo ">".$name."\n";
-	} ?>
+		foreach($_STATE->acct_list as $value => $name) {
+	  		echo "        <option value=\"".$value."\"";
+			if ($_STATE->accounting_id == $value) echo " selected";
+			echo ">".$name."\n";
+		}
+?>
         </select>
       </td>
       <td>&nbsp</td>
@@ -342,19 +357,27 @@ default:
   </table>
   <p>
 <?php
-	if ($_STATE->status == ADD_PROJECT ) {
-		echo FIELD_edit_buttons(FIELD_ADD);
-	} else {
-		echo Field_edit_buttons(FIELD_UPDATE);
-	} ?>
+		if ($_STATE->status == ADD_PROJECT ) {
+			echo FIELD_edit_buttons(FIELD_ADD);
+		} else {
+			echo Field_edit_buttons(FIELD_UPDATE);
+		}
+?>
 </form>
-<?php //end default status ----END STATUS PROCESSING----
-	break;
+<?php
+		break; //end ADD/UPDATE_PROJECT status ----END STATUS PROCESSING----
 
-case PREFERENCES: //show preferences and allow update:
-	$prefset->set_HTML();
+	case PREFERENCES: //show preferences and allow update:
+		$prefset->set_HTML();
+		break;
 
-} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
+	default:
 
-EX_pageEnd(); //standard end of page stuff
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+
+	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
+
+	EX_pageEnd(); //standard end of page stuff
+
+} //end Page_out()
 ?>

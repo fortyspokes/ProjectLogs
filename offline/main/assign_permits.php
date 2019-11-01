@@ -35,6 +35,7 @@ class A_PERMIT {
 while (1==1) { switch ($_STATE->status) {
 case LIST_PERSONS:
 	$_STATE->person_id = 0;
+	$_STATE->backup = LIST_PERSONS; //set 'goback'
 	require_once "lib/person_select.php";
 	$persons = new PERSON_SELECT(array(-$_SESSION["person_id"])); //blacklist: user can't change own permits
 	if ($persons->selected) {
@@ -45,8 +46,10 @@ case LIST_PERSONS:
 	}
 	$_STATE->person_select = serialize(clone($persons));
 	$_STATE->msgGreet = "Select a person to assign permissions";
+	Page_out();
 	$_STATE->status = SELECT_PERSON;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_PERSON:
 	require_once "lib/person_select.php"; //catches $_GET list refresh
 	$persons = unserialize($_STATE->person_select);
@@ -54,7 +57,6 @@ case SELECT_PERSON:
 	$_STATE->status = SELECTED_PERSON;
 	$_STATE->person_select = serialize($persons);
 case SELECTED_PERSON:
-
 	$_STATE->status = LIST_PROJECTS; //our new starting point for goback
 	$_STATE->replace(); //so loopback() can find it
 case LIST_PROJECTS:
@@ -68,8 +70,10 @@ case LIST_PROJECTS:
 	}
 	$_STATE->msgGreet = "Select the ".ucfirst($projects->get_label("project"));
 	$_STATE->backup = LIST_PERSONS;
+	Page_out();
 	$_STATE->status = SELECT_PROJECT;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_PROJECT:
 	require_once "lib/project_select.php"; //catches $_GET list refresh
 	$projects = unserialize($_STATE->project_select);
@@ -85,19 +89,23 @@ case LIST_PERMITS:
 						$_STATE->person_name;
 	permit_list($_PERMITS);
 	$_STATE->backup = LIST_PROJECTS; //set goback
+	Page_out();
 	$_STATE->status = UPDATE_PERMIT;
-	break 2;
+	break 2; //return to executive
+
 case UPDATE_PERMIT:
 	if (entry_audit($_PERMITS)) {
 		$_STATE->msgGreet = "New permissions for ".$_STATE->person_name;
 		$_STATE = $_STATE->loopback(LIST_PERMITS);
 		break 1; //re-switch
 	}
-	break 2;
+	Page_out();
+	break 2; //return to executive
+
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
-//End Main State Gate
+//End Main State Gate & return to executive
 
 function permit_list(&$permits) {
 	global $_DB, $_STATE;
@@ -189,9 +197,10 @@ function entry_audit(&$permits) {
 	return TRUE;
 }
 
-//-------end function code; begin HTML------------
+function Page_out() {
+	global $_DB, $_STATE;
 
-EX_pageStart(array("call_server.js")); //standard HTML page start stuff - insert SCRIPTS here
+	EX_pageStart(array("call_server.js")); //standard HTML page start stuff - insert SCRIPTS here
 ?>
 <script language="JavaScript">
 LoaderS.push('load_status();');
@@ -201,59 +210,64 @@ function load_status() {
 }
 </script>
 <?php
-EX_pageHead(); //standard page headings - after any scripts
+	EX_pageHead(); //standard page headings - after any scripts
 
-//forms and display depend on process state; note, however, that the state was probably changed after entering
-//the Main State Gate so this switch will see the next state in the process:
-switch ($_STATE->status) {
-case SELECT_PERSON:
+	switch ($_STATE->status) {
+	case LIST_PERSONS:
+		global $persons;
+		echo $persons->set_list();
+		break; //end LIST_PERSONS status ----END STATUS PROCESSING----
 
-	echo $persons->set_list();
+	case LIST_PROJECTS:
+		global $projects;
+		echo $projects->set_list();
+		break; //end LIST_PROJECTS status ----END STATE: EXITING FROM PROCESS----
 
-	break; //end SELECT_PERSON status ----END STATUS PROCESSING----
-
-case SELECT_PROJECT:
-
-	echo $projects->set_list();
-
-	break; //end SELECT_PROJECT status ----END STATE: EXITING FROM PROCESS----
-
-case LIST_PERMITS:
-case UPDATE_PERMIT:
+	case LIST_PERMITS:
+	case UPDATE_PERMIT:
 ?>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
 <table style='margin:auto;'>
 <?php
-	$grade = -1;
-	foreach($_STATE->fields as $permit_id => $field) {
-		if ($grade != $field->grade) {
-			$grade = $field->grade;
-			echo "  <tr><td></td><td class='group'>";
-			switch ($grade) {
-				case PERMITS::GR_SYS: echo "System:"; break;
-				case PERMITS::GR_ORG: echo "Organization:"; break;
-				case PERMITS::GR_PRJ: echo "Project:"; break;
-				default: echo "Unknown(".$grade."):";
+		$grade = -1;
+		foreach($_STATE->fields as $permit_id => $field) {
+			if ($grade != $field->grade) {
+				$grade = $field->grade;
+				echo "  <tr><td></td><td class='group'>";
+				switch ($grade) {
+					case PERMITS::GR_SYS: echo "System:"; break;
+					case PERMITS::GR_ORG: echo "Organization:"; break;
+					case PERMITS::GR_PRJ: echo "Project:"; break;
+					default: echo "Unknown(".$grade."):";
+				}
+				echo "</td></tr>\n";
 			}
+			echo "  <tr><td colspan='2'>";
+		  	echo "<input type='checkbox' name='chkPermit[".strval($permit_id)."]'";
+			if ($field->disabled) echo " disabled";
+			if ($field->assigned) echo " checked";
+			echo ">".$field->desc."";
 			echo "</td></tr>\n";
 		}
-		echo "  <tr><td colspan='2'>";
-	  	echo "<input type='checkbox' name='chkPermit[".strval($permit_id)."]'";
-		if ($field->disabled) echo " disabled";
-		if ($field->assigned) echo " checked";
-		echo ">".$field->desc."";
-		echo "</td></tr>\n";
-	} ?>
+?>
 </table>
 <?php
-	if ($_STATE->status != STATE::DONE) { ?>
+		if ($_STATE->status != STATE::DONE) {
+?>
   <button type="submit">Assign these permissions</button>
 <?php
-	} ?>
+		}
+?>
 </form>
 <?php
-//end LIST/UPDATE_PERMIT status ----END STATUS PROCESSING----
-}
+		break; //end LIST/UPDATE_PERMIT status ----END STATUS PROCESSING----
 
-EX_pageEnd(); //standard end of page stuff
+	default:
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+
+	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
+
+	EX_pageEnd(); //standard end of page stuff
+
+} //end function Page_out()
 ?>

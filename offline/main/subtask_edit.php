@@ -37,8 +37,10 @@ case LIST_PROJECTS:
 		break 1; //re-switch to SELECTED_PROJECT
 	}
 	$_STATE->msgGreet = "Select the ".ucfirst($projects->get_label("project"));
+	Page_out();
 	$_STATE->status = SELECT_PROJECT;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_PROJECT:
 	require_once "lib/project_select.php"; //catches $_GET list refresh
 	$projects = unserialize($_STATE->project_select);
@@ -59,8 +61,10 @@ case LIST_TASKS:
 	}
 	$_STATE->msgGreet = $_STATE->project_name."<br>Select the task for this subtask";
 	$_STATE->backup = LIST_PROJECTS; //set goback
+	Page_out();
 	$_STATE->status = SELECT_TASK;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_TASK:
 	task_select();
 	$_STATE->heading .= "<br>Task: ".$_STATE->records[$_STATE->task_id]."<br>";
@@ -72,8 +76,10 @@ case LIST_SUBTASKS:
 	subtask_list();
 	$_STATE->msgGreet = $_STATE->project_name."<br>Select a subtask record to edit";
 	$_STATE->backup = LIST_TASKS; //set goback
+	Page_out();
 	$_STATE->status = SELECT_SUBTASK;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_SUBTASK:
 	subtask_select();
 	$_STATE->status = SELECTED_SUBTASK; //for possible goback
@@ -89,11 +95,13 @@ case SELECTED_SUBTASK:
 		$_STATE->msgGreet = "Edit subtask record?";
 		$_STATE->status = UPDATE_SUBTASK;
 	}
-	break 2;
+	Page_out();
+	break 2; //return to executive
+
 case ADD_SUBTASK:
-	$_STATE->msgGreet = "New subtask record";
 	if (isset($_POST["btnReset"])) {
-		break 2;
+		$_STATE = $_STATE->loopback(SELECTED_SUBTASK);
+		break 1;
 	}
 	state_fields();
 	if (new_audit()) {
@@ -102,12 +110,13 @@ case ADD_SUBTASK:
 		$_STATE->record_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
-	break 2;
+	Page_out(); //errors...
+	break 2; //return to executive
+
 case UPDATE_SUBTASK:
-	$_STATE->msgGreet = "Edit action record";
 	if (isset($_POST["btnReset"])) {
-		subtask_info();
-		break 2; //start over
+		$_STATE = $_STATE->loopback(SELECTED_SUBTASK);
+		break 1;
 	}
 	state_fields();
 	if (isset($_POST["btnProperties"])) {
@@ -120,19 +129,25 @@ case UPDATE_SUBTASK:
 		$_STATE = $_STATE->loopback(SELECTED_SUBTASK);
 		break 1; //re-switch
 	}
-	break 2;
+	Page_out(); //errors...
+	break 2; //return to executive
+
 case PROPERTIES:
 	require_once "lib/prop_set.php";
 	$propset = PROP_SET_exec($_STATE, false);
-	break 2;
+	Page_out();
+	break 2; //return to executive
+
 case PROPERTIES_GOBACK:
 	require_once "lib/prop_set.php";
 	PROP_SET_exec($_STATE, true);
 	$_STATE = $_STATE->loopback(SELECTED_SUBTASK);
 	break 1;
+
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
+//End Main State Gate & return to executive
 
 function state_fields() {
 	global $_STATE;
@@ -296,64 +311,69 @@ function new_audit() {
 	return TRUE;
 }
 
-if ($_STATE->status == SELECT_PROJECT)
-	$scripts = array("call_server.js");
-elseif ($_STATE->status == PROPERTIES) {
-	$_STATE->msgGreet = $propset->greeting();
-	$scripts = $propset->set_script();
-} else {
-	$scripts = array();
-}
-EX_pageStart($scripts); //standard HTML page start stuff - insert SCRIPTS here
-EX_pageHead(); //standard page headings - after any scripts
+function Page_out() {
+	global $_DB, $_STATE;
 
-//forms and display depend on process state; note, however, that the state was probably changed after entering
-//the Main State Gate so this switch will see the next state in the process:
-switch ($_STATE->status) {
-case SELECT_PROJECT:
+	if ($_STATE->status == LIST_PROJECTS)
+		$scripts = array("call_server.js");
+	elseif ($_STATE->status == PROPERTIES) {
+		global $propset;
+		$_STATE->msgGreet = $propset->greeting();
+		$scripts = $propset->set_script();
+	} else {
+		$scripts = array();
+	}
+	EX_pageStart($scripts); //standard HTML page start stuff - insert SCRIPTS here
+	EX_pageHead(); //standard page headings - after any scripts
 
-	echo $projects->set_list();
+	switch ($_STATE->status) {
 
-	break; //end SELECT_PROJECT status ----END STATE: EXITING FROM PROCESS----
-case SELECT_TASK:
+	case LIST_PROJECTS:
+		global $projects;
+		echo $projects->set_list();
+		break; //end LIST_PROJECTS status ----END STATE: EXITING FROM PROCESS----
+
+	case LIST_TASKS:
 ?>
   <p>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <select name='selTask' size="<?php echo count($_STATE->records); ?>" onclick="this.form.submit()">
 <?php
-	foreach($_STATE->records as $value => $name) {
-  		echo "    <option value=\"".$value."\">".$name."\n";
-	} ?>
+		foreach($_STATE->records as $value => $name) {
+	  		echo "    <option value=\"".$value."\">".$name."\n";
+		}
+?>
   </select>
 </form>
   </p>
-<?php //end SELECT_TASK status ----END STATUS PROCESSING----
-	break;
-case SELECT_SUBTASK:
+<?php
+		break; //end LIST_TASKS status ----END STATUS PROCESSING----
+
+	case LIST_SUBTASKS:
 ?>
   <p>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <select name='selSubtask' size="<?php echo count($_STATE->records); ?>" onclick="this.form.submit()" style='cursor:pointer'>
 <?php
-	$title = "Click to select";
-	foreach($_STATE->records as $value => $name) {
-		$opacity = "1.0"; //opacity value = fully opaque
-		$inact = "";
-		if ($name[1] != "") {
-			$opacity = "0.5";
-			$inact = "; inactive as of ".$name[1];
+		$title = "Click to select";
+		foreach($_STATE->records as $value => $name) {
+			$opacity = "1.0"; //opacity value = fully opaque
+			$inact = "";
+			if ($name[1] != "") {
+				$opacity = "0.5";
+				$inact = "; inactive as of ".$name[1];
+			}
+			echo "    <option value=\"".$value."\" title='".$title.$inact."' style='opacity:".$opacity."'>".$name[0]."\n";
 		}
-		echo "    <option value=\"".$value."\" title='".$title.$inact."' style='opacity:".$opacity."'>".$name[0]."\n";
-	} ?>
+?>
   </select>
   </p>
 </form>
-<?php //end SELECT_SUBTASK status ----END STATUS PROCESSING----
-	break;
+<?php
+		break; //end LIST_SUBTASKS status ----END STATUS PROCESSING----
 
-case SELECTED_SUBTASK:
-case ADD_SUBTASK:
-case UPDATE_SUBTASK:
+	case ADD_SUBTASK:
+	case UPDATE_SUBTASK:
 ?>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <table align="center">
@@ -373,21 +393,29 @@ case UPDATE_SUBTASK:
   </table>
   <p>
 <?php
-	if ($_STATE->status == ADD_SUBTASK ) {
-		echo FIELD_edit_buttons(FIELD_ADD);
-	} else {
-		echo Field_edit_buttons(FIELD_UPDATE); ?>
+		if ($_STATE->status == ADD_SUBTASK ) {
+			echo FIELD_edit_buttons(FIELD_ADD);
+		} else {
+			echo Field_edit_buttons(FIELD_UPDATE);
+?>
   <br><button type='submit' name='btnProperties' id='btnProperties_ID' value='values'>Show Properties</button><br>
 <?php
-	} ?>
+	}
+?>
 </form>
-<?php //end SELECTED/ADD/UPDATE_ACCOUNT status ----END STATUS PROCESSING----
-	break;
+<?php
+		break; //end ADD/UPDATE_SUBTASK status ----END STATUS PROCESSING----
 
-case PROPERTIES: //list properties and allow new entry:
-	$propset->set_HTML();
+	case PROPERTIES: //list properties and allow new entry:
+		$propset->set_HTML();
+		break; //end PROPERTIES status ----END STATUS PROCESSING----
 
-//end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
-}
-EX_pageEnd(); //standard end of page stuff
+	default:
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+
+	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
+
+	EX_pageEnd(); //standard end of page stuff
+
+} //end Page_out()
 ?>

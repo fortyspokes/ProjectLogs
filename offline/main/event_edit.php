@@ -18,7 +18,7 @@ define('PROPERTIES_GOBACK',		PROPERTIES + 1);
 
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
-case STATE::INIT:
+case LIST_PROJECTS:
 	$_STATE->project_id = 0;
 	require_once "lib/project_select.php";
 	$projects = new PROJECT_SELECT($_PERMITS->restrict("event_edit"));
@@ -29,8 +29,10 @@ case STATE::INIT:
 		break 1; //re-switch to SELECTED_PROJECT
 	}
 	$_STATE->msgGreet = "Select the ".ucfirst($projects->get_label("project"));
+	Page_out();
 	$_STATE->status = SELECT_PROJECT;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_PROJECT:
 	require_once "lib/project_select.php"; //catches $_GET list refresh
 	$projects = unserialize($_STATE->project_select);
@@ -46,8 +48,10 @@ case LIST_EVENTS:
 	list_setup();
 	$_STATE->msgGreet = $_STATE->project_name."<br>Select the ".$_STATE->eventLabel." record to edit";
 	$_STATE->backup = LIST_PROJECTS; //set goback
+	Page_out();
 	$_STATE->status = SELECT_EVENT;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_EVENT:
 	record_select();
 	$_STATE->status = SELECTED_EVENT; //for possible goback
@@ -57,33 +61,37 @@ case SELECTED_EVENT:
 	$_STATE->backup = LIST_EVENTS; //for goback
 	if ($_STATE->record_id == -1) {
 		$_STATE->msgGreet = "New ".$_STATE->eventLabel." record";
+		Page_out();
 		$_STATE->status = ADD_EVENT;
 	} else {
 		record_info();
 		$_STATE->msgGreet = "Edit ".$_STATE->eventLabel." record?";
+		Page_out();
 		$_STATE->status = UPDATE_EVENT;
 	}
-	break 2;
+	break 2; //return to executive
+
 case ADD_EVENT:
-	state_fields();
-	$_STATE->msgGreet = "New ".$_STATE->eventLabel." record";
 	if (isset($_POST["btnReset"])) {
-		break 2;
+		$_STATE = $_STATE->loopback(SELECTED_EVENT);
+		break 1;
 	}
+	state_fields();
 	if (new_audit()) {
 		$record_id = $_STATE->record_id;
 		$_STATE = $_STATE->loopback(SELECTED_EVENT);
 		$_STATE->record_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
-	break 2;
+	Page_out(); //errors...
+	break 2; //return to executive
+
 case UPDATE_EVENT:
-	state_fields();
-	$_STATE->msgGreet = "Edit ".$_STATE->eventLabel." record";
 	if (isset($_POST["btnReset"])) {
-		record_info();
-		break 2;
+		$_STATE = $_STATE->loopback(SELECTED_EVENT);
+		break 1;
 	}
+	state_fields();
 	if (isset($_POST["btnProperties"])) {
 		$_STATE->status = PROPERTIES;
 		$_STATE->element = "a30"; //required by PROPERTIES
@@ -94,20 +102,25 @@ case UPDATE_EVENT:
 		$_STATE = $_STATE->loopback(SELECTED_EVENT);
 		break 1; //re-switch
 	}
-	break 2;
+	Page_out(); //errors...
+	break 2; //return to executive
+
 case PROPERTIES:
 	require_once "lib/prop_set.php";
 	$propset = PROP_SET_exec($_STATE, false);
-	break 2;
+	Page_out();
+	break 2; //return to executive
+
 case PROPERTIES_GOBACK:
 	require_once "lib/prop_set.php";
 	PROP_SET_exec($_STATE, true);
 	$_STATE = $_STATE->loopback(SELECTED_EVENT);
 	break 1;
+
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
-//End Main State Gate
+//End Main State Gate & return to executive
 
 function state_fields() {
 	global $_STATE;
@@ -241,54 +254,55 @@ function new_audit() {
 	$_STATE->msgStatus = "The event record for \"".$_STATE->fields["Name"]->value()."\" has been added to the project";
 	return TRUE;
 }
-//-------end function code; begin HTML------------
 
-if ($_STATE->status == SELECT_PROJECT)
-	$scripts = array("call_server.js");
-elseif ($_STATE->status == PROPERTIES) {
-	$_STATE->msgGreet = $propset->greeting();
-	$scripts = $propset->set_script();
-} else {
-	$scripts = array();
-}
-EX_pageStart($scripts); //standard HTML page start stuff - insert SCRIPTS here
-EX_pageHead(); //standard page headings - after any scripts
+function Page_out() {
+	global $_DB, $_STATE;
 
-//forms and display depend on process state; note, however, that the state was probably changed after entering
-//the Main State Gate so this switch will see the next state in the process:
-switch ($_STATE->status) {
-case SELECT_PROJECT:
+	if ($_STATE->status == SELECT_PROJECT)
+		$scripts = array("call_server.js");
+	elseif ($_STATE->status == PROPERTIES) {
+		global $propset;
+		$_STATE->msgGreet = $propset->greeting();
+		$scripts = $propset->set_script();
+	} else {
+		$scripts = array();
+	}
+	EX_pageStart($scripts); //standard HTML page start stuff - insert SCRIPTS here
+	EX_pageHead(); //standard page headings - after any scripts
 
-	echo $projects->set_list();
+	switch ($_STATE->status) {
 
-	break; //end SELECT_PROJECT status ----END STATE: EXITING FROM PROCESS----
-case SELECT_EVENT:
+	case LIST_PROJECTS:
+		global $projects;
+		echo $projects->set_list();
+		break; //end LIST_PROJECTS status ----END STATE: EXITING FROM PROCESS----
+
+	case LIST_EVENTS:
 ?>
   <p>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <select name='selEvent' size="<?php echo count($_STATE->records); ?>" onclick="this.form.submit()" style='cursor:pointer'>
 <?php
-	$title = "Click to select";
-	foreach($_STATE->records as $value => $name) {
-		$opacity = "1.0"; //opacity value = fully opaque
-		$inact = "";
-		if ($name[1] != "") {
-			$opacity = "0.5";
-			$inact = "; inactive as of ".$name[1];
+		$title = "Click to select";
+		foreach($_STATE->records as $value => $name) {
+			$opacity = "1.0"; //opacity value = fully opaque
+			$inact = "";
+			if ($name[1] != "") {
+				$opacity = "0.5";
+				$inact = "; inactive as of ".$name[1];
+			}
+			echo "    <option value=\"".$value."\" title='".$title.$inact."' style='opacity:".$opacity."'>".$name[0]."\n";
 		}
-		echo "    <option value=\"".$value."\" title='".$title.$inact."' style='opacity:".$opacity."'>".$name[0]."\n";
-	} ?>
-
-
+?>
   </select>
 </form>
   </p>
-<?php //end SELECT_EVENT status ----END STATUS PROCESSING----
-	break;
+<?php
+		break; //end LIST_EVENTS status ----END STATUS PROCESSING----
 
-case SELECTED_EVENT:
-case ADD_EVENT:
-case UPDATE_EVENT:
+	case SELECTED_EVENT:
+	case ADD_EVENT:		//comes back here if error
+	case UPDATE_EVENT:
 ?>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <table align="center">
@@ -311,22 +325,31 @@ case UPDATE_EVENT:
     </tr>
   </table>
   <p>
- <?php
-	if ($_STATE->status == ADD_EVENT ) {
-		echo FIELD_edit_buttons(FIELD_ADD);
-	} else {
-		echo Field_edit_buttons(FIELD_UPDATE);; ?>
+<?php
+		if ($_STATE->status == ADD_EVENT ) {
+			echo FIELD_edit_buttons(FIELD_ADD);
+		} else {
+			echo Field_edit_buttons(FIELD_UPDATE);
+?>
   <br><button type='submit' name='btnProperties' id='btnProperties_ID' value='values'>Show Properties</button><br>
 <?php
-	} ?>
+		}
+?>
 </form>
-<?php //end SELECTED/ADD/UPDATE_EVENT status ----END STATUS PROCESSING----
-	break;
+<?php
+		break; //end SELECTED/ADD/UPDATE_EVENT status ----END STATUS PROCESSING----
 
-case PROPERTIES: //list properties and allow new entry:
-	$propset->set_HTML();
+	case PROPERTIES: //list properties and allow new entry:
+		global $propset;
+		$propset->set_HTML();
+		break;
 
-//end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
-}
-EX_pageEnd(); //standard end of page stuff
+	default:
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+
+	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
+
+	EX_pageEnd(); //standard end of page stuff
+
+} //end Page_out()
 ?>

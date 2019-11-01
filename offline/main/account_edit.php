@@ -21,6 +21,7 @@ define('PROPERTIES_GOBACK',			PROPERTIES + 1);
 while (1==1) { switch ($_STATE->status) {
 case LIST_ACCOUNTING:
 	$_STATE->accounting_id = 0;
+	$_STATE->backup = LIST_ACCOUNTING; //set 'goback'
 	accounting_list();
 	if (count($_STATE->records) == 1) { //solo group?
 		accounting_select(key($_STATE->records)); //select this one
@@ -29,41 +30,46 @@ case LIST_ACCOUNTING:
 		break 1; //re-switch to SELECTED_ACCOUNTING
 	}
 	$_STATE->msgGreet = "Select the accounting group";
+	Page_out();
 	$_STATE->status = SELECT_ACCOUNTING;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_ACCOUNTING:
 	accounting_select(); //select from POST
 	$_STATE->heading .= "<br>Accounting group: ".$_STATE->records[$_STATE->accounting_id];
 case SELECTED_ACCOUNTING:
-
 	$_STATE->status = LIST_ACCOUNTS; //our new starting point for goback
 	$_STATE->replace(); //so loopback() can find it
 case LIST_ACCOUNTS:
 	account_list();
 	$_STATE->msgGreet = "Select the ".$_STATE->accounting." record to edit";
-	$_STATE->backup = LIST_ACCOUNTING; //set goback
+	Page_out();
 	$_STATE->status = SELECT_ACCOUNT;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_ACCOUNT:
 	account_select();
 	$_STATE->status = SELECTED_ACCOUNT; //for possible goback
 	$_STATE->replace(); //so loopback() can find it
 case SELECTED_ACCOUNT:
 	state_fields();
-	$_STATE->backup = LIST_ACCOUNTS; //for goback
+	$_STATE->backup = LIST_ACCOUNTS; //for 'goback'
 	if ($_STATE->record_id == -1) {
 		$_STATE->msgGreet = "New ".$_STATE->accounting." record";
+		Page_out();
 		$_STATE->status = ADD_ACCOUNT;
 	} else {
 		account_info();
 		$_STATE->msgGreet = "Edit ".$_STATE->accounting." record?";
+		Page_out();
 		$_STATE->status = UPDATE_ACCOUNT;
 	}
-	break 2;
+	break 2; //return to executive
+
 case ADD_ACCOUNT:
-	$_STATE->msgGreet = "New ".$_STATE->accounting." record";
 	if (isset($_POST["btnReset"])) {
-		break 2;
+		$_STATE = $_STATE->loopback(SELECTED_ACCOUNT);
+		break 1;
 	}
 	state_fields();
 	if (new_audit()) {
@@ -72,12 +78,13 @@ case ADD_ACCOUNT:
 		$_STATE->record_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
-	break 2;
+	Page_out(); //errors...
+	break 2; //return to executive
+
 case UPDATE_ACCOUNT:
-	$_STATE->msgGreet = "Edit ".$_STATE->accounting." record";
 	if (isset($_POST["btnReset"])) {
-		record_info();
-		break 2; //start over
+		$_STATE = $_STATE->loopback(SELECTED_ACCOUNT);
+		break 1;
 	}
 	state_fields();
 	if (isset($_POST["btnProperties"])) {
@@ -90,19 +97,25 @@ case UPDATE_ACCOUNT:
 		$_STATE = $_STATE->loopback(SELECTED_ACCOUNT);
 		break 1; //re-switch
 	}
-	break 2;
+	Page_out(); //errors...
+	break 2; //return to executive
+
 case PROPERTIES:
 	require_once "lib/prop_set.php";
 	$propset = PROP_SET_exec($_STATE, false);
-	break 2;
+	Page_out();
+	break 2; //return to executive
+
 case PROPERTIES_GOBACK:
 	require_once "lib/prop_set.php";
 	PROP_SET_exec($_STATE, true);
 	$_STATE = $_STATE->loopback(SELECTED_ACCOUNT);
 	break 1;
+
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
+//End Main State Gate & return to executive
 
 function state_fields() {
 	global $_STATE;
@@ -271,33 +284,38 @@ function new_audit() {
 	return TRUE;
 }
 
-if ($_STATE->status == PROPERTIES) {
-	$_STATE->msgGreet = $propset->greeting();
-	$scripts = $propset->set_script();
-} else {
-	$scripts = array();
-}
-EX_pageStart($scripts); //standard HTML page start stuff - insert scripts here
-EX_pageHead(); //standard page headings - after any scripts
+function Page_out() {
+	global $_DB, $_STATE;
 
-//forms and display depend on process state; note, however, that the state was probably changed after entering
-//the Main State Gate so this switch will see the next state in the process:
-switch ($_STATE->status) {
-case SELECT_ACCOUNTING:
+	if ($_STATE->status == PROPERTIES) {
+		global $propset;
+		$_STATE->msgGreet = $propset->greeting();
+		$scripts = $propset->set_script();
+	} else {
+		$scripts = array();
+	}
+	EX_pageStart($scripts); //standard HTML page start stuff - insert scripts here
+	EX_pageHead(); //standard page headings - after any scripts
+
+	switch ($_STATE->status) {
+
+	case LIST_ACCOUNTING:
 ?>
   <p>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <select name='selAccounting' size="<?php echo count($_STATE->records); ?>" onclick="this.form.submit()">
 <?php
-	foreach($_STATE->records as $value => $name) {
-		echo "    <option value=\"".$value."\">".$name."\n";
-	} ?>
+		foreach($_STATE->records as $value => $name) {
+			echo "    <option value=\"".$value."\">".$name."\n";
+		}
+?>
   </select>
 </form>
   </p>
-<?php //end SELECT_ACCOUNTING status ----END STATUS PROCESSING----
-	break;
-case SELECT_ACCOUNT:
+<?php
+		break; //end LIST_ACCOUNTING status
+
+	case LIST_ACCOUNTS:
 ?>
   <p>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
@@ -312,16 +330,17 @@ case SELECT_ACCOUNT:
 			$inact = "; inactive as of ".$name[1];
 		}
 		echo "    <option value=\"".$value."\" title='".$title.$inact."' style='opacity:".$opacity."'>".$name[0]."\n";
-	} ?>
+	}
+?>
   </select>
 </form>
   </p>
-<?php //end SELECT_ACCOUNT status ----END STATUS PROCESSING----
-	break;
+<?php
+		break; //end LIST_ACCOUNTS status
 
-case SELECTED_ACCOUNT:
-case ADD_ACCOUNT:
-case UPDATE_ACCOUNT:
+	case SELECTED_ACCOUNT:
+	case ADD_ACCOUNT:		//comes back here if error
+	case UPDATE_ACCOUNT:
 ?>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <table align="center">
@@ -341,21 +360,27 @@ case UPDATE_ACCOUNT:
   </table>
   <p>
 <?php
-	if ($_STATE->status == ADD_ACCOUNT ) {
-		echo FIELD_edit_buttons(FIELD_ADD);
-	} else {
-		echo Field_edit_buttons(FIELD_UPDATE); ?>
-  <br><button type='submit' name='btnProperties' id='btnProperties_ID' value='values'>Show Properties</button><br>
-<?php
-	} ?>
+		if ($_STATE->record_id == -1) {
+			echo FIELD_edit_buttons(FIELD_ADD);
+		} else {
+			echo Field_edit_buttons(FIELD_UPDATE);
+			echo "  <br><button type='submit' name='btnProperties' id='btnProperties_ID' value='values'>Show Properties</button><br>\n";
+		}
+?>
 </form>
-<?php //end SELECTED/ADD/UPDATE_ACCOUNT status ----END STATUS PROCESSING----
-	break;
+<?php
+		break; //end SELECTED/ADD/UPDATE_ACCOUNT status
 
-case PROPERTIES: //list properties and allow new entry:
-	$propset->set_HTML();
+	case PROPERTIES: //list properties and allow new entry:
+		$propset->set_HTML();
+		break; //end PROPERTIES status
 
-} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
+	default:
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 
-EX_pageEnd(); //standard end of page stuff
+	} //end select ($_STATE->status)
+
+	EX_pageEnd(); //standard end of page stuff
+
+} //end Page_out()
 ?>

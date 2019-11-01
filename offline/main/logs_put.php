@@ -29,8 +29,10 @@ case LIST_PROJECTS:
 		break 1; //re-switch to SELECTED_PROJECT
 	}
 	$_STATE->msgGreet = "Select the ".ucfirst($projects->get_label("project"));
+	Page_out();
 	$_STATE->status = SELECT_PROJECT;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_PROJECT: //select the project
 	require_once "lib/project_select.php"; //catches $_GET list refresh
 	$projects = unserialize($_STATE->project_select);
@@ -50,15 +52,18 @@ case SHOW_SPECS:
 	$_STATE->calendar = serialize(clone($calendar));
 	$_STATE->msgGreet = $_STATE->project_name."<br>Select the date range";
 	$_STATE->backup = LIST_PROJECTS; //set goback
+	Page_out();
 	$_STATE->status = SELECT_SPECS;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_SPECS: //set the from and to dates
 	require_once "lib/calendar.php"; //catches $_GET refresh
 	require_once "lib/date_select.php";
+	$calendar = unserialize($_STATE->calendar);
 	$dates = unserialize($_STATE->date_select);
 	if (!$dates->POST()) {
-		$calendar = unserialize($_STATE->calendar);
 		$_STATE->msgGreet = $_STATE->project_name."<br>Select the date range";
+		Page_out();
 		break 2;
 	}
 	set_state($dates);
@@ -68,17 +73,21 @@ case SELECT_SPECS: //set the from and to dates
 	$_STATE->msgGreet = $_STATE->project_name."<br>Download the log";
 	$_STATE->backup = SHOW_SPECS; //set goback
 	$_STATE->status = DOWNLOAD_LOG;
-	break 2;
+	Page_out();
+	break 2; //return to executive
+
 case DOWNLOAD_LOG:
 	$props_send = unserialize($_STATE->props_send);
 	put_log();
-	$_STATE->msgGreet .= "Done!";
+	$_STATE->msgStatus .= "Done!";
+	Page_out();
 	$_STATE->status = STATE::DONE;
-	break 2;
+	break 2; //return to executive
+
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): Invalid state=".$_STATE->status);
 } } //while & switch
-//End Main State Gate
+//End Main State Gate & return to executive
 
 function set_state(&$dates) {
 	global $_DB, $_STATE;
@@ -271,15 +280,18 @@ function get_log(&$props_send, &$file=null) {
 	fputcsv($file, $outline); //end project row
 }
 
-//-------end function code; begin HTML------------
+function Page_out() {
+	global $_DB, $_STATE;
 
-$scripts = array("call_server.js");
-if ($_STATE->status == SELECT_SPECS) {
-	$scripts[] = "calendar.js";
-}
-EX_pageStart($scripts); //standard HTML page start stuff - insert SCRIPTS here
+	$scripts = array("call_server.js");
+	if ($_STATE->status == SHOW_SPECS) {
+		$scripts[] = "calendar.js";
+	}
+	EX_pageStart($scripts); //standard HTML page start stuff - insert SCRIPTS here
 ?>
-<?php	if ($_STATE->status == DOWNLOAD_LOG) { ?>
+<?php
+	if ($_STATE->status == DOWNLOAD_LOG) {
+?>
 <script language="JavaScript">
 function download(me) {
   me.style.visibility = "hidden";
@@ -287,33 +299,34 @@ function download(me) {
   me.form.submit();
 }
 </script>
-<?php	}
-EX_pageHead(); //standard page headings - after any scripts
-?>
-
 <?php
-//forms and display depend on process state; note, however, that the state was probably changed after entering
-//the Main State Gate so this switch will see the next state in the process:
-switch ($_STATE->status) {
-case SELECT_PROJECT:
+	}
+	EX_pageHead(); //standard page headings - after any scripts
 
-	echo $projects->set_list();
+	switch ($_STATE->status) {
 
-	break; //end SELECT_PROJECT status ----END STATE: EXITING FROM PROCESS----
-case SELECT_SPECS:
+	case LIST_PROJECTS:
+		global $projects;
+		echo $projects->set_list();
+		break; //end LIST_PROJECTS status ----END STATE: EXITING FROM PROCESS----
+
+	case SHOW_SPECS:
+	case SELECT_SPECS: //errors...
 ?>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
 <br>
 <table cellpadding="3" border="0" align="center">
   <tr><td>&nbsp</td><td colspan="2">- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </td></tr>
 <?php
-	echo $dates->HTML();
- ?>
+		global $dates;
+		echo $dates->HTML();
+?>
   <tr><td>&nbsp</td><td colspan="2">- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </td></tr>
 
 <tr><td colspan="3">
 <?php
-	echo $calendar->create("h"); //horiz
+		global $calendar;
+		echo $calendar->create("h"); //horiz
 ?>
 </td></tr>
 
@@ -329,24 +342,34 @@ case SELECT_SPECS:
   </tr>
 </table>
 </form>
-<?php //end SELECT_PROJECT status ----END STATUS PROCESSING----
-	break;
-case DOWNLOAD_LOG:
+<?php
+		break; //end SHOW/SELECT_SPECS status ----END STATUS PROCESSING----
+
+	case DOWNLOAD_LOG:
 ?>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
 <?php
-	if ($_STATE->listLog) {
-		echo "<br>\n";
-		echo "<table align='center'' cellpadding='4' border='2'>\n";
-		get_log($props_send);
-		echo "</table>\n";
-		echo "<br>\n";
-} ?>
+		if ($_STATE->listLog) {
+			echo "<br>\n";
+			echo "<table align='center'' cellpadding='4' border='2'>\n";
+			global $props_send;
+			get_log($props_send);
+			echo "</table>\n";
+			echo "<br>\n";
+		}
+?>
 <button name="btnPut" id="btnPut_ID" type="button" value="download" onclick="download(this)">Download</button><br>
 (check your browser preferences for where the downloaded file will go)
 </form>
-<?php //end DOWNLOAD_LOG status ----END STATUS PROCESSING----
-}
+<?php
+		break; //end DOWNLOAD_LOG status ----END STATUS PROCESSING----
 
-EX_pageEnd(); //standard end of page stuff
+	default:
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+
+	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
+
+	EX_pageEnd(); //standard end of page stuff
+
+} //end Page_out()
 ?>

@@ -71,8 +71,10 @@ case LIST_PERSONS:
 		break 1; //re-switch to SELECTED_PERSON
 	}
 	$_STATE->msgGreet = "Select the person whose logs are to be editted";
+	Page_out();
 	$_STATE->status = SELECT_PERSON;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_PERSON: //select the person whose logs are to be editted (person_id=0 is superduperuser)
 	require_once "lib/person_select.php"; //catches $_GET list refresh
 	$persons = unserialize($_STATE->person_select);
@@ -93,8 +95,10 @@ case LIST_PROJECTS:
 	}
 	$_STATE->msgGreet = "Select the ".ucfirst($projects->get_label("project"));
 	$_STATE->backup = LIST_PERSONS;
+	Page_out();
 	$_STATE->status = SELECT_PROJECT;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_PROJECT: //select the project
 	require_once "lib/project_select.php"; //catches $_GET list refresh (assumes break 2)
 	$projects = unserialize($_STATE->project_select);
@@ -114,15 +118,18 @@ case SHOW_SPECS:
 	$_STATE->calendar = serialize(clone($calendar));
 	$_STATE->msgGreet = $_STATE->project_name."<br>Select the date range";
 	$_STATE->backup = LIST_PROJECTS; //set goback
+	Page_out();
 	$_STATE->status = SELECT_SPECS;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_SPECS: //set the from and to dates
-	require_once "lib/calendar.php"; //catches $_GET refresh
+	require_once "lib/calendar.php"; //catches $_GET refresh - may not return
 	require_once "lib/date_select.php";
+	$calendar = unserialize($_STATE->calendar);
 	$dates = unserialize($_STATE->date_select);
 	if (!$dates->POST()) {
-		$calendar = unserialize($_STATE->calendar);
 		$_STATE->msgGreet = $_STATE->project_name."<br>Select the date range";
+		Page_out();
 		break 2;
 	}
 	set_state($dates);
@@ -137,7 +144,9 @@ case SELECTED_SPECS:
 	$_STATE->scion_start("SHEET"); //create the child state stack
 	$_STATE->backup = SHOW_SPECS; //set goback
 	$_STATE->status = SHEET_DISP;
-	break 2;
+	Page_out();
+	break 2; //return to executive
+
 case SHEET_DISP:
 	if (isset($_GET["sheet"])) { //change displayed sheet
 		$_STATE = $_STATE->loopback(SELECTED_SPECS);
@@ -167,13 +176,14 @@ case SHEET_DISP:
 		$_STATE = $_STATE->loopback(SELECTED_SPECS);
 		break 1;
 	}
-	if (isset($_GET["getdesc"])) { //asking for the description of a cell
+	if (isset($_GET["getdesc"])) { //server call: asking for the description of a cell
 		cell_desc();;
 		break 2;
 	}
 	if (isset($_POST["btnPut"])) { //asking for a download
-		log_put();
-		break 2;
+		log_put(); //returns only if no download
+		Page_out();
+		break 2; //return to executive
 	}
 	if (!(isset($_GET["agent"]) || isset($_POST["row"])))
 		throw_the_bum_out(NULL,"Evicted(".__LINE__."): GET/POST row not supplied");
@@ -189,10 +199,10 @@ case SHEET_DISP:
 		switch ($SCION->agent) {
 		case "BN": //button => adding/updating amounts
 			if ($SCION->row == 0) { //adding
-				$SCION->path = array(TASK_DISP,
+				$SCION->path = array(TYPE_DISP,
+									 TASK_DISP,
 									 SUBTASK_DISP,
 									 ACCOUNT_DISP,
-									 TYPE_DISP,
 									 ACTIVITY_DISP);
 				if ($SCION->mode == "l") { //list style
 					$SCION->path[] = DATE_DISP;
@@ -331,11 +341,12 @@ case SHEET_DISP:
 	} } //while & switch
 	$SCION->push();
 
-	break 2;
+	break 2; //return to executive
+
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): Invalid state=".$_STATE->status);
 } } //while & switch
-//End Main State Gate
+//End Main State Gate & return to executive
 
 function set_state(&$dates) {
 	global $_STATE;
@@ -1170,51 +1181,52 @@ foreach ($_POST as $key => $value) {
 	}
 }
 
-//-------end function code; begin HTML------------
+function Page_out() {
+	global $_DB, $_STATE, $_PERMITS, $_VERSION;
 
-$scripts = array("call_server.js");
-if ($_STATE->status == SELECT_SPECS) {
-	$scripts[] = "calendar.js";
-} else if ($_STATE->status > SELECT_SPECS) {
-	$scripts[] = "expenselog.js";
-}
-EX_pageStart($scripts); //standard HTML page start stuff - insert SCRIPTS here
+	$scripts = array("call_server.js");
+	if ($_STATE->status == SHOW_SPECS) {
+		$scripts[] = "calendar.js";
+	} else if ($_STATE->status > SHOW_SPECS) {
+		$scripts[] = "expenselog.js";
+	}
+	EX_pageStart($scripts); //standard HTML page start stuff - insert SCRIPTS here
 ?>
 <script>
 var COLs = <?php echo $_STATE->columns[COL_COUNT]; ?>;
 </script>
 <?php
-EX_pageHead(); //standard page headings - after any scripts
+	EX_pageHead(); //standard page headings - after any scripts
 
-//forms and display depend on process state; note, however, that the state was probably changed after entering
-//the Main State Gate so this switch will see the next state in the process:
-switch ($_STATE->status) {
-case SELECT_PERSON:
+	switch ($_STATE->status) {
 
-	echo $persons->set_list();
+	case LIST_PERSONS:
+		global $persons;
+		echo $persons->set_list();
+		break; //end LIST_PERSONS status ----END STATE: EXITING FROM PROCESS----
 
-	break; //end SELECT_PERSON status ----END STATE: EXITING FROM PROCESS----
+	case LIST_PROJECTS:
+		global $projects;
+		echo $projects->set_list();
+		break; //end LIST_PROJECTS status ----END STATE: EXITING FROM PROCESS----
 
-case SELECT_PROJECT:
-
-	echo $projects->set_list();
-
-	break; //end SELECT_PROJECT status ----END STATE: EXITING FROM PROCESS----
-
-case SELECT_SPECS:
+	case SHOW_SPECS:
+	case SELECT_SPECS: //errors...
 ?>
 
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
 <table cellpadding="3" border="0" align="center">
   <tr><td>&nbsp</td><td colspan="2">- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </td></tr>
 <?php
-	echo $dates->HTML();
+		global $dates;
+		echo $dates->HTML();
 ?>
   <tr><td>&nbsp</td><td colspan="2">- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </td></tr>
 
   <tr><td colspan="3">
 <?php
-	echo $calendar->create("h"); //horiz
+		global $calendar;
+		echo $calendar->create("h"); //horiz
 ?>
   </td></tr>
 
@@ -1228,11 +1240,11 @@ case SELECT_SPECS:
 </form>
 <div id="msgStatus_ID"><?php echo $_STATE->msgStatus ?></div>
 
-<?php //end SELECT_SPECS status ----END STATE: EXITING FROM PROCESS----
-	break;
+<?php
+		break; //end SHOW/SELECT_SPECS status ----END STATE: EXITING FROM PROCESS----
 
-default: //list the amounts and allow new entry:
-	$mode = ($_STATE->mode == "l")?"Tabular":"List"; //for 'Show in ___ Mode' message
+	case SHEET_DISP: //list the amounts and allow new entry:
+		$mode = ($_STATE->mode == "l")?"Tabular":"List"; //for 'Show in ___ Mode' message
 ?>
 <div style='position:fixed; left:10px; top:5px;'>
 <form method='post' name='frmAction' id='frmAction_ID' action='<?php echo $_SESSION["IAm"]; ?>'>
@@ -1240,27 +1252,28 @@ default: //list the amounts and allow new entry:
 </form>
 </div>
 <?php
-	if ($_EDIT) { //set by executive.php if admin Edit Logs
-		require_once "lib/person_select.php";
-		$persons = unserialize($_STATE->person_select);
-		$select_list = $persons->selected();
-		If (count($select_list) > 1) {
-			$HTML = "";
-			$HTML .= "<form method='post' name='frmAction' id='frmAction_ID' action='".$_SESSION["IAm"]."'>\n";
-			$HTML .= "<select name='selPerson' onclick=";
-			$HTML .= "'if (this.selectedIndex > 0) this.form.submit();'";
-			$HTML .= " title='to select, click and hold down arrow'>\n";
-			$HTML .= "<option>Select another person...</option>\n";
-			foreach ($select_list as $person_ID=>$person) {
-				$HTML .= "<option value='".$person_ID."'>";
-				$HTML .= $person[PERSON_SELECT::LASTNAME].",".$person[PERSON_SELECT::FIRSTNAME];	
-				$HTML .= "</option>\n";
+		global $_EDIT;
+		if ($_EDIT) { //set by executive.php if admin Edit Logs
+			require_once "lib/person_select.php";
+			$persons = unserialize($_STATE->person_select);
+			$select_list = $persons->selected();
+			If (count($select_list) > 1) {
+				$HTML = "";
+				$HTML .= "<form method='post' name='frmAction' id='frmAction_ID' action='".$_SESSION["IAm"]."'>\n";
+				$HTML .= "<select name='selPerson' onclick=";
+				$HTML .= "'if (this.selectedIndex > 0) this.form.submit();'";
+				$HTML .= " title='to select, click and hold down arrow'>\n";
+				$HTML .= "<option>Select another person...</option>\n";
+				foreach ($select_list as $person_ID=>$person) {
+					$HTML .= "<option value='".$person_ID."'>";
+					$HTML .= $person[PERSON_SELECT::LASTNAME].",".$person[PERSON_SELECT::FIRSTNAME];	
+					$HTML .= "</option>\n";
+				}
+				$HTML .= "</select>\n";
+				$HTML .= "</form>\n";
+				echo $HTML;
 			}
-			$HTML .= "</select>\n";
-			$HTML .= "</form>\n";
-			echo $HTML;
 		}
-	}
 ?>
 <div id="divPopopen_ID" class="popopen">
   Enter the new activity:<br>
@@ -1269,52 +1282,53 @@ default: //list the amounts and allow new entry:
   <input type="button" id="cancelPop" onclick="save_activity(false)" value="cancel">
 </div>
 <?php
-	require_once "lib/project_select.php";
-	$projects = unserialize($_STATE->project_select);
-	echo $projects->tabs();
+		require_once "lib/project_select.php";
+		$projects = unserialize($_STATE->project_select);
+		echo $projects->tabs();
 ?>
 <table align="center" id="tblLog" cellpadding="4" border="2">
 <?php //set up header & add rows:
-if ($_STATE->mode == "l") {	//list style
-	$headrow = "<th width='74'>Date</th><th width='30'>Amount</th>";
-	$addrow = "<td id='DT_0' data-recid='0'></td>\n    <td id='AM_0_0' data-recid='0' data-value=''></td>\n";
-} else {					//tabular style
-	$week = array("Sun","Mon","Tue","Wed","Thu","Fri","Sat");
-	$dayadd = new DateInterval('P1D');
-	$headrow = "";
-	for ($ndx=0,$day=clone $_STATE->from_date; $ndx<$_STATE->columns[COL_COUNT]; $ndx++,$day->add($dayadd)) {
-		$dayname = $day->format("w");
-		$headrow .= "<th";
-		if ($ndx < $_STATE->columns[COL_OPEN]) $headrow .= " class='closed'";
-		if ((($dayname == 0) || ($dayname == 6)) && ($ndx >= $_STATE->columns[COL_OPEN])) $headrow .= " class='weekend'";
-		$headrow .= " width='50'>";
-		$headrow .= $week[$day->format("w")]."<br>".$day->format("M d");
-		$headrow .= "</th>";
-	}
-	$addrow = "";
-	for ($ndx=0; $ndx<$_STATE->columns[COL_COUNT]; $ndx++) {
-		$addrow .= "<td id='AM_0_".$ndx."' data-recid='0' data-value=''";
-		if (($ndx < $_STATE->columns[COL_OPEN]) || ($ndx >= $_STATE->columns[COL_INACTIVE]))
-			$addrow .= " class='closed'";
-		$addrow .= "></td>\n";
-	}
-} //finish header & add rows ?>
+	if ($_STATE->mode == "l") {	//list style
+		$headrow = "<th width='74'>Date</th><th width='30'>Amount</th>";
+		$addrow = "<td id='DT_0' data-recid='0'></td>\n    <td id='AM_0_0' data-recid='0' data-value=''></td>\n";
+	} else {					//tabular style
+		$week = array("Sun","Mon","Tue","Wed","Thu","Fri","Sat");
+		$dayadd = new DateInterval('P1D');
+		$headrow = "";
+		for ($ndx=0,$day=clone $_STATE->from_date; $ndx<$_STATE->columns[COL_COUNT]; $ndx++,$day->add($dayadd)) {
+			$dayname = $day->format("w");
+			$headrow .= "<th";
+			if ($ndx < $_STATE->columns[COL_OPEN]) $headrow .= " class='closed'";
+			if ((($dayname == 0) || ($dayname == 6)) && ($ndx >= $_STATE->columns[COL_OPEN])) $headrow .= " class='weekend'";
+			$headrow .= " width='50'>";
+			$headrow .= $week[$day->format("w")]."<br>".$day->format("M d");
+			$headrow .= "</th>";
+		}
+		$addrow = "";
+		for ($ndx=0; $ndx<$_STATE->columns[COL_COUNT]; $ndx++) {
+			$addrow .= "<td id='AM_0_".$ndx."' data-recid='0' data-value=''";
+			if (($ndx < $_STATE->columns[COL_OPEN]) || ($ndx >= $_STATE->columns[COL_INACTIVE]))
+				$addrow .= " class='closed'";
+			$addrow .= "></td>\n";
+		}
+	} //finish header & add rows
+?>
   <tr>
     <th width='100'>&nbsp;</th>
+    <th width='10'>Type</th>
     <th width='140'>Task</th>
     <th width='140'>Subtask</th>
     <th width='140'><?php echo $_STATE->accounting; ?></th>
-    <th width='10'>Type</th>
     <?php echo $headrow; ?>
     <th width='140'>Activity</th>
   </tr>
   <tr id="add">
     <td id="BN_0" data-recid="0" title="Click to add amounts for new expenses">
       <img src="<?php echo $_SESSION["BUTLER"]; ?>?IAm=IG&file=add.png&ver=<?php echo $_VERSION; ?>"></td>
+    <td id="TP_0" data-recid=""></td>
     <td id="TK_0" data-recid="0"></td>
     <td id="ST_0" data-recid="0"></td>
     <td id="AC_0" data-recid="0"></td>
-    <td id="TP_0" data-recid=""></td>
     <?php echo $addrow; ?>
     <td id="AT_0" data-recid="0" data-value="\"></td>
   </tr>
@@ -1348,10 +1362,10 @@ function onerow(&$header, &$logs) {
 		}
 	}
 	echo ">".$row."</td>\n";
+	echo "    <td id='TP_".$row."' data-recid='".$openID.$header["type"]."'>".$ExpTypes[$header["type"]]."</td>\n";
 	echo "    <td id='TK_".$row."' data-recid='".$openID.$header["task_id"]."'>".$header["task"]."</td>\n";
 	echo "    <td id='ST_".$row."' data-recid='".$openID.$header["subtask_id"]."'>".$header["subtask"]."</td>\n";
 	echo "    <td id='AC_".$row."' data-recid='".$openID.$header["account_id"]."'>".$header["account"]."</td>\n";
-	echo "    <td id='TP_".$row."' data-recid='".$openID.$header["type"]."'>".$ExpTypes[$header["type"]]."</td>\n";
 	$max = ($_STATE->mode == "l")?1:$_STATE->columns[COL_COUNT];
 	for ($ndx=0; $ndx<$max; $ndx++) {
 		if ($_STATE->mode == "l") //add date in list mode
@@ -1383,71 +1397,71 @@ function onerow(&$header, &$logs) {
 	echo "  </tr>\n";
 } //end function onerow()
 
-reset($_STATE->records);
-$totals = array();
-define ('LOG_DSP',0);
-define ('LOG_ID',1);
-define ('LOG_AMT',2);
-define ('LOG_TITLE',3);
-$logs = array();
-for ($ndx=0; $ndx<$_STATE->columns[COL_COUNT]; $ndx++) { //save one row's worth of data:
-	$totals[] = 0;
-	$logs[] = array(0,0,0,"");
-}
-$row = 1;
-foreach ($_STATE->records AS $ID=>$record) {
-	if ($row != $record["row"]) { //starting a new row; write out old one
-		onerow($recsav, $logs);
-		$row = $record["row"];
+	reset($_STATE->records);
+	$totals = array();
+	define ('LOG_DSP',0);
+	define ('LOG_ID',1);
+	define ('LOG_AMT',2);
+	define ('LOG_TITLE',3);
+	$logs = array();
+	for ($ndx=0; $ndx<$_STATE->columns[COL_COUNT]; $ndx++) { //save one row's worth of data:
+		$totals[] = 0;
+		$logs[] = array(0,0,0,"");
 	}
-	$col = ($_STATE->mode == "l")?0:$record["column"];
-	$amt = $record["amount"];
-	$logs[$col][LOG_ID] = $ID;
-	$logs[$col][LOG_AMT] = $amt;
-	if ($record["type"] == "mi") {
-		$logs[$col][LOG_TITLE] = $amt." entered * ".$_STATE->mileage. " rate";
-		$amt = $_STATE->mileage * $amt;
-	}
-	$totals[$col] += abs($amt);
-	if (($amt < 0) && ($_STATE->mode == "t")) { //dups in tabular are combined into one
-		$amt += -$logs[$col][LOG_DSP]; //sum both amounts as a neg number
-		$ID = -$ID; //recID also shows as negative (we won't allow edit)
-	}
-	$logs[$col][LOG_DSP] = $amt;
-	$recsav = $record;
-}
-if (count($_STATE->records) > 0) { //get the last row - if there were any
-	onerow($recsav, $logs);
-}
-$grand = 0;
-for ($ndx=0; $ndx<$_STATE->columns[COL_COUNT]; $ndx++) {
-	$grand += $totals[$ndx];
-}
-if ($_STATE->mode == "l") { //list
-	echo "<tr>\n";
-   	echo "  <td colspan='5'></td><td>Total:</td><td class='number'>".$grand,"</td><td></td>\n";
-	echo "</tr>\n";
-
-} else { //tabular
-	echo "<tr>\n";
-	echo "<td colspan='4'></td><td style='text-align:right'>project Totals:</td>\n";
-	for ($ndx=0; $ndx<$_STATE->columns[COL_COUNT]; $ndx++) {
-		echo "<td class='number'>".$totals[$ndx]."</td>";
-	}
-	echo "<td class='number'>project Grand Total: ".$grand."</td>\n";
-	echo "</tr>\n";
-	if (count($_STATE->project_ids) > 1) { //more than 1 project: show totals for all
-		echo "<tr style='border-top:thin dashed'>\n";
-		echo "<td colspan='4'></td><td style='text-align:right'>all projects:</td>\n";
-		$grand = 0;
-		for ($ndx=0; $ndx<$_STATE->columns[COL_COUNT]; $ndx++) {
-			$grand += $_STATE->totals[$ndx];
-			echo "<td class='number'>".$_STATE->totals[$ndx]."</td>";
+	$row = 1;
+	foreach ($_STATE->records AS $ID=>$record) {
+		if ($row != $record["row"]) { //starting a new row; write out old one
+			onerow($recsav, $logs);
+			$row = $record["row"];
 		}
-		echo "<td class='number'>all projects: ".$grand."</td>\n";
-		echo "</tr>\n";
+		$col = ($_STATE->mode == "l")?0:$record["column"];
+		$amt = $record["amount"];
+		$logs[$col][LOG_ID] = $ID;
+		$logs[$col][LOG_AMT] = $amt;
+		if ($record["type"] == "mi") {
+			$logs[$col][LOG_TITLE] = $amt." entered * ".$_STATE->mileage. " rate";
+			$amt = $_STATE->mileage * $amt;
+		}
+		$totals[$col] += abs($amt);
+		if (($amt < 0) && ($_STATE->mode == "t")) { //dups in tabular are combined into one
+			$amt += -$logs[$col][LOG_DSP]; //sum both amounts as a neg number
+			$ID = -$ID; //recID also shows as negative (we won't allow edit)
+		}
+		$logs[$col][LOG_DSP] = $amt;
+		$recsav = $record;
 	}
-}
+	if (count($_STATE->records) > 0) { //get the last row - if there were any
+		onerow($recsav, $logs);
+	}
+	$grand = 0;
+	for ($ndx=0; $ndx<$_STATE->columns[COL_COUNT]; $ndx++) {
+		$grand += $totals[$ndx];
+	}
+	if ($_STATE->mode == "l") { //list
+		echo "<tr>\n";
+	   	echo "  <td colspan='5'></td><td>Total:</td><td class='number'>".$grand,"</td><td></td>\n";
+		echo "</tr>\n";
+
+	} else { //tabular
+		echo "<tr>\n";
+		echo "<td colspan='4'></td><td style='text-align:right'>project Totals:</td>\n";
+		for ($ndx=0; $ndx<$_STATE->columns[COL_COUNT]; $ndx++) {
+			echo "<td class='number'>".$totals[$ndx]."</td>";
+		}
+		echo "<td class='number'>project Grand Total: ".$grand."</td>\n";
+		echo "</tr>\n";
+		if (count($_STATE->project_ids) > 1) { //more than 1 project: show totals for all
+			echo "<tr style='border-top:thin dashed'>\n";
+			echo "<td colspan='4'></td><td style='text-align:right'>all projects:</td>\n";
+			$grand = 0;
+			for ($ndx=0; $ndx<$_STATE->columns[COL_COUNT]; $ndx++) {
+				$grand += $_STATE->totals[$ndx];
+				echo "<td class='number'>".$_STATE->totals[$ndx]."</td>";
+			}
+			echo "<td class='number'>all projects: ".$grand."</td>\n";
+			echo "</tr>\n";
+		}
+	}
 ?>
 </table>
 
@@ -1455,13 +1469,17 @@ if ($_STATE->mode == "l") { //list
 <br>You can
 <button name="btnPut" type="submit" value="<?php echo $_STATE->person_id ?>" title="click here to download">
 Download</button>
-this data for import into the timesheet template
+this data for import into a template
 <br>(check your browser preferences for where the downloaded file will go)
 </form>
+<?php
+		break; //end SHEET_DISP status ----END STATUS PROCESSING----
 
-<div id="msgStatus_ID" class="status"><?php echo $_STATE->msgStatus ?></div>
-<?php //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
-}
+	default:
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
 
-EX_pageEnd(); //standard end of page stuff
+	EX_pageEnd(); //standard end of page stuff
+
+} //end Page_out()
 ?>

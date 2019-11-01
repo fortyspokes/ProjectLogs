@@ -30,8 +30,10 @@ case LIST_PROJECTS:
 		break 1; //re-switch to SELECTED_PROJECT
 	}
 	$_STATE->msgGreet = "Select the ".ucfirst($projects->get_label("project"));
+	Page_out();
 	$_STATE->status = SELECT_PROJECT;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_PROJECT:
 	require_once "lib/project_select.php"; //catches $_GET list refresh
 	$projects = unserialize($_STATE->project_select);
@@ -46,8 +48,10 @@ case LIST_PERSONS:
 	person_list();
 	$_STATE->msgGreet = $_STATE->project_name."<br>Select a person";
 	$_STATE->backup = LIST_PROJECTS; //set goback
+	Page_out();
 	$_STATE->status = SELECT_PERSON;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_PERSON:
 	if ((!isset($_POST["txtPerson"])) || ($_POST["txtPerson"] == "")) {
 		$inactive = $_STATE->show_inactive;
@@ -62,14 +66,16 @@ case SELECTED_PERSON:
 	$_STATE->backup = LIST_PERSONS; //set goback
 	$_STATE->msgGreet = $_STATE->project_name."<br>Rate history for ".$_STATE->records[strval($_STATE->record_id)]["name"];
 	$_STATE->status = RATE_DISPLAY;
-	break 2;
+	Page_out();
+	break 2; //return to executive
+
 case RATE_DISPLAY:
 	echo input_display($_GET["row"]); //the XMLHttpRequest responseText
 	$_STATE->status = RATE_CHANGE;
 	$_STATE->replace();
 	$_STATE->push();
-	exit();
-	break 2;
+	exit(); //server_call return
+
 case RATE_CHANGE:
 	if (isset($_GET["reset"])) {
 		$_STATE = $_STATE->loopback(SELECTED_PERSON);
@@ -82,12 +88,12 @@ case RATE_CHANGE:
 	rate_change();
 	echo $_STATE->msgStatus; //the XMLHttpRequest responseText
 	$_STATE->replace();
-	exit();
-	break 2;
+	exit(); //server_call return
+
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
-//End Main State Gate
+//End Main State Gate & return to executive
 
 function person_list($person_id=-1) {
 	global $_DB, $_STATE;
@@ -97,13 +103,16 @@ function person_list($person_id=-1) {
 						c02.rate_id, c02.rate, c02.effective_asof, c02.expire_after,
 						c00.inactive_asof
 			FROM (
-				SELECT * FROM ".$_DB->prefix."c00_person AS c00
+				SELECT c00.person_id, c00.lastname, c00.firstname, c10.inactive_asof
+				FROM ".$_DB->prefix."c00_person AS c00
 				INNER JOIN ".$_DB->prefix."c10_person_organization AS c10
 				ON c10.person_idref = c00.person_id
 				WHERE c10.organization_idref = ".$_SESSION["organization_id"]."
 				) AS c00
 				LEFT OUTER JOIN (
-				SELECT * FROM ".$_DB->prefix."c02_rate WHERE project_idref = ".$_STATE->project_id."
+				SELECT rate_id, person_idref, rate, effective_asof, expire_after
+				FROM ".$_DB->prefix."c02_rate
+				WHERE project_idref = ".$_STATE->project_id."
 				) AS c02
 				ON c00.person_id = c02.person_idref";
 	if ($person_id > 0) $sql .= "
@@ -537,11 +546,15 @@ function rate_change() {
 	}
 }
 
-$scripts = array("call_server.js");
-EX_pageStart($scripts); //standard HTML page start stuff - insert SCRIPTS here
+function Page_out() {
+	global $_DB, $_STATE;
 
-switch ($_STATE->status) { //add javascript
-case SELECT_PERSON:
+	$scripts = array("call_server.js");
+	EX_pageStart($scripts); //standard HTML page start stuff - insert SCRIPTS here
+
+	switch ($_STATE->status) { //add javascript
+
+	case LIST_PERSONS:
 ?>
 <script language="JavaScript">
 function select_person(me) {
@@ -553,8 +566,9 @@ function select_person(me) {
 }
 </script>
 <?php
-	break;
-case RATE_DISPLAY:
+		break;
+
+	case RATE_DISPLAY:
 ?>
 <script language="JavaScript">
 var selectedRow;
@@ -591,22 +605,21 @@ function Reset() {
 }
 </script>
 <?php
-	break;
-} //end switch ($_STATE->status) for javascript
+		break;
+	} //end switch ($_STATE->status) for javascript
 
-EX_pageHead(); //standard page headings - after any scripts
+	EX_pageHead(); //standard page headings - after any scripts
 
-//forms and display depend on process state; note, however, that the state was probably changed after entering
-//the Main State Gate so this switch will see the next state in the process:
-switch ($_STATE->status) {
-case SELECT_PROJECT:
+	switch ($_STATE->status) {
 
-	echo $projects->set_list();
+	case LIST_PROJECTS:
+		global $projects;
+		echo $projects->set_list();
+		break; //end LIST_PROJECTS status ----END STATE: EXITING FROM PROCESS----
 
-	break; //end SELECT_PROJECT status ----END STATE: EXITING FROM PROCESS----
-case SELECT_PERSON:
-	$checked = "";
-	if ($_STATE->show_inactive) $checked = " checked";
+	case LIST_PERSONS:
+		$checked = "";
+		if ($_STATE->show_inactive) $checked = " checked";
 ?>
 <p>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
@@ -617,18 +630,18 @@ Show inactive persons
 <table align='center' cellpadding='4' border='2' class="list">
   <tr><th>&nbsp;</th><th>Rate</th><th>Effective as of</th><th>Expires after</th></tr>
 <?php
-	$today = COM_NOW();
-	$title = "Click to select";
-	foreach($_STATE->records as $person_id => $record) {
-		$opacity = "1.0"; //opacity value
-		$inact = "";
-		if (!is_null($record["inactive_asof"]->value)) {
-			if ($record["inactive_asof"]->value <= $today) {
-				if (!$_STATE->show_inactive) continue;
-				$opacity = "0.5";
-			$inact = "; inactive as of ".$record["inactive_asof"]->format();
+		$today = COM_NOW();
+		$title = "Click to select";
+		foreach($_STATE->records as $person_id => $record) {
+			$opacity = "1.0"; //opacity value
+			$inact = "";
+			if (!is_null($record["inactive_asof"]->value)) {
+				if ($record["inactive_asof"]->value <= $today) {
+					if (!$_STATE->show_inactive) continue;
+					$opacity = "0.5";
+				$inact = "; inactive as of ".$record["inactive_asof"]->format();
+				}
 			}
-		}
 ?>
   <tr title='<?php echo($title.$inact); ?>' style='opacity:<?php echo $opacity; ?>'>
     <td ID='<?php echo($person_id);?>' onclick='return select_person(this);'><?php echo($record["name"]);?></td>
@@ -637,12 +650,14 @@ Show inactive persons
     <td><?php echo($record["rates"][0]["exp"]->format());?></td>
   </tr>
 <?php
-	} //end foreach ?>
+		} //end foreach
+?>
 </table>
 </p>
-<?php //end SELECT_PERSON status ----END STATUS PROCESSING----
-	break;
-case RATE_DISPLAY:
+<?php
+		break; //end LIST_PERSONS status ----END STATUS PROCESSING----
+
+	case RATE_DISPLAY:
 ?>
 <p>
 <table align='center' cellpadding='4' border='2' class="list">
@@ -656,20 +671,29 @@ case RATE_DISPLAY:
     <td id="EX_0"></td>
   </tr>
 <?php
-	$counter = 1;
-	foreach($_STATE->records[strval($_STATE->record_id)]["rates"] as $rate) {
-		if (!isset($rate["rate"])) continue; ?>
+		$counter = 1;
+		foreach($_STATE->records[strval($_STATE->record_id)]["rates"] as $rate) {
+			if (!isset($rate["rate"])) continue; ?>
   <tr>
     <td id='BN_<?php echo($counter."' data-recid='".$rate["ID"]);?>' onclick='return open_row(this)' title='Click to update rate' style='cursor:pointer'><?php echo($counter);?></td>
     <td id='RT_<?php echo($counter."'>".number_format($rate["rate"],2));?></td>
     <td id='EF_<?php echo($counter."'>".$rate["eff"]->format());?></td>
     <td id='EX_<?php echo($counter."'>".$rate["exp"]->format());?></td>
 <?php
-		++$counter;
-	} ?>
+			++$counter;
+		}
+?>
 </table>
 <?php
-} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
 
-EX_pageEnd(); //standard end of page stuff
+		break; //end RATE_DISPLAY status ----END STATUS PROCESSING----
+
+	default:
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+
+	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
+
+	EX_pageEnd(); //standard end of page stuff
+
+} //end Page_out()
 ?>

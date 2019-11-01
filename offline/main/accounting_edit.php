@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("accounting_edit")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
@@ -15,10 +15,13 @@ define('UPDATE_ACCOUNTING',		LIST_ACCOUNTING + 6);
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
 case LIST_ACCOUNTING:
+	$_STATE->backup = LIST_ACCOUNTING; //set 'goback'
 	accounting_list();
-	$_STATE->status = SELECT_ACCOUNTING;
 	$_STATE->msgGreet = "Select the accounting group to edit";
-	break 2;
+	Page_out();
+	$_STATE->status = SELECT_ACCOUNTING;
+	break 2; //return to executive
+
 case SELECT_ACCOUNTING:
 	accounting_select();
 	$_STATE->status = SELECTED_ACCOUNTING; //set for possible goback
@@ -27,17 +30,20 @@ case SELECTED_ACCOUNTING:
 	state_fields();
 	if ($_STATE->record_id == -1) {
 		$_STATE->msgGreet = "New accounting record";
+		Page_out();
 		$_STATE->status = ADD_ACCOUNTING;
 	} else {
 		accounting_info();
 		$_STATE->msgGreet = "Edit accounting record?";
+		Page_out();
 		$_STATE->status = UPDATE_ACCOUNTING;
 	}
-	break 2;
+	break 2; //return to executive
+
 case ADD_ACCOUNTING:
-	$_STATE->msgGreet = "New accounting record";
 	if (isset($_POST["btnReset"])) {
-		break 2;
+		$_STATE = $_STATE->loopback(SELECTED_ACCOUNTING);
+		break 1;
 	}
 	state_fields();
 	if (new_audit()) {
@@ -46,22 +52,26 @@ case ADD_ACCOUNTING:
 		$_STATE->record_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
-	break 2;
+	Page_out(); //errors...
+	break 2; //return to executive
+
 case UPDATE_ACCOUNTING:
-	$_STATE->msgGreet = "Edit accounting record";
 	if (isset($_POST["btnReset"])) {
-		record_info($_DB, $_STATE);
-		break 2;
+		$_STATE = $_STATE->loopback(SELECTED_ACCOUNTING);
+		break 1;
 	}
 	state_fields();
 	if (update_audit()) {
 		$_STATE = $_STATE->loopback(SELECTED_ACCOUNTING);
 		break 1; //re-switch
 	}
-	break 2;
+	Page_out(); //errors...
+	break 2; //return to executive
+
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
+//End Main State Gate & return to executive
 
 function state_fields() {
 	global $_STATE;
@@ -184,31 +194,33 @@ function new_audit() {
 	return TRUE;
 }
 
-EX_pageStart(); //standard HTML page start stuff - insert scripts here
-EX_pageHead(); //standard page headings - after any scripts
+function Page_out() {
+	global $_DB, $_STATE;
+
+	EX_pageStart(); //standard HTML page start stuff - insert scripts here
+	EX_pageHead(); //standard page headings - after any scripts
 ?>
 
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
 <?php
-//forms and display depend on process state; note, however, that the state was probably changed after entering
-//the Main State Gate so this switch will see the next state in the process:
-switch ($_STATE->status) {
-case SELECT_ACCOUNTING:
+	switch ($_STATE->status) {
+	case LIST_ACCOUNTING:
 ?>
   <p>
   <select name='selAccounting' size="<?php echo count($_STATE->records); ?>" onclick="this.form.submit()">
 <?php
-	foreach($_STATE->records as $value => $name) {
-		echo "    <option value=\"".$value."\">".$name."\n";
-	} ?>
+		foreach($_STATE->records as $value => $name) {
+			echo "    <option value=\"".$value."\">".$name."\n";
+		}
+?>
   </select>
   </p>
-<?php //end SELECT_ACCOUNTING status ----END STATUS PROCESSING----
-	break;
+<?php
+		break; //end LIST_ACCOUNTING status
 
-case SELECTED_ACCOUNTING:
-case ADD_ACCOUNTING:
-case UPDATE_ACCOUNTING:
+	case SELECTED_ACCOUNTING:
+	case ADD_ACCOUNTING:		//comes back here if error
+	case UPDATE_ACCOUNTING:
 ?>
   <table align="center">
     <tr>
@@ -222,13 +234,22 @@ case UPDATE_ACCOUNTING:
    </table>
   <p>
 <?php
-	if ($_STATE->status == ADD_ACCOUNTING ) {
-		echo FIELD_edit_buttons(FIELD_ADD);
-	} else {
-		echo Field_edit_buttons(FIELD_UPDATE);
-	} ?>
+		if ($_STATE->record_id == -1) {
+			echo FIELD_edit_buttons(FIELD_ADD);
+		} else {
+			echo Field_edit_buttons(FIELD_UPDATE);
+		}
+?>
 </form>
-<?php //end default status ----END STATUS PROCESSING----
-}
-EX_pageEnd(); //standard end of page stuff
+<?php
+		break; //end SELECTED_ACCOUNTING/ADD_ACCOUNTING/UPDATE_ACCOUNTING status
+
+	default:
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+
+	} //end select ($_STATE->status)
+
+	EX_pageEnd(); //standard end of page stuff
+
+} //end Page_out()
 ?>

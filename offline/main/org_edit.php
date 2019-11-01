@@ -24,8 +24,10 @@ case LIST_ORGS:
 	$_STATE->noSleep[] = "curr_list";
 	list_setup();
 	$_STATE->msgGreet = "Select an organization to edit";
+	Page_out();
 	$_STATE->status = SELECT_ORG;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_ORG:
 	org_select();
 	$_STATE->status = SELECTED_ORG; //for possible goback
@@ -41,12 +43,15 @@ case SELECTED_ORG:
 		$_STATE->msgGreet = "Edit organization record";
 		$_STATE->status = CHANGE_ORG;
 	}
-	break 2;
+	Page_out();
+	break 2; //return to executive
+
 case ADD_ORG:
 	state_fields(false);
 	$_STATE->msgGreet = "New organization record";
 	if (isset($_POST["btnReset"])) {
-		break 2;
+		Page_out();
+		break 2; //return to executive
 	}
 	if (new_audit()) {
 		$record_id = $_STATE->record_id;
@@ -54,12 +59,15 @@ case ADD_ORG:
 		$_STATE->record_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
-	break 2;
+	Page_out(); //an error
+	break 2; //return to executive
+
 case CHANGE_ORG:
 	if (isset($_POST["btnLogo"])) {
 		$_STATE->status = GET_LOGO;
 		$_STATE->msgGreet = "Upload the new organization logo";
-		break 2;
+		Page_out();
+		break 2; //return to executive
 	}
 	if (isset($_POST["btnPrefs"])) {
 		$_STATE->status = PREFERENCES;
@@ -72,7 +80,8 @@ case DELETE_ORG:
 	$_STATE->msgGreet = "Edit organization record";
 	if (isset($_POST["btnReset"])) {
 		org_info();
-		break 2;
+		Page_out();
+		break 2; //return to executive
 	}
 	if ($_POST["btnSubmit"] == "update") {
 		$_STATE->status = UPDATE_ORG;
@@ -89,11 +98,14 @@ case DELETE_ORG:
 	} else {
 		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid btnSubmit ".$_POST["btnSubmit"]);
 	}
-	break 2;
+	//will not get here
+
 case GET_LOGO:
 	$_STATE->backup = SELECTED_ORG; //set goback
 	logo_audit();
-	break 2;
+	Page_out();
+	break 2; //return to executive
+
 case PREFERENCES:
 	require_once "lib/preference_set.php";
 	if (!isset($_STATE->prefset)) { //first time thru
@@ -107,10 +119,13 @@ case PREFERENCES:
 	}
 	$_STATE->prefset = serialize(clone($prefset)); //leave $prefset intact for later services
 	$_STATE->replace();
-	break 2;
+	Page_out();
+	break 2; //return to executive
+
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
+//End Main State Gate & return to executive
 
 function state_fields($disabled=true) {
 	global $_DB, $_STATE;
@@ -378,27 +393,31 @@ function delete_audit() {
 	return TRUE;
 }
 
-if ($_STATE->status == PREFERENCES) {
-	$_STATE->msgGreet = $prefset->greeting();
-	$scripts = $prefset->set_script();
-} else {
-	$scripts = array();
-}
-EX_pageStart($scripts); //standard HTML page start stuff - insert scripts here
+function Page_out() {
+	global $_DB, $_STATE;
+
+	if ($_STATE->status == PREFERENCES) {
+		global $prefset;
+		$_STATE->msgGreet = $prefset->greeting();
+		$scripts = $prefset->set_script();
+	} else {
+		$scripts = array();
+	}
+	EX_pageStart($scripts); //standard HTML page start stuff - insert scripts here
 ?>
 <script language="JavaScript">
 <?php
-switch ($_STATE->status) {
-case CHANGE_ORG:
-case UPDATE_ORG:
-case DELETE_ORG:
-//if (($_STATE->status != ADD_ORG) && ($_STATE->status != GET_LOGO)) { ?>
+	switch ($_STATE->status) {
+	case CHANGE_ORG:
+	case UPDATE_ORG:
+	case DELETE_ORG:
+?>
 function EnableReset() {
-  button = document.getElementById("btnReset_ID");
-  button.disabled = false;
-  button.innerHTML = "Reset to original choices";
-  button.style.visibility = "visible";
-  button.value = "reset";
+	button = document.getElementById("btnReset_ID");
+	button.disabled = false;
+	button.innerHTML = "Reset to original choices";
+	button.style.visibility = "visible";
+	button.value = "reset";
 }
 
 function UpdateBtn() {
@@ -414,111 +433,107 @@ function UpdateBtn() {
 }
 
 function DeleteBtn() {
-<?php
-	if ($_STATE->record_id == 1) { ?>
-  alert ("You can't delete the default organization!");
+<?php	if ($_STATE->record_id == 1) { ?>
+	alert ("You can't delete the default organization!");
 }
-<?php
-	} else { ?>
-  fields_hold(true);
-  select_hold(true);
-  button = document.getElementById("btnSubmit_ID");
-  button.disabled = false;
-  button.innerHTML = "Confirm Delete";
-  button.style.visibility = "visible";
-  button.value = "delete";
-  document.getElementById("msgGreet_ID").innerHTML = "Do you really want to delete this organization record?";
-  EnableReset();
+<?php	} else { ?>
+	fields_hold(true);
+	select_hold(true);
+	button = document.getElementById("btnSubmit_ID");
+	button.disabled = false;
+	button.innerHTML = "Confirm Delete";
+	button.style.visibility = "visible";
+	button.value = "delete";
+	document.getElementById("msgGreet_ID").innerHTML = "Do you really want to delete this organization record?";
+	EnableReset();
 }
-<?php
-	}
-// end case CHANGE_ORG, UPDATE_ORG, DELETE_ORG - fall thru
-case ADD_ORG:
+<?php	}
+		// end case CHANGE_ORG, UPDATE_ORG, DELETE_ORG - fall thru
+
+	case ADD_ORG:
 ?>
 
 function ResetBtn() {
-<?php
-	if ($_STATE->status == ADD_ORG) {
-		echo "  return true;\n";
-	} else {
-?>
-  fields_hold(true);
-  select_hold(false);
-  action_hold(true);
-//  document.getElementById("frmAction_ID").encoding="application/x-www-form-urlencoded";
-  document.getElementById("msgGreet_ID").innerHTML = "What do you want to do to this organization record?";
-  document.getElementById("msgStatus_ID").innerHTML = "";
-  return true; //reset to default values
-<?php
-	} ?>
+<?php	if ($_STATE->status == ADD_ORG) { ?>
+	return true;
 }
+<?php	} else { ?>
+	fields_hold(true);
+	select_hold(false);
+	action_hold(true);
+//	document.getElementById("frmAction_ID").encoding="application/x-www-form-urlencoded";
+	document.getElementById("msgGreet_ID").innerHTML = "What do you want to do to this organization record?";
+	document.getElementById("msgStatus_ID").innerHTML = "";
+	return true; //reset to default values
+}
+<?php	} ?>
 
 function action_hold(cond) {
-  submiter = document.getElementById("btnSubmit_ID");
-  reseter = document.getElementById("btnReset_ID");
-  submiter.disabled = cond;
-  reseter.disabled = cond;
-  if (cond) {
-    submiter.style.visibility = "hidden";
-    reseter.style.visibility = "hidden";
-  } else {
-    submiter.style.visibility = "visible";
-    reseter.style.visibility = "visible";
-  }
+	submiter = document.getElementById("btnSubmit_ID");
+	reseter = document.getElementById("btnReset_ID");
+	submiter.disabled = cond;
+	reseter.disabled = cond;
+	if (cond) {
+		submiter.style.visibility = "hidden";
+		reseter.style.visibility = "hidden";
+	} else {
+		submiter.style.visibility = "visible";
+		reseter.style.visibility = "visible";
+	}
 }
 
 function select_hold(cond) {
-  updater = document.getElementById("btnUpdate_ID");
-  deleter = document.getElementById("btnDelete_ID");
-  logo = document.getElementById("btnLogo_ID");
-  prefs = document.getElementById("btnPrefs_ID");
-  updater.disabled = cond;
-  deleter.disabled = cond;
-  logo.disabled = cond;
-  if (cond) {
-    updater.style.visibility = "hidden";
-    deleter.style.visibility = "hidden";
-    logo.style.visibility = "hidden";
-    prefs.style.visibility = "hidden";
-  } else {
-    updater.style.visibility = "visible";
-    deleter.style.visibility = "visible";
-    logo.style.visibility = "visible";
-    prefs.style.visibility = "visible";
-  }
+	updater = document.getElementById("btnUpdate_ID");
+	deleter = document.getElementById("btnDelete_ID");
+	logo = document.getElementById("btnLogo_ID");
+	prefs = document.getElementById("btnPrefs_ID");
+	updater.disabled = cond;
+	deleter.disabled = cond;
+	logo.disabled = cond;
+	if (cond) {
+		updater.style.visibility = "hidden";
+		deleter.style.visibility = "hidden";
+		logo.style.visibility = "hidden";
+		prefs.style.visibility = "hidden";
+	} else {
+		updater.style.visibility = "visible";
+		deleter.style.visibility = "visible";
+		logo.style.visibility = "visible";
+		prefs.style.visibility = "visible";
+	}
 }
 
 function fields_hold(cond) {
-<?php foreach($_STATE->fields as $field=>&$props) { ?>
-  document.getElementById("<?php echo $props->pagename; ?>_ID").readOnly = cond;
-<?php } ?>
+<?php	foreach($_STATE->fields as $field=>&$props) { ?>
+	document.getElementById("<?php echo $props->pagename; ?>_ID").readOnly = cond;
+<?php	} ?>
 }
 <?php
-} //end switch ($_STATE->status)
+	} //end switch ($_STATE->status)
 ?>
 
 </script>
 <?php
-EX_pageHead(); //standard page headings - after any scripts
+	EX_pageHead(); //standard page headings - after any scripts
 
-//forms and display depend on process state; note, however, that the state was probably changed after entering
-//the Main State Gate so this switch will see the next state in the process:
-switch ($_STATE->status) {
-case SELECT_ORG:
+	switch ($_STATE->status) {
+	case LIST_ORGS:
 ?>
   <p>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <select name='selOrg' size="<?php echo count($_STATE->records); ?>" onclick="this.form.submit()">
 <?php
-	foreach($_STATE->records as $value => $name) {
-		echo "    <option value=\"".$value."\">".$name."\n";
-	} ?>
+		foreach($_STATE->records as $value => $name) {
+			echo "    <option value=\"".$value."\">".$name."\n";
+		}
+?>
   </select>
 </form>
   </p>
-<?php //end SELECT_ORG status ----END STATUS PROCESSING----
-	break;
-case CHANGE_ORG:
+<?php
+		break; //end LIST_ORGS status ----END STATUS PROCESSING----
+
+	case CHANGE_ORG:
 ?>
   <p>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
@@ -528,12 +543,12 @@ case CHANGE_ORG:
   <button type="button" name="btnDelete" id="btnDelete_ID" onclick="DeleteBtn();">Remove this org</button>
 </form>
   </p>
-<?php //end CHANGE_ORG status ----END STATUS PROCESSING----
-	//no break - falls thru
-case SELECTED_ORG:
-case ADD_ORG:
-case UPDATE_ORG:
-case DELETE_ORG:
+<?php
+		//no break - falls thru; end CHANGE_ORG status ----END STATUS PROCESSING----
+
+	case ADD_ORG:
+	case UPDATE_ORG:
+	case DELETE_ORG:
 ?>
   <p>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
@@ -552,11 +567,12 @@ case DELETE_ORG:
       <td>
         <select name='selCurrency' id='selCurrency_ID' size="<?php echo count($_STATE->acct_list); ?>">
 <?php
-	foreach($_STATE->curr_list as $value => $name) {
-  		echo "        <option value=\"".$value."\"";
-		if ($_STATE->currency_id == $value) echo " selected";
-		echo ">".$name."\n";
-	} ?>
+		foreach($_STATE->curr_list as $value => $name) {
+	  		echo "        <option value=\"".$value."\"";
+			if ($_STATE->currency_id == $value) echo " selected";
+			echo ">".$name."\n";
+		}
+?>
         </select>
       </td>
       <td>&nbsp</td>
@@ -569,17 +585,19 @@ case DELETE_ORG:
   </p>
   <p>
 <?php
-	if ($_STATE->status == ADD_ORG ) {
-		echo FIELD_edit_buttons(FIELD_ADD);
-	} else {
-		echo Field_edit_buttons(FIELD_UPDATE);
-	} ?>
+		if ($_STATE->status == ADD_ORG ) {
+			echo FIELD_edit_buttons(FIELD_ADD);
+		} else {
+			echo Field_edit_buttons(FIELD_UPDATE);
+		}
+?>
 </form>
   </p>
 <?php
-//end SELECTED/ADD/UPDATE/DELETE_ORG status ----END STATUS PROCESSING----
-	break;
-case GET_LOGO:
+
+		break; //end ADD/UPDATE/DELETE_ORG status ----END STATUS PROCESSING----
+
+	case GET_LOGO:
 ?>
   <p>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
@@ -601,13 +619,18 @@ case GET_LOGO:
 </form>
   </p>
 <?php
-//end GET_LOGO status ----END STATUS PROCESSING----
-	break;
+		break; //end GET_LOGO status ----END STATUS PROCESSING----
 
-case PREFERENCES: //show preferences and allow update:
-	$prefset->set_HTML();
+	case PREFERENCES: //show preferences and allow update:
+		$prefset->set_HTML();
+		break;
 
-} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
+	default:
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 
-EX_pageEnd(); //standard end of page stuff
+	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
+
+	EX_pageEnd(); //standard end of page stuff
+
+} //end Page_out()
 ?>

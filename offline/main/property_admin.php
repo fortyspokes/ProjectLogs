@@ -1,5 +1,5 @@
 <?php
-//copyright 2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("property_admin")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
@@ -23,8 +23,10 @@ while (1==1) { switch ($_STATE->status) {
 case LIST_PROPERTIES:
 	list_properties();
 	$_STATE->msgGreet = "Select a property to edit";
+	Page_out();
 	$_STATE->status = SELECT_PROPERTY;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_PROPERTY:
 	select_property();
 	$_STATE->status = SELECTED_PROPERTY; //for possible goback
@@ -39,27 +41,30 @@ case SELECTED_PROPERTY:
 		$_STATE->msgGreet = "Edit property?";
 		$_STATE->status = UPDATE_PROPERTY;
 	}
-	break 2;
+	Page_out();
+	break 2; //return to executive
+
 case ADD_PROPERTY:
-	prop_fields();
-//	$_STATE->msgGreet = "New property";
 	if (isset($_POST["btnReset"])) {
-		break 2;
+		$_STATE = $_STATE->loopback(SELECTED_PROPERTY);
+		break 1;
 	}
+	prop_fields();
 	if (new_property_audit()) {
 		$record_id = $_STATE->record_id;
 		$_STATE = $_STATE->loopback(SELECTED_PROPERTY);
 		$_STATE->record_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
-	break 2; //display error
+	Page_out(); //errors...
+	break 2; //return to executive
+
 case UPDATE_PROPERTY:
-	prop_fields();
-//	$_STATE->msgGreet = "Edit property";
 	if (isset($_POST["btnReset"])) {
-		property_info();
-		break 2; //start over
+		$_STATE = $_STATE->loopback(SELECTED_PROJECT);
+		break 1;
 	}
+	prop_fields();
 	if (isset($_POST["btnDelete"])) {
 		delete_property();
 		$_STATE = $_STATE->loopback(LIST_PROPERTIES);
@@ -74,15 +79,19 @@ case UPDATE_PROPERTY:
 		$_STATE = $_STATE->loopback(SELECTED_PROPERTY);
 		break 1; //re-switch
 	}
-	break 2; //display error
+	Page_out(); //errors...
+	break 2; //return to executive
+
 case LIST_VALUES:
 	$_STATE->msgGreet_prefix = $_STATE->property_name."<br>";
 	$_STATE->property_id = $_STATE->record_id; //save this guy for list_values()
 	list_values();
 	$_STATE->msgGreet = $_STATE->msgGreet_prefix."Select a value to edit";
 	$_STATE->backup = SELECTED_PROPERTY; //for goback
+	Page_out();
 	$_STATE->status = SELECT_VALUE;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_VALUE:
 	select_value();
 	$_STATE->status = SELECTED_VALUE; //for possible goback
@@ -98,27 +107,32 @@ case SELECTED_VALUE:
 		$_STATE->msgGreet = $_STATE->msgGreet_prefix."Edit property value?";
 		$_STATE->status = UPDATE_VALUE;
 	}
-	break 2;
+	Page_out();
+	break 2; //return to executive
+
 case ADD_VALUE:
+	if (isset($_POST["btnReset"])) {
+		$_STATE = $_STATE->loopback(SELECTED_VALUE);
+		break 1;
+	}
 	prop_fields();
 	$_STATE->msgGreet = $_STATE->msgGreet_prefix."New property";
-	if (isset($_POST["btnReset"])) {
-		break 2;
-	}
 	if (new_value_audit()) {
 		$record_id = $_STATE->record_id;
 		$_STATE = $_STATE->loopback(SELECTED_VALUE);
 		$_STATE->record_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
-	break 2; //display error
+	Page_out(); //errors...
+	break 2; //return to executive
+
 case UPDATE_VALUE:
+	if (isset($_POST["btnReset"])) {
+		$_STATE = $_STATE->loopback(SELECTED_VALUE);
+		break 1;
+	}
 	prop_fields();
 	$_STATE->msgGreet = $_STATE->msgGreet_prefix."Edit property";
-	if (isset($_POST["btnReset"])) {
-		value_info();
-		break 2; //start over
-	}
 	if (isset($_POST["btnDelete"])) {
 		delete_value();
 		$_STATE = $_STATE->loopback(LIST_VALUES);
@@ -128,11 +142,13 @@ case UPDATE_VALUE:
 		$_STATE = $_STATE->loopback(SELECTED_VALUE);
 		break 1; //re-switch
 	}
-	break 2; //display error
+	Page_out(); //errors...
+	break 2; //return to executive
+
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
-//End Main State Gate
+//End Main State Gate & return to executive
 
 function prop_fields() {
 	global $_STATE;
@@ -370,13 +386,14 @@ function new_value_audit() {
 	return TRUE;
 }
 
-//-------end function code; begin HTML------------
+function Page_out() {
+	global $_DB, $_STATE;
 
-EX_pageStart(); //standard HTML page start stuff - insert SCRIPTS here
+	EX_pageStart(); //standard HTML page start stuff - insert SCRIPTS here
 
-switch ($_STATE->status) {
-case UPDATE_PROPERTY:
-case UPDATE_VALUE:
+	switch ($_STATE->status) {
+	case UPDATE_PROPERTY:
+	case UPDATE_VALUE:
 ?>
 <script type='text/javascript'>
 
@@ -387,34 +404,34 @@ function check_delete() {
 
 </script>
 <?php
-	break;
-} //end switch ($_STATE->status)
+		break;
+	} //end switch ($_STATE->status)
 
-EX_pageHead(); //standard page headings - after any scripts
+	EX_pageHead(); //standard page headings - after any scripts
 
-//forms and display depend on process state; note, however, that the state was probably changed after entering
-//the Main State Gate so this switch will see the next state in the process:
-switch ($_STATE->status) {
-case SELECT_PROPERTY:
-case SELECT_VALUE:
+	switch ($_STATE->status) {
+
+	case LIST_PROPERTIES:
+	case LIST_VALUES:
 ?>
   <p>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <select name='selProp' size="<?php echo count($_STATE->records); ?>" onclick="this.form.submit()">
 <?php
-	foreach($_STATE->records as $value => $name) {
-  		echo "    <option value=\"".$value."\">".$name."\n";
-	} ?>
+		foreach($_STATE->records as $value => $name) {
+	  		echo "    <option value=\"".$value."\">".$name."\n";
+		}
+?>
   </select>
 </form>
   </p>
-<?php //end SELECT_PROPERTY status ----END STATUS PROCESSING----
-	break;
-//default:
-case ADD_PROPERTY:
-case UPDATE_PROPERTY:
-case ADD_VALUE:
-case UPDATE_VALUE:
+<?php
+		break; //end LIST_PROPERTIES/VALUES status ----END STATUS PROCESSING----
+
+	case ADD_PROPERTY:
+	case UPDATE_PROPERTY:
+	case ADD_VALUE:
+	case UPDATE_VALUE:
 ?>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <table align="center">
@@ -429,25 +446,32 @@ case UPDATE_VALUE:
   </table>
   <p>
 <?php
-	if ($_STATE->status == STATE::ADD ) {
-		echo FIELD_edit_buttons(FIELD_ADD);
-	} else {
-		echo Field_edit_buttons(FIELD_UPDATE);
-	}
-	if ($_STATE->status == UPDATE_PROPERTY) {
+		if ($_STATE->status == STATE::ADD ) {
+			echo FIELD_edit_buttons(FIELD_ADD);
+		} else {
+			echo Field_edit_buttons(FIELD_UPDATE);
+		}
+		if ($_STATE->status == UPDATE_PROPERTY) {
 ?>
   <br><button type='submit' name='btnValues' id='btnValues_ID' value='values'>Show Property Values</button><br>
 <?php
-	}
-	if (($_STATE->status == UPDATE_PROPERTY) || ($_STATE->status == UPDATE_VALUE)) {
+		}
+		if (($_STATE->status == UPDATE_PROPERTY) || ($_STATE->status == UPDATE_VALUE)) {
 ?>
   <br><button type='submit' name='btnDelete' id='btnDelete_ID' value='delete' onclick="return check_delete()">Delete</button>
 <?php
-	}
+		}
 ?>
 </form>
-<?php //end default status ----END STATUS PROCESSING----
-} ?>
 <?php
-EX_pageEnd(); //standard end of page stuff
+		break; //end ADD/UPDATE_PROPERTY/VALUE status ----END STATUS PROCESSING----
+
+	default:
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+
+	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
+
+	EX_pageEnd(); //standard end of page stuff
+
+} //end Page_out()
 ?>

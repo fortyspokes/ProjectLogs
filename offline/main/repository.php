@@ -1,5 +1,5 @@
 <?php
-//copyright 2016-2017 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2016-2017,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if ($_UPLOAD) {
 	if (!$_PERMITS->can_pass("repository_put")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
@@ -25,8 +25,10 @@ case LIST_DEPOSITS:
 	list_setup();
 	$_STATE->msgGreet = "Select a deposit";
 	if ($_UPLOAD) $_STATE->msgGreet .= " to change";
+	Page_out();
 	$_STATE->status = SELECT_DEPOSIT;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_DEPOSIT:
 	deposit_select();
 	if ($_UPLOAD) {
@@ -50,58 +52,67 @@ case SELECTED_DEPOSIT:
 		$_STATE->msgGreet = "Change this deposit";
 		$_STATE->status = CHANGE_DEPOSIT;
 	}
-	break 2;
+	Page_out();
+	break 2; //return to executive
+
 case ADD_DEPOSIT:
-	state_fields(false);
-	$_STATE->msgGreet = "Create a new deposit";
 	if (isset($_POST["btnReset"])) {
-		break 2;
+		$_STATE = $_STATE->loopback(SELECTED_DEPOSIT);
+		break 1;
 	}
+	state_fields(false);
 	if (new_audit()) {
 		$record_id = $_STATE->record_id;
 		$_STATE = $_STATE->loopback(SELECTED_DEPOSIT);
 		$_STATE->record_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
-	break 2;
+	Page_out(); //errors...
+	break 2; //return to executive
+
 case CHANGE_DEPOSIT:
 	if (isset($_POST["btnUpload"])) {
-		$_STATE->status = GET_DEPOSIT;
 		$_STATE->msgGreet = "Upload a new deposit";
-		break 2;
+		$_STATE->status = GET_DEPOSIT;
+		Page_out();
+		break 2; //return to executive
 	}
 	//fall thru
 case UPDATE_DEPOSIT:
 case DELETE_DEPOSIT:
-	state_fields();
-	$_STATE->msgGreet = "Edit organization record";
 	if (isset($_POST["btnReset"])) {
-		deposit_info();
-		break 2;
+		$_STATE = $_STATE->loopback(SELECTED_DEPOSIT);
+		break 1;
 	}
+	state_fields();
 	if (isset($_POST["btnSubmit"])) {
-		$_STATE->status = UPDATE_DEPOSIT;
 		if (update_audit()) {
 			$_STATE = $_STATE->loopback(SELECTED_DEPOSIT);
 			break 1; //re-switch
 		}
+		$_STATE->status = UPDATE_DEPOSIT; //come back here
 	} elseif (isset($_POST["btnDelete"])) {
-		$_STATE->status = DELETE_DEPOSIT;
 		if (delete_audit()) {
 			$_STATE = $_STATE->loopback(LIST_DEPOSITS);
 			break 1; //re-switch
 		}
+		$_STATE->status = DELETE_DEPOSIT;
 	} else {
 		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid btnSubmit ".$_POST["btnSubmit"]);
 	}
-	break 2;
+	Page_out(); //errors...
+	break 2; //return to executive
+
 case GET_DEPOSIT:
 	$_STATE->backup = SELECTED_DEPOSIT; //set goback
 	deposit_audit();
-	break 2;
+	Page_out();
+	break 2; //return to executive
+
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
+//End Main State Gate & return to executive
 
 function state_fields($disabled=true) {
 	global $_STATE;
@@ -309,27 +320,31 @@ function delete_audit() {
 	return TRUE;
 }
 
-EX_pageStart(); //standard HTML page start stuff - insert scripts here
-EX_pageHead(); //standard page headings - after any scripts
+function Page_out() {
+	global $_DB, $_STATE;
 
-//forms and display depend on process state; note, however, that the state was probably changed after entering
-//the Main State Gate so this switch will see the next state in the process:
-switch ($_STATE->status) {
-case SELECT_DEPOSIT:
+	EX_pageStart(); //standard HTML page start stuff - insert scripts here
+	EX_pageHead(); //standard page headings - after any scripts
+
+	switch ($_STATE->status) {
+
+	case LIST_DEPOSITS:
 ?>
   <p>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
   <select name='selDeposit' size="<?php echo count($_STATE->records); ?>" onclick="this.form.submit()">
 <?php
-	foreach($_STATE->records as $value => $name) {
-		echo "    <option value=\"".$value."\">".$name."\n";
-	} ?>
+		foreach($_STATE->records as $value => $name) {
+			echo "    <option value=\"".$value."\">".$name."\n";
+		}
+?>
   </select>
 </form>
   </p>
-<?php //end SELECT_DEPOSIT status ----END STATUS PROCESSING----
-	break;
-case GET_DEPOSIT:
+<?php
+	break;  //end LIST_DEPOSITS status ----END STATUS PROCESSING----
+
+	case GET_DEPOSIT:
 ?>
   <p>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
@@ -351,9 +366,9 @@ case GET_DEPOSIT:
 </form>
   </p>
 <?php
-//end GET_DEPOSIT status ----END STATUS PROCESSING----
-	break;
-case CHANGE_DEPOSIT:
+		break; //end GET_DEPOSIT status ----END STATUS PROCESSING----
+
+	case CHANGE_DEPOSIT:
 ?>
   <p>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
@@ -361,12 +376,13 @@ case CHANGE_DEPOSIT:
   <button type="submit" name="btnDelete" id="btnDelete_ID" value="delete">Remove this deposit</button>
 </form>
   </p>
-<?php //end CHANGE_DEPOSIT status ----END STATUS PROCESSING----
-	//no break - falls thru
-case SELECTED_DEPOSIT:
-case ADD_DEPOSIT:
-case UPDATE_DEPOSIT:
-case DELETE_DEPOSIT:
+<?php
+	//no break - falls thru - end CHANGE_DEPOSIT status ----END STATUS PROCESSING----
+
+	case SELECTED_DEPOSIT:
+	case ADD_DEPOSIT:
+	case UPDATE_DEPOSIT:
+	case DELETE_DEPOSIT:
 ?>
   <p>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
@@ -384,18 +400,23 @@ case DELETE_DEPOSIT:
   </p>
   <p>
 <?php
-	if ($_STATE->status == ADD_DEPOSIT ) {
-		echo FIELD_edit_buttons(FIELD_ADD);
-	} else {
-		echo Field_edit_buttons(FIELD_UPDATE);
-	} ?>
+		if ($_STATE->status == ADD_DEPOSIT ) {
+			echo FIELD_edit_buttons(FIELD_ADD);
+		} else {
+			echo Field_edit_buttons(FIELD_UPDATE);
+		}
+?>
 </form>
   </p>
 <?php
-//end SELECTED/ADD/UPDATE/DELETE_DEPOSIT status ----END STATUS PROCESSING----
-	break;
+		break; //end SELECTED/ADD/UPDATE/DELETE_DEPOSIT status ----END STATUS PROCESSING----
 
-} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
+	default:
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 
-EX_pageEnd(); //standard end of page stuff
+	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
+
+	EX_pageEnd(); //standard end of page stuff
+
+} //end Page_out()
 ?>

@@ -15,8 +15,10 @@ case STATE::INIT:
 	$projects = new PROJECT_SELECT();
 	$_STATE->project_select = serialize(clone($projects));
 	$_STATE->msgGreet = "Select the ".ucfirst($projects->get_label("project"))." to prune";
+	Page_out();
 	$_STATE->status = STATE::SELECT;
-	break 2;
+	break 2; //return to executive
+
 case STATE::SELECT:
 	require_once "lib/project_select.php"; //catches $_GET list refresh (assumes break 2)
 	$projects = unserialize($_STATE->project_select);
@@ -25,12 +27,13 @@ case STATE::SELECT:
 	$_STATE->record_id = $_STATE->project_id;
 	$_STATE->status = STATE::SELECTED; //for possible goback
 	$_STATE->replace();
-//	break 1; //re_switch
 case STATE::SELECTED:
 	state_fields(); //creates the cutoff date for display
 	$_STATE->msgGreet = "Enter the cutoff date to prune ".$_STATE->project;
+	Page_out();
 	$_STATE->status = STATE::UPDATE;
-	break 2;
+	break 2; //return to executive
+
 case STATE::UPDATE:
 	state_fields(); //creates the cutoff date for audit
 	$_STATE->msgGreet = "Pruning...";
@@ -38,11 +41,13 @@ case STATE::UPDATE:
 		$_STATE->status = STATE::DONE;
 		$_STATE->goback(1); //setup for goback
 	}
-	break 2;
+	Page_out();
+	break 2; //return to executive
+
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
-//End Main State Gate
+//End Main State Gate & return to executive
 
 function state_fields() {
 	global $_DB, $_STATE;
@@ -368,9 +373,10 @@ function update_audit() {
 	return true;
 }
 
-//-------end function code; begin HTML------------
+function Page_out() {
+	global $_DB, $_STATE, $_PERMITS, $_VERSION;
 
-EX_pageStart(); //standard HTML page start stuff - insert SCRIPTS here
+	EX_pageStart(); //standard HTML page start stuff - insert SCRIPTS here
 ?>
 <script type='text/javascript'>
 
@@ -395,17 +401,16 @@ function audit_form() {
 
 </script>
 <?php
-EX_pageHead(); //standard page headings - after any scripts
+	EX_pageHead(); //standard page headings - after any scripts
 
-//forms and display depend on process state; note, however, that the state was probably changed after entering
-//the Main State Gate so this switch will see the next state in the process:
-switch ($_STATE->status) {
-case STATE::SELECT:
+	switch ($_STATE->status) {
 
-	echo $projects->set_list();
+	case STATE::INIT:
+		global $projects;
+		echo $projects->set_list();
+		break; //end STATE::INIT status ----END STATUS PROCESSING----
 
-	break; //end STATE::SELECT status ----END STATUS PROCESSING----
-default:
+	default:
 ?>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>" onsubmit="return audit_form()">
   <table align="center">
@@ -430,7 +435,12 @@ default:
   </table>
   <button type="submit">Prune</button>
 </form>
-<?php //end default status ----END STATUS PROCESSING----
-}
-EX_pageEnd(); //standard end of page stuff
+<?php
+		break; //end default status ----END STATUS PROCESSING----
+
+	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
+
+	EX_pageEnd(); //standard end of page stuff
+
+} //end Page_out()
 ?>

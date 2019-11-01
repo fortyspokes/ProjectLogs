@@ -16,8 +16,10 @@ case LIST_ORGS:
 	$_STATE->status = SELECT_ORG; //prepare a 'goback'
 case SELECT_ORG:
 	init_setup();
+	Page_out();
 	$_STATE->status = SELECTED_ORG;
-	break 2;
+	break 2; //return to executive
+
 case SELECTED_ORG:
 	if (entry_audit()) {
 		$reload = TRUE; //reload the header to reflect these changes
@@ -25,9 +27,11 @@ case SELECTED_ORG:
 	}
 	$_STATE = $_STATE->loopback(LIST_ORGS);
 	break 1;
+
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
+//End Main State Gate & return to executive
 
 function init_setup() {
 	global $_DB, $_STATE;
@@ -79,28 +83,35 @@ function entry_audit() {
 	return true;
 }
 
-EX_pageStart(); //standard HTML page start stuff - insert scripts here
+function Page_out() {
+	global $_DB, $_STATE;
 
-if ($reload) { ?>
+	EX_pageStart(); //standard HTML page start stuff - insert scripts here
+
+	global $reload;
+	if ($reload) {
+?>
 <script language='JavaScript'>
 LoaderS.push('top.reload_head(); top.reload_menu();');
 </script>
 <?php
-}
-EX_pageHead(); //standard page headings - after any scripts
+	}
+	EX_pageHead(); //standard page headings - after any scripts
 ?>
 
 <form method="post" name="frmOrgs" action="<?php echo $_SESSION["IAm"]; ?>">
 <p>
 <select name='selOrgs' size="<?php echo count($_STATE->records); ?>" onclick="javascript: this.form.submit();">
 <?php
-foreach($_STATE->records as $value => $org) {
-	echo "<option value=\"".$value."\">".$org[0]."\n";
-} ?>
+	foreach($_STATE->records as $value => $org) {
+		echo "<option value=\"".$value."\">".$org[0]."\n";
+	}
+?>
 </select>
 </p>
 </form>
 
 <?php
-EX_pageEnd(); //standard end of page stuff
+	EX_pageEnd(); //standard end of page stuff
+} //end Page_out()
 ?>

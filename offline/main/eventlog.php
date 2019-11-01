@@ -50,8 +50,10 @@ case LIST_PROJECTS:
 		break 1; //re-switch to SELECTED_PROJECT
 	}
 	$_STATE->msgGreet = "Select the ".ucfirst($projects->get_label("project"));
+	Page_out();
 	$_STATE->status = SELECT_PROJECT;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_PROJECT: //select the project
 	require_once "lib/project_select.php"; //catches $_GET list refresh
 	$projects = unserialize($_STATE->project_select);
@@ -71,15 +73,18 @@ case SHOW_SPECS:
 	$_STATE->calendar = serialize(clone($calendar));
 	$_STATE->msgGreet = $_STATE->project_name."<br>Select the date range";
 	$_STATE->backup = LIST_PROJECTS; //set goback
+	Page_out();
 	$_STATE->status = SELECT_SPECS;
-	break 2;
+	break 2; //return to executive
+
 case SELECT_SPECS: //set the from and to dates
-	require_once "lib/calendar.php"; //catches $_GET refresh
+	require_once "lib/calendar.php"; //catches $_GET refresh - may not return
 	require_once "lib/date_select.php";
+	$calendar = unserialize($_STATE->calendar);
 	$dates = unserialize($_STATE->date_select);
 	if (!$dates->POST()) {
-		$calendar = unserialize($_STATE->calendar);
 		$_STATE->msgGreet = $_STATE->project_name."<br>Select the date range";
+		Page_out();
 		break 2;
 	}
 	set_state($dates);
@@ -95,7 +100,9 @@ case SELECTED_SPECS:
 	$_STATE->scion_start("SHEET"); //create the child state stack
 	$_STATE->backup = SHOW_SPECS; //set goback
 	$_STATE->status = SHEET_DISP;
-	break 2;
+	Page_out();
+	break 2; //return to executive
+
 case SHEET_DISP: //fill cells (if edit, starts with Hours)
 	if (isset($_GET["sheet"])) { //change displayed sheet
 		$_STATE = $_STATE->loopback(SELECTED_SPECS);
@@ -110,13 +117,14 @@ case SHEET_DISP: //fill cells (if edit, starts with Hours)
 		$_STATE = $_STATE->loopback(SELECTED_SPECS);
 		break 1;
 	}
-	if (isset($_GET["getdesc"])) { //asking for the description of a cell
-		cell_desc($_STATE);;
-		break 2;
+	if (isset($_GET["getdesc"])) { //server call: asking for the description of a cell
+		cell_desc($_STATE);
+		break 2; //return to executive
 	}
 	if (isset($_POST["btnPut"])) { //asking for a download
-		log_put();
-		break 2;
+		log_put(); //returns only if no download
+		Page_out();
+		break 2; //return to executive
 	}
 
 	//Add/Update a row of the displayed sheet:
@@ -219,11 +227,12 @@ case SHEET_DISP: //fill cells (if edit, starts with Hours)
 	} } //while & switch
 	$SCION->push();
 
-	break 2;
+	break 2; //return to executive
+
 default:
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): Invalid state=".$_STATE->status);
 } } //while & switch
-//End Main State Gate
+//End Main State Gate & return to executive
 
 function set_state(&$dates) {
 	global $_STATE;
@@ -877,38 +886,42 @@ function changes(&$state, &$response) {
 }
 
 //-------end function code; begin HTML------------
+function Page_out() {
+	global $_DB, $_STATE, $_PERMITS, $_VERSION;
 
-$scripts = array("call_server.js");
-if ($_STATE->status == SELECT_SPECS) {
-	$scripts[] = "calendar.js";
-} else if ($_STATE->status > SELECT_SPECS) {
-	$scripts[] = "eventlog.js";
-}
-EX_pageStart($scripts); //standard HTML page start stuff - insert SCRIPTS here
-EX_pageHead(); //standard page headings - after any scripts
+	$scripts = array("call_server.js");
+	if ($_STATE->status == SHOW_SPECS) {
+		$scripts[] = "calendar.js";
+	} else if ($_STATE->status > SHOW_SPECS) {
+		$scripts[] = "eventlog.js";
+	}
+	EX_pageStart($scripts); //standard HTML page start stuff - insert SCRIPTS here
+	EX_pageHead(); //standard page headings - after any scripts
 
-//forms and display depend on process state; note, however, that the state was probably changed after entering
-//the Main State Gate so this switch will see the next state in the process:
-switch ($_STATE->status) {
-case SELECT_PROJECT:
+	switch ($_STATE->status) {
 
-	echo $projects->set_list();
+	case LIST_PROJECTS:
+		global $projects;
+		echo $projects->set_list();
+		break; //end LIST_PROJECTS status ----END STATE: EXITING FROM PROCESS----
 
-	break; //end SELECT_PROJECT status ----END STATE: EXITING FROM PROCESS----
-case SELECT_SPECS:
+	case SHOW_SPECS:
+	case SELECT_SPECS: //errors...
 ?>
 
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
 <table cellpadding="3" border="0" align="center">
   <tr><td colspan="3">- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </td></tr>
 <?php
-	echo $dates->HTML();
+		global $dates;
+		echo $dates->HTML();
 ?>
   <tr><td>&nbsp</td><td colspan="3">- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - </td></tr>
 
   <tr><td colspan='3'>
 <?php
-	echo $calendar->create("h"); //horiz
+		global $calendar;
+		echo $calendar->create("h"); //horiz
 ?>
   </td></tr>
 
@@ -922,9 +935,10 @@ case SELECT_SPECS:
 </form>
 <div id="msgStatus_ID"><?php echo $_STATE->msgStatus ?></div>
 
-<?php //end SELECT_SPECS status ----END STATE: EXITING FROM PROCESS----
-	break;
-default: //list the hours and allow new entry:
+<?php
+		break; //end SHOW/SELECT_SPECS status ----END STATE: EXITING FROM PROCESS----
+
+	case SHEET_DISP: //list the hours and allow new entry:
 ?>
 <div id="divPopopen_ID" class="popopen">
   Enter comments:<br>
@@ -933,9 +947,9 @@ default: //list the hours and allow new entry:
   <input type="button" id="cancelPop" onclick="save_comments(false)" value="cancel">
 </div>
 <?php
-	require_once "lib/project_select.php";
-	$projects = unserialize($_STATE->project_select);
-	echo $projects->tabs();
+		require_once "lib/project_select.php";
+		$projects = unserialize($_STATE->project_select);
+		echo $projects->tabs();
 ?>
 <table align="center" id="tblLog" cellpadding="4" border="2">
   <tr>
@@ -987,25 +1001,25 @@ function onerow(&$header, &$logs) {
 	echo "  </tr>\n";
 } //end function onerow()
 
-reset($_STATE->records);
-$totals = array(); //totals: sessions, attendance
-$logs = array();
-for ($ndx=0; $ndx<$_STATE->columns[COL_COUNT]; $ndx++) { //save one row's worth of data:
-	$totals[] = array(0,0);
-	$logs[] = array(0,0,0); //$logs[][0,1]=>sessions/attendance, $logs[][2]=>timelog_id
-}
-//if ($_STATE->mode == "l") { //---begin LIST STYLE---
-	foreach ($_STATE->records AS $ID=>$record) {
-		onerow($record, $logs);
-		$totals[$record["column"]][0] += $record["session_count"];
-		$totals[$record["column"]][1] += $record["attendance"];
+	reset($_STATE->records);
+	$totals = array(); //totals: sessions, attendance
+	$logs = array();
+	for ($ndx=0; $ndx<$_STATE->columns[COL_COUNT]; $ndx++) { //save one row's worth of data:
+		$totals[] = array(0,0);
+		$logs[] = array(0,0,0); //$logs[][0,1]=>sessions/attendance, $logs[][2]=>timelog_id
 	}
-	$grand = array(0,0);
-	for ($ndx=0; $ndx<$_STATE->columns[COL_COUNT]; $ndx++) {
-		$grand[0] += $totals[$ndx][0];
-		$grand[1] += $totals[$ndx][1];
-	}
-//}
+//	if ($_STATE->mode == "l") { //---begin LIST STYLE---
+		foreach ($_STATE->records AS $ID=>$record) {
+			onerow($record, $logs);
+			$totals[$record["column"]][0] += $record["session_count"];
+			$totals[$record["column"]][1] += $record["attendance"];
+		}
+		$grand = array(0,0);
+		for ($ndx=0; $ndx<$_STATE->columns[COL_COUNT]; $ndx++) {
+			$grand[0] += $totals[$ndx][0];
+			$grand[1] += $totals[$ndx][1];
+		}
+//	}
 ?>
   <tr>
     <td colspan="3"></td>
@@ -1016,18 +1030,22 @@ for ($ndx=0; $ndx<$_STATE->columns[COL_COUNT]; $ndx++) { //save one row's worth 
 </table>
 
 <?php
-if ($_PERMITS->can_pass("project_logs")) { ?>
+		if ($_PERMITS->can_pass("project_logs")) {
+?>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">
 <br>You can
 <button name="btnPut" type="submit" value="<?php echo $_SESSION["person_id"]; ?>" title="click here to download">Download</button>
 this data for import into the timesheet template<br>(check your browser preferences for where the downloaded file will go)
 </form>
 <?php
-} ?>
+		}
+		break; //end SHEET_DISP status ----END STATUS PROCESSING----
 
-<div id="msgStatus_ID" class="status"><?php echo $_STATE->msgStatus ?></div>
-<?php //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
-}
+	default:
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
 
-EX_pageEnd(); //standard end of page stuff
+	EX_pageEnd(); //standard end of page stuff
+
+} //end Page_out()
 ?>
