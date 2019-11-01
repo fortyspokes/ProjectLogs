@@ -165,11 +165,11 @@ function up_one_date($ID, $table, $name, &$field) {
 			WHERE ".$name." IS NOT NULL
 			ORDER BY ".$name.";";
 	$stmt2 = $_DB->query($sql);
+	$TField = $ID.":".$name;
 	$count = 0;
 	while ($row = $stmt2->fetchObject()) {
 		++$count;
 		if (($count % 1000) == 0) {
-			$TField = $ID.":".$name;
 			AR_send("document.getElementById('UpCount_".$TField."').innerHTML='".$count."';");
 		}
 		$temp = new DateTime($row->olddate);

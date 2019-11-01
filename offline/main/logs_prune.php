@@ -410,7 +410,9 @@ function audit_form() {
 		echo $projects->set_list();
 		break; //end STATE::INIT status ----END STATUS PROCESSING----
 
-	default:
+	case STATE::SELECTED:
+	case STATE::UPDATE:
+	case STATE::DONE:
 ?>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>" onsubmit="return audit_form()">
   <table align="center">
@@ -433,11 +435,13 @@ function audit_form() {
     </tr>
 <?php } ?>
   </table>
-  <button type="submit">Prune</button>
+  <button type="submit"<?php if ($_STATE->status == STATE::DONE) echo " disabled";?>>Prune</button>
 </form>
 <?php
-		break; //end default status ----END STATUS PROCESSING----
+		break; //end STATE::SELECTED/UPDATE/DONE status ----END STATUS PROCESSING----
 
+	default:
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
 	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
 
 	EX_pageEnd(); //standard end of page stuff

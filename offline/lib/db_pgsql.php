@@ -1,5 +1,5 @@
 <?php
-//copyright 2015,2017 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015,2017,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 class db_connect extends PDO {
@@ -35,6 +35,7 @@ function rollBack() {
 }
 
 function BLOB_to_page($oid) {
+	if ($oid == 0) return;
 	if (!$this->in_trans) {
 		parent::beginTransaction();
 	}
