@@ -37,8 +37,6 @@ define ('COL_OPEN',1); //first open column (0 rel)
 define ('COL_INACTIVE',2); //first 'inactive' column (0 rel)
 define ('COL_AGENT',3); //name of 'inactive' agent: 'project','task','subtask'
 
-$ExpTypes = array("ca"=>"cash","bi"=>"billed","mi"=>"mileage"); //make it easy to alter types in the future
-
 $version = "v2.0"; //goes with the downloaded expense file for client verification
 
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
@@ -136,12 +134,16 @@ case SELECT_SPECS: //set the from and to dates
 	$_STATE->status = SELECTED_SPECS; //for possible goback
 	$_STATE->replace();
 case SELECTED_SPECS:
+	require_once "lib/project_select.php";
 	total_amounts($_STATE); //for all projects
 	log_list($_STATE);
 	set_closedCols(); //and 'mileage'
 	$_STATE->msgGreet = "Log entry for ".$_STATE->person_name.
 						"<br>To add or change amounts: click on the lefthand column";
 	$_STATE->scion_start("SHEET"); //create the child state stack
+	$SCION = $_STATE->scion_pull();
+	$SCION->ExpTypes = (unserialize($SCION->project_select))->expense;
+	$SCION->replace();
 	$_STATE->backup = SHOW_SPECS; //set goback
 	$_STATE->status = SHEET_DISP;
 	Page_out();
@@ -452,7 +454,7 @@ function active_rates($project_id) { //does user have an hourly rate set for eac
 }
 
 function total_amounts(&$state) { //for all selected projects (won't work in list mode)
-	global $_DB, $ExpTypes;
+	global $_DB;
 
 	if ($state->mode == "l") return; //list style
 
@@ -801,12 +803,11 @@ function activity_select(&$state, &$HTML) {
 
 //Populate the type pulldown selection list then collect the response via server call-back:
 function type_send(&$state, &$HTML) {
-	global $ExpTypes;
 
 	$HTML .= "//types...\n";
    	$HTML .= "document.getElementById('msgGreet_ID').innerHTML = 'Select the expense type';\n";
 	$HTML .= "fill = \"<select name='selType' id='selType' size='1' onchange='proceed(this.parentNode,this.options[this.selectedIndex].value)'>\";\n";
-	foreach($ExpTypes as $value => $name) {
+	foreach($state->ExpTypes as $value => $name) {
 		$HTML .= "fill += \"<option value='".$value."'>".$name."</option>\";\n";
 	}
 	$HTML .= "fill += \"</select>\";\n";
@@ -818,14 +819,13 @@ function type_send(&$state, &$HTML) {
 }
 
 function type_select(&$state, &$HTML) {
-	global $ExpTypes;
 
 	$type = $_GET["row"];
-	if (!array_key_exists($type, $ExpTypes)) {
+	if (!array_key_exists($type, $state->ExpTypes)) {
 		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid expense type ".$type,true);
 	}
 	$HTML .= "cell = document.getElementById('TP_".$state->row."');\n";
-	$HTML .= "cell.innerHTML = '".$ExpTypes[$type]."';\n";
+	$HTML .= "cell.innerHTML = '".$state->ExpTypes[$type]."';\n";
 	$state->type = $type;
 	$state->msgStatus = "";
 }
@@ -1334,7 +1334,7 @@ var COLs = <?php echo $_STATE->columns[COL_COUNT]; ?>;
   </tr>
 <?php
 function onerow(&$header, &$logs) {
-	global $_STATE, $_PERMITS, $ExpTypes;
+	global $_STATE, $_PERMITS, $SCION;
 
 	$row = $header["row"];
 	$openBN = " id='BN_".$row."' data-recid='".$row."' class=seq";
@@ -1362,7 +1362,7 @@ function onerow(&$header, &$logs) {
 		}
 	}
 	echo ">".$row."</td>\n";
-	echo "    <td id='TP_".$row."' data-recid='".$openID.$header["type"]."'>".$ExpTypes[$header["type"]]."</td>\n";
+	echo "    <td id='TP_".$row."' data-recid='".$openID.$header["type"]."'>".$SCION->ExpTypes[$header["type"]]."</td>\n";
 	echo "    <td id='TK_".$row."' data-recid='".$openID.$header["task_id"]."'>".$header["task"]."</td>\n";
 	echo "    <td id='ST_".$row."' data-recid='".$openID.$header["subtask_id"]."'>".$header["subtask"]."</td>\n";
 	echo "    <td id='AC_".$row."' data-recid='".$openID.$header["account_id"]."'>".$header["account"]."</td>\n";

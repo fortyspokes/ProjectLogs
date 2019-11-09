@@ -9,6 +9,7 @@ public $show_new = false; //show 'add new record'
 public $selected = false;
 public $list_ID = "project_list_ID"; //ID of HTML element containing the list
 public $noSleep = array(); //clear out these user created vars when sleeping (to save memory)
+public $expense = array(); //preferred expense type names
 private $labels = array("project"=>array("project","projects")); //might be replaced by preferences
 private $records = array();
 private $select_list = array(-1);
@@ -292,6 +293,9 @@ public function set_state($ID=-1) {
 	$prefs = new PREF_GET("a10",$_STATE->project_id);
 	if ($labels = $prefs->preference("label")) {
 		$this->labels = array_merge($this->labels, $labels);
+	}
+	if ($labels = $prefs->preference("expense")) {
+		$this->expense = $labels;
 	}
 }
 

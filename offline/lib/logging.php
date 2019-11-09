@@ -65,11 +65,7 @@ function entry_audit() {
 	require_once "lib/preference_set.php";
 	$prefs = new PREF_GET("a00",$_SESSION["organization_id"]);
 	if ($pref = $prefs->preference("theme")) $_SESSION["THEME"] = $pref;
-	if ($pref = $prefs->preference("date")) {
-		$_STATE->dateform = $pref;
-	} else {
-		$_STATE->dateform = PREFERENCE::DATE;
-	}
+	$_STATE->dateform = $prefs->preference("date");
 	$prefs = new PREF_GET("c10",$_SESSION["person_organization_id"]);
 	if ($pref = $prefs->preference("theme")) $_SESSION["THEME"] = $pref;
 	$_STATE->msgStatus = "";

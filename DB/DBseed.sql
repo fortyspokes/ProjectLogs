@@ -59,10 +59,11 @@ INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, nam
 INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (2, 'a00', -11, 'menu', 'text:');
 INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (3, 'a00', -1, 'staff', 'text:');
 INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (4, 'a00', -11, 'theme', 'select:..default..');
-INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (5, 'a00', -11, 'date', 'text:');
+INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (5, 'a00', -11, 'date', 'text:0&Y-m-d&365');
 -- a10_project
 INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (11, 'a10', -11, 'label', 'text:');
-INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (12, 'a10', -11, 'date', 'text:');
+INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (12, 'a10', -11, 'date', 'text:0&Y-m-d&365');
+INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (13, 'a10', -11, 'expense', 'text:ca=cash&bi=billed&mi=mileage&ot=other');
 --Allow for preferences on other tables
 -- c10_person_organization
 INSERT INTO <PREFIX>d10_preferences (preferences_id, user_table, user_idref, name, prefer) VALUES (71, 'c10', -11, 'menu', 'text:');

@@ -24,8 +24,6 @@ class PREFERENCE {
 	public $type; //HTML element
 	public $default_value;
 
-	const DATE = array(0,"Y-m-d",365); //the default
-
 function __construct($name,$type,$default) {
 	$this->name = $name;
 	$this->type = $type;
@@ -41,53 +39,91 @@ class PREF_GET {
 function __construct($element,$user) { //$element is table, $user is element_id
 	global $_DB;
 
-	$sql = "SELECT name, prefer FROM ".$_DB->prefix."d10_preferences
-			WHERE user_table='".$element."' AND user_idref=".$user.";";
+	$sql = "SELECT name, prefer, user_idref FROM ".$_DB->prefix."d10_preferences
+			WHERE user_table='".$element."' AND (user_idref=".$user." OR user_idref<0)
+			ORDER BY name, user_idref;";
 	$stmt = $_DB->query($sql);
 	while ($row = $stmt->fetchObject()) {
-		switch ($row->name) {
-		case "date":
-			$prefer = explode("&",$row->prefer);
-			break;
-		case "label":
-			$prefer = array();
-			$labels = explode("&",$row->prefer);
-			foreach ($labels as $label) {
-				$value = explode("=",$label);
-				$prefer[$value[0]] = explode("/",$value[1]); //singular and plural
-			}
-			break;
-		case "menu":
-			$prefer = array();
-			$labels = explode("&",$row->prefer);
-			foreach ($labels as $label) {
-				$value = explode("=",$label);
-				$prefer[$value[0]] = $value[1];
-			}
-			break;
-		case "staff":
-			$prefer = explode("&",$row->prefer);
-			array_unshift($prefer,"+"); //assume a positive list
-			if (substr($prefer[1],0,1) == "-") {
-				$prefer[0] = "-";
-				$prefer[1] = substr($prefer[1],1);
-			}
-			break;
-		case "theme":
-			$prefer = $row->prefer;
-			break;
-		default:
-			$prefer = $row->prefer;
+		if ($row->user_idref < 0) { //default
+			$default = explode(":",$row->prefer); //separate out descriptor
+			switch ($row->name) {
+			case "expense":
+				$prefer = array();
+				$labels = explode("&",$default[1]);
+				foreach ($labels as $label) {
+					$value = explode("=",$label);
+					$prefer[$value[0]] = $value[1];
+				}
+				break;
+			case "date":
+				$prefer = explode("&",$default[1]);
+				break;
+			default:
+				$prefer = "";
+			} //end switch
+
+		} else { //preference
+			switch ($row->name) {
+			case "date":
+				$prefer = explode("&",$row->prefer);
+				break;
+			case "label":
+				$prefer = array();
+				$labels = explode("&",$row->prefer);
+				foreach ($labels as $label) {
+					$value = explode("=",$label);
+					$prefer[$value[0]] = explode("/",$value[1]); //singular and plural
+				}
+				break;
+			case "menu":
+				$prefer = array();
+				$labels = explode("&",$row->prefer);
+				foreach ($labels as $label) {
+					$value = explode("=",$label);
+					$prefer[$value[0]] = $value[1];
+				}
+				break;
+			case "staff":
+				$prefer = explode("&",$row->prefer);
+				array_unshift($prefer,"+"); //assume a positive list
+				if (substr($prefer[1],0,1) == "-") {
+					$prefer[0] = "-";
+					$prefer[1] = substr($prefer[1],1);
+				}
+				break;
+			case "theme":
+				$prefer = $row->prefer;
+				break;
+			case "expense":
+				$prefer = array();
+				$labels = explode("&",$row->prefer);
+				foreach ($labels as $label) {
+					$value = explode("=",$label);
+					$prefer[$value[0]] = $value[1];
+				}
+				$labels = array_merge($this->prefs["expense"],$prefer); //merge with defaults
+				$prefer = array();
+				foreach ($labels as $key=>$label) {
+					if (trim($label) != "-") { //"-" => remove it
+						$prefer[$key] = $label;
+					}
+				}
+				break;
+			default:
+				$prefer = $row->prefer;
+			}//end switch
 		}
 		$this->prefs[$row->name] = $prefer;
-	}
+	} //end while
 	$stmt->closeCursor();
 }
 
 public function preference($name, $item=null) { //a preference can be an array; $item is an element of it
 	if (array_key_exists($name, $this->prefs)) {
 		if (is_null($item)) return $this->prefs[$name];
-		if (array_key_exists($item,$this->prefs[$name])) return $this->prefs[$name][$item];
+		if (is_array($this->prefs[$name]) && array_key_exists($item,$this->prefs[$name])) {
+			return $this->prefs[$name][$item];
+		}
 	}
 	return false;
 }
@@ -297,6 +333,10 @@ private function display_menu() {
 	return $this->display_textarea();
 }
 
+private function display_expense() {
+	return $this->display_textarea();
+}
+
 private function display_theme() {
 
 	//append the default value to the beginning of the themes list:
@@ -363,6 +403,12 @@ function change_label() {
 }
 
 function change_menu() {
+	$new = $_GET["what"];
+	$this->update($new);
+	return $new;
+}
+
+function change_expense() {
 	$new = $_GET["what"];
 	$this->update($new);
 	return $new;
