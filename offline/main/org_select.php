@@ -73,8 +73,9 @@ function entry_audit() {
 	} else {
 		$_SESSION["THEME"] = $_SESSION["_SITE_CONF"]["THEME"]; //go back to default
 	}
-	if ($pref = $prefs->preference("date"))
-		$_STATE->dateform = $pref; //override
+	$back = STATE_pull($_STATE->thread,1); //a pref change must be in prior SSO
+	$back->dateform = $prefs->preference("date");
+	$back->replace();
 	$_SESSION["org_TZO"] = $_STATE->records[$_POST["selOrgs"]][1];
 	$_SESSION["UserPermits"] = $GLOBALS["_PERMITS"]->get_permits($_SESSION["person_id"]); //set the users's permissions
 	$_SESSION["UserPermits"]["_LEGAL_"] = TRUE; //continue to pass the 'logged in' gate

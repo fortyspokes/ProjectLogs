@@ -383,6 +383,7 @@ function Page_out() {
 	case ADD_DEPOSIT:
 	case UPDATE_DEPOSIT:
 	case DELETE_DEPOSIT:
+		global $whois;
 ?>
   <p>
 <form method="post" name="frmAction" id="frmAction_ID" action="<?php echo $_SESSION["IAm"]; ?>">

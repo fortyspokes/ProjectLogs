@@ -658,6 +658,7 @@ Show inactive persons
 		break; //end LIST_PERSONS status ----END STATUS PROCESSING----
 
 	case RATE_DISPLAY:
+		global $_VERSION;
 ?>
 <p>
 <table align='center' cellpadding='4' border='2' class="list">

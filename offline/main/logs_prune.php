@@ -39,7 +39,8 @@ case STATE::UPDATE:
 	$_STATE->msgGreet = "Pruning...";
 	if (update_audit()) {
 		$_STATE->status = STATE::DONE;
-		$_STATE->goback(1); //setup for goback
+		//setup for goback (removes SSO from stack but does not change this $_STATE):
+		$_STATE->loopback(STATE::SELECTED);
 	}
 	Page_out();
 	break 2; //return to executive

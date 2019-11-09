@@ -565,7 +565,7 @@ function fields_hold(cond) {
     <tr>
       <td class="label"><label for="selCurrency_ID" class='required'>*Currency:</label></td>
       <td>
-        <select name='selCurrency' id='selCurrency_ID' size="<?php echo count($_STATE->acct_list); ?>">
+        <select name='selCurrency' id='selCurrency_ID' size=1>
 <?php
 		foreach($_STATE->curr_list as $value => $name) {
 	  		echo "        <option value=\"".$value."\"";
