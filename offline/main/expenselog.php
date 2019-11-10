@@ -969,14 +969,14 @@ function update_log(&$state, $offset) {
 function delete_log(&$state, $offset) {
 	global $_DB;
 
-	$sql = "SELECT activity_idref FROM ".$_DB->prefix."b20_timelog
+	$sql = "SELECT activity_idref FROM ".$_DB->prefix."b20_expenselog
 			WHERE expenselog_id=".$_POST["rec".$offset].";";
 	$stmt = $_DB->query($sql);
 	$activity = $stmt->fetchObject()->activity_idref;
 	$stmt->closeCursor();
 
 	$sql = "DELETE FROM ".$_DB->prefix."b20_expenselog
-			WHERE expenselog_id=".$state->recID.";";
+			WHERE expenselog_id=".$_POST["rec".$offset].";";
 	$_DB->exec($sql);
 
 	$sql = "SELECT COUNT(*) AS count FROM ".$_DB->prefix."b20_expenselog WHERE activity_idref=".$activity."";
