@@ -25,9 +25,8 @@ case STATE::SELECT:
 	$projects->set_state();
 	$_STATE->project = $projects->selected_name();
 	$_STATE->record_id = $_STATE->project_id;
-	$_STATE->status = STATE::SELECTED; //for possible goback
-	$_STATE->replace();
 case STATE::SELECTED:
+	$_STATE->set_a_gate(STATE::SELECTED); //for a 'goback' - sets status
 	state_fields(); //creates the cutoff date for display
 	$_STATE->msgGreet = "Enter the cutoff date to prune ".$_STATE->project;
 	Page_out();
@@ -40,13 +39,13 @@ case STATE::UPDATE:
 	if (update_audit()) {
 		$_STATE->status = STATE::DONE;
 		//setup for goback (removes SSO from stack but does not change this $_STATE):
-		$_STATE->loopback(STATE::SELECTED);
+		$_STATE->goback_to(STATE::SELECTED, true);
 	}
 	Page_out();
 	break 2; //return to executive
 
 default:
-	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+	throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
 //End Main State Gate & return to executive
 
@@ -442,7 +441,7 @@ function audit_form() {
 		break; //end STATE::SELECTED/UPDATE/DONE status ----END STATUS PROCESSING----
 
 	default:
-		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+		throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
 
 	EX_pageEnd(); //standard end of page stuff

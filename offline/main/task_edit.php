@@ -15,7 +15,6 @@ define('SELECTED_TASK',			LIST_TASKS + 2);
 define('ADD_TASK',				LIST_TASKS + 3);
 define('UPDATE_TASK',			LIST_TASKS + 4);
 define('PROPERTIES',		STATE::INIT + 20);
-define('PROPERTIES_GOBACK',		PROPERTIES + 1);
 
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
@@ -42,9 +41,8 @@ case SELECT_PROJECT:
 case SELECTED_PROJECT:
 	$_STATE->project_name = $projects->selected_name();
 
-	$_STATE->status = LIST_TASKS; //our new starting point for goback
-	$_STATE->replace(); //so loopback() can find it
 case LIST_TASKS:
+	$_STATE->set_a_gate(LIST_TASKS); //for a 'goback' - sets status
 	list_setup();
 	$_STATE->msgGreet = $_STATE->project_name."<br>Select a task record to edit";
 	$_STATE->backup = LIST_PROJECTS; //set goback
@@ -54,11 +52,9 @@ case LIST_TASKS:
 
 case SELECT_TASK:
 	record_select();
-	$_STATE->status = SELECTED_TASK; //for possible goback
-	$_STATE->replace(); //so loopback() can find it
 case SELECTED_TASK:
+	$_STATE->set_a_gate(SELECTED_TASK); //for a 'goback' - sets status
 	state_fields();
-	$_STATE->backup = LIST_TASKS; //for goback
 	if ($_STATE->record_id == -1) {
 		$_STATE->msgGreet = "New task record";
 		$_STATE->status = ADD_TASK;
@@ -68,17 +64,18 @@ case SELECTED_TASK:
 		$_STATE->status = UPDATE_TASK;
 	}
 	Page_out();
+	$_STATE->goback_to(LIST_TASKS);
 	break 2; //return to executive
 
 case ADD_TASK:
 	if (isset($_POST["btnReset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_TASK);
+		$_STATE = $_STATE->goback_to(SELECTED_TASK, true);
 		break 1;
 	}
 	state_fields();
 	if (new_audit()) {
 		$record_id = $_STATE->record_id;
-		$_STATE = $_STATE->loopback(SELECTED_TASK);
+		$_STATE = $_STATE->goback_to(SELECTED_TASK, true);
 		$_STATE->record_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
@@ -87,18 +84,16 @@ case ADD_TASK:
 
 case UPDATE_TASK:
 	if (isset($_POST["btnReset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_TASK);
+		$_STATE = $_STATE->goback_to(SELECTED_TASK, true);
 		break 1;
 	}
 	state_fields();
 	if (isset($_POST["btnProperties"])) {
 		$_STATE->status = PROPERTIES;
-		$_STATE->element = "a12"; //required by PROPERTIES
-		$_STATE->backup = PROPERTIES_GOBACK; //required by PROPERTIES
 		break 1; //re-switch to show property values
 	}
 	if (update_audit()) {
-		$_STATE = $_STATE->loopback(SELECTED_TASK);
+		$_STATE = $_STATE->goback_to(SELECTED_TASK, true);
 		break 1; //re-switch
 	}
 	Page_out(); //errors...
@@ -106,18 +101,22 @@ case UPDATE_TASK:
 
 case PROPERTIES:
 	require_once "lib/prop_set.php";
-	$propset = PROP_SET_exec($_STATE, false);
+	if (!isset($_STATE->propset)) {
+		$propset = new PROP_SET($_STATE, "a12", $_STATE->record_id, $_STATE->forwho);
+		$_STATE->propset = serialize(clone($propset));
+	} else {
+		$propset = unserialize($_STATE->propset);
+	}
+	if (!$propset->state_gate()) { //let PROP_SET continue state gate processing
+		$_STATE = $_STATE->goback_to(SELECTED_TASK, True);
+		break 1;
+	}
+	$_STATE->propset = serialize(clone($propset));
 	Page_out();
 	break 2; //return to executive
 
-case PROPERTIES_GOBACK:
-	require_once "lib/prop_set.php";
-	PROP_SET_exec($_STATE, true);
-	$_STATE = $_STATE->loopback(SELECTED_TASK);
-	break 1;
-
 default:
-	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+	throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
 //End Main State Gate & return to executive
 
@@ -349,11 +348,13 @@ function Page_out() {
 		break; //end ADD/UPDATE_TASK status ----END STATUS PROCESSING----
 
 	case PROPERTIES: //list properties and allow new entry:
-		$propset->set_HTML();
+		$state = $propset->get_page();
+		EX_pageEnd($state);
+		return;
 		break; //end PROPERTIES status ----END STATUS PROCESSING----
 
 	default:
-		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+		throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 
 	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
 

@@ -41,9 +41,8 @@ case SELECT_PROJECT: //select the project
 case SELECTED_PROJECT:
 	$_STATE->project_name = $projects->selected_name();
 
-	$_STATE->status = SHOW_SPECS; //our new starting point for goback
-	$_STATE->replace(); //so loopback() can find it
 case SHOW_SPECS:
+	$_STATE->set_a_gate(SHOW_SPECS); //for a 'goback' - sets status
 	require_once "lib/date_select.php";
 	$dates = new DATE_SELECT("wmp","p"); //within week(w), month(m), period(p), default to period
 	$_STATE->date_select = serialize(clone($dates));
@@ -54,6 +53,7 @@ case SHOW_SPECS:
 	$_STATE->backup = LIST_PROJECTS; //set goback
 	Page_out();
 	$_STATE->status = SELECT_SPECS;
+	$_STATE->goback_to(LIST_PROJECTS);
 	break 2; //return to executive
 
 case SELECT_SPECS: //set the from and to dates
@@ -71,7 +71,7 @@ case SELECT_SPECS: //set the from and to dates
 	$props_send = new PROPS_SEND(array("a12","a14","a21"));
 	$_STATE->props_send = serialize($props_send);
 	$_STATE->msgGreet = $_STATE->project_name."<br>Download the log";
-	$_STATE->backup = SHOW_SPECS; //set goback
+	$_STATE->goback_to(SHOW_SPECS);
 	$_STATE->status = DOWNLOAD_LOG;
 	Page_out();
 	break 2; //return to executive
@@ -85,7 +85,7 @@ case DOWNLOAD_LOG:
 	break 2; //return to executive
 
 default:
-	throw_the_bum_out(NULL,"Evicted(".__LINE__."): Invalid state=".$_STATE->status);
+	throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): Invalid state=".$_STATE->status);
 } } //while & switch
 //End Main State Gate & return to executive
 
@@ -365,7 +365,7 @@ function download(me) {
 		break; //end DOWNLOAD_LOG status ----END STATUS PROCESSING----
 
 	default:
-		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+		throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 
 	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
 

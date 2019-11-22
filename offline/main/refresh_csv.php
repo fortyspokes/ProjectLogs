@@ -17,9 +17,9 @@ case STATE::INIT:
 case STATE::SELECT:
 	$_STATE->msgGreet = "Check the tables to refresh";
 	Page_out();
-	$_STATE->backup = STATE::INIT; //prepare a 'goback'
 	$_STATE->status = STATE::SELECTED;
 	break 2;
+
 case STATE::SELECTED:
 	if (!audit()) {
 		$_STATE->status = STATE::SELECT;
@@ -29,6 +29,7 @@ case STATE::SELECTED:
 	Page_out();
 	$_STATE->status = STATE::UPDATE;
 	break 2;
+
 case STATE::UPDATE: //the button calls AR_client_open() who sends us here
 	$_STATE->savStatus = "Refresh status:<br>";
 	AR_open();
@@ -37,13 +38,15 @@ case STATE::UPDATE: //the button calls AR_client_open() who sends us here
 	$_STATE->replace();
 	AR_close(true); //re-loads the page
 	exit; //using AsyncResp means skipping the buffer ouput, etc. in Executive
+
 case STATE::DONE:
 	$_STATE->msgStatus = $_STATE->savStatus;
 	Page_out();
 	$_STATE->status = STATE::INIT;
 	break 2;
+
 default:
-	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+	throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
 //End Main State Gate & return to the executive
 
@@ -298,6 +301,7 @@ Username: <input name="txtName" id="txtName_ID" type="text" class="formInput" ma
 
 	echo "</table>\n";
 	echo "</form>\n";
+
 	EX_pageEnd(); //standard end of page stuff
 } //end function Page_out()
 

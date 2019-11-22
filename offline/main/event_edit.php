@@ -14,7 +14,6 @@ define('SELECTED_EVENT',			LIST_EVENTS + 2);
 define('ADD_EVENT',				LIST_EVENTS + 3);
 define('UPDATE_EVENT',			LIST_EVENTS + 4);
 define('PROPERTIES',		STATE::INIT + 20);
-define('PROPERTIES_GOBACK',		PROPERTIES + 1);
 
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
@@ -42,21 +41,19 @@ case SELECT_PROJECT:
 case SELECTED_PROJECT:
 	$_STATE->project_name = $projects->selected_name();
 
-	$_STATE->status = LIST_EVENTS; //our new starting point for goback
-	$_STATE->replace(); //so loopback() can find it
 case LIST_EVENTS:
+	$_STATE->set_a_gate(LIST_EVENTS); //for a 'goback' - sets status
 	list_setup();
 	$_STATE->msgGreet = $_STATE->project_name."<br>Select the ".$_STATE->eventLabel." record to edit";
-	$_STATE->backup = LIST_PROJECTS; //set goback
 	Page_out();
 	$_STATE->status = SELECT_EVENT;
+	$_STATE->goback_to(LIST_PROJECTS); //for a 'goback' - sets status
 	break 2; //return to executive
 
 case SELECT_EVENT:
 	record_select();
-	$_STATE->status = SELECTED_EVENT; //for possible goback
-	$_STATE->replace(); //so loopback() can find it
 case SELECTED_EVENT:
+	$_STATE->set_a_gate(SELECTED_EVENT); //for a 'goback' - sets status
 	state_fields();
 	$_STATE->backup = LIST_EVENTS; //for goback
 	if ($_STATE->record_id == -1) {
@@ -69,17 +66,18 @@ case SELECTED_EVENT:
 		Page_out();
 		$_STATE->status = UPDATE_EVENT;
 	}
+	$_STATE->goback_to(LIST_EVENTS);
 	break 2; //return to executive
 
 case ADD_EVENT:
 	if (isset($_POST["btnReset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_EVENT);
+		$_STATE = $_STATE->gobacck_tok(SELECTED_EVENT, true);
 		break 1;
 	}
 	state_fields();
 	if (new_audit()) {
 		$record_id = $_STATE->record_id;
-		$_STATE = $_STATE->loopback(SELECTED_EVENT);
+		$_STATE = $_STATE->goback_to(SELECTED_EVENT, true);
 		$_STATE->record_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
@@ -88,18 +86,18 @@ case ADD_EVENT:
 
 case UPDATE_EVENT:
 	if (isset($_POST["btnReset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_EVENT);
+		$_STATE = $_STATE->goback_to(SELECTED_EVENT, true);
 		break 1;
 	}
 	state_fields();
 	if (isset($_POST["btnProperties"])) {
 		$_STATE->status = PROPERTIES;
-		$_STATE->element = "a30"; //required by PROPERTIES
-		$_STATE->backup = PROPERTIES_GOBACK; //required by PROPERTIES
+//		$_STATE->element = "a30"; //required by PROPERTIES
+//		$_STATE->backup = PROPERTIES_GOBACK; //required by PROPERTIES
 		break 1; //re-switch to show property values
 	}
 	if (update_audit()) {
-		$_STATE = $_STATE->loopback(SELECTED_EVENT);
+		$_STATE = $_STATE->goback_to(SELECTED_EVENT, true);
 		break 1; //re-switch
 	}
 	Page_out(); //errors...
@@ -107,18 +105,22 @@ case UPDATE_EVENT:
 
 case PROPERTIES:
 	require_once "lib/prop_set.php";
-	$propset = PROP_SET_exec($_STATE, false);
+	if (!isset($_STATE->propset)) {
+		$propset = new PROP_SET($_STATE, "a30", $_STATE->record_id, $_STATE->forwho);
+		$_STATE->propset = serialize(clone($propset));
+	} else {
+		$propset = unserialize($_STATE->propset);
+	}
+	if (!$propset->state_gate()) { //let PROP_SET continue state gate processing
+		$_STATE = $_STATE->goback_to(SELECTED_EVENT, True);
+		break 1;
+	}
+	$_STATE->propset = serialize(clone($propset));
 	Page_out();
 	break 2; //return to executive
 
-case PROPERTIES_GOBACK:
-	require_once "lib/prop_set.php";
-	PROP_SET_exec($_STATE, true);
-	$_STATE = $_STATE->loopback(SELECTED_EVENT);
-	break 1;
-
 default:
-	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+	throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
 //End Main State Gate & return to executive
 
@@ -340,12 +342,13 @@ function Page_out() {
 		break; //end SELECTED/ADD/UPDATE_EVENT status ----END STATUS PROCESSING----
 
 	case PROPERTIES: //list properties and allow new entry:
-		global $propset;
-		$propset->set_HTML();
-		break;
+		$state = $propset->get_page();
+		EX_pageEnd($state);
+		return;
+		break; //end PROPERTIES status ----END STATUS PROCESSING----
 
 	default:
-		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+		throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 
 	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
 

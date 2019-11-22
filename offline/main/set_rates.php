@@ -42,28 +42,27 @@ case SELECT_PROJECT:
 case SELECTED_PROJECT:
 	$_STATE->project_name = $projects->selected_name();
 
-	$_STATE->status = LIST_PERSONS; //our new starting point for goback
-	$_STATE->replace(); //so loopback() can find it
 case LIST_PERSONS:
+	$_STATE->set_a_gate(LIST_PERSONS); //for a 'goback' - sets status
 	person_list();
 	$_STATE->msgGreet = $_STATE->project_name."<br>Select a person";
 	$_STATE->backup = LIST_PROJECTS; //set goback
 	Page_out();
 	$_STATE->status = SELECT_PERSON;
+	$_STATE->goback_to(LIST_PROJECTS);
 	break 2; //return to executive
 
 case SELECT_PERSON:
 	if ((!isset($_POST["txtPerson"])) || ($_POST["txtPerson"] == "")) {
 		$inactive = $_STATE->show_inactive;
-		$_STATE = $_STATE->loopback(LIST_PERSONS);
+		$_STATE = $_STATE->goback_to(LIST_PERSONS, true);
 		$_STATE->show_inactive = !$inactive;
 		break 1;
 	}
 	record_select();
-	$_STATE->status = SELECTED_PERSON; //for possible goback
-	$_STATE->replace();
 case SELECTED_PERSON:
-	$_STATE->backup = LIST_PERSONS; //set goback
+	$_STATE->set_a_gate(SELECTED_PERSON); //for a 'goback' - sets status
+	$_STATE->goback_to(LIST_PERSONS); //set goback
 	$_STATE->msgGreet = $_STATE->project_name."<br>Rate history for ".$_STATE->records[strval($_STATE->record_id)]["name"];
 	$_STATE->status = RATE_DISPLAY;
 	Page_out();
@@ -78,7 +77,7 @@ case RATE_DISPLAY:
 
 case RATE_CHANGE:
 	if (isset($_GET["reset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_PERSON);
+		$_STATE = $_STATE->goback_to(SELECTED_PERSON, true);
 		person_list();
 		break 1;
 	}
@@ -91,7 +90,7 @@ case RATE_CHANGE:
 	exit(); //server_call return
 
 default:
-	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+	throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
 //End Main State Gate & return to executive
 
@@ -690,7 +689,7 @@ Show inactive persons
 		break; //end RATE_DISPLAY status ----END STATUS PROCESSING----
 
 	default:
-		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+		throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 
 	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
 

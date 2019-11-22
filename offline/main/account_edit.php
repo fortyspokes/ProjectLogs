@@ -15,7 +15,6 @@ define('SELECTED_ACCOUNT',		LIST_ACCOUNTS + 2);
 define('ADD_ACCOUNT',			LIST_ACCOUNTS + 4);
 define('UPDATE_ACCOUNT',		LIST_ACCOUNTS + 6);
 define('PROPERTIES',		STATE::INIT + 20);
-define('PROPERTIES_GOBACK',			PROPERTIES + 1);
 
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
@@ -38,9 +37,9 @@ case SELECT_ACCOUNTING:
 	accounting_select(); //select from POST
 	$_STATE->heading .= "<br>Accounting group: ".$_STATE->records[$_STATE->accounting_id];
 case SELECTED_ACCOUNTING:
-	$_STATE->status = LIST_ACCOUNTS; //our new starting point for goback
-	$_STATE->replace(); //so loopback() can find it
+
 case LIST_ACCOUNTS:
+	$_STATE->set_a_gate(LIST_ACCOUNTS); //for a 'goback' - sets status
 	account_list();
 	$_STATE->msgGreet = "Select the ".$_STATE->accounting." record to edit";
 	Page_out();
@@ -49,11 +48,9 @@ case LIST_ACCOUNTS:
 
 case SELECT_ACCOUNT:
 	account_select();
-	$_STATE->status = SELECTED_ACCOUNT; //for possible goback
-	$_STATE->replace(); //so loopback() can find it
 case SELECTED_ACCOUNT:
+	$_STATE->set_a_gate(SELECTED_ACCOUNT); //for a 'goback' - sets status
 	state_fields();
-	$_STATE->backup = LIST_ACCOUNTS; //for 'goback'
 	if ($_STATE->record_id == -1) {
 		$_STATE->msgGreet = "New ".$_STATE->accounting." record";
 		Page_out();
@@ -64,17 +61,18 @@ case SELECTED_ACCOUNT:
 		Page_out();
 		$_STATE->status = UPDATE_ACCOUNT;
 	}
+	$_STATE->goback_to(LIST_ACCOUNTS);
 	break 2; //return to executive
 
 case ADD_ACCOUNT:
 	if (isset($_POST["btnReset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_ACCOUNT);
+		$_STATE->goback_to(SELECTED_ACCOUNT, True);
 		break 1;
 	}
 	state_fields();
 	if (new_audit()) {
 		$record_id = $_STATE->record_id;
-		$_STATE = $_STATE->loopback(SELECTED_ACCOUNT);
+		$_STATE->goback_to(SELECTED_ACCOUNT, True);
 		$_STATE->record_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
@@ -83,18 +81,16 @@ case ADD_ACCOUNT:
 
 case UPDATE_ACCOUNT:
 	if (isset($_POST["btnReset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_ACCOUNT);
+		$_STATE->goback_to(SELECTED_ACCOUNT, True);
 		break 1;
 	}
 	state_fields();
 	if (isset($_POST["btnProperties"])) {
 		$_STATE->status = PROPERTIES;
-		$_STATE->element = "a21"; //required by PROPERTIES
-		$_STATE->backup = PROPERTIES_GOBACK; //required by PROPERTIES
 		break 1; //re-switch to show property values
 	}
 	if (update_audit()) {
-		$_STATE = $_STATE->loopback(SELECTED_ACCOUNT);
+		$_STATE->goback_to(SELECTED_ACCOUNT, True);
 		break 1; //re-switch
 	}
 	Page_out(); //errors...
@@ -102,18 +98,22 @@ case UPDATE_ACCOUNT:
 
 case PROPERTIES:
 	require_once "lib/prop_set.php";
-	$propset = PROP_SET_exec($_STATE, false);
+	if (!isset($_STATE->propset)) {
+		$propset = new PROP_SET($_STATE, "a21", $_STATE->record_id, $_STATE->forwho);
+		$_STATE->propset = serialize(clone($propset));
+	} else {
+		$propset = unserialize($_STATE->propset);
+	}
+	if (!$propset->state_gate()) { //let PROP_SET continue state gate processing
+		$_STATE = $_STATE->goback_to(SELECTED_ACCOUNT, True);
+		break 1;
+	}
+	$_STATE->propset = serialize(clone($propset));
 	Page_out();
 	break 2; //return to executive
 
-case PROPERTIES_GOBACK:
-	require_once "lib/prop_set.php";
-	PROP_SET_exec($_STATE, true);
-	$_STATE = $_STATE->loopback(SELECTED_ACCOUNT);
-	break 1;
-
 default:
-	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+	throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
 //End Main State Gate & return to executive
 
@@ -372,11 +372,13 @@ function Page_out() {
 		break; //end SELECTED/ADD/UPDATE_ACCOUNT status
 
 	case PROPERTIES: //list properties and allow new entry:
-		$propset->set_HTML();
+		$state = $propset->get_page();
+		EX_pageEnd($state);
+		return;
 		break; //end PROPERTIES status
 
 	default:
-		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+		throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 
 	} //end select ($_STATE->status)
 

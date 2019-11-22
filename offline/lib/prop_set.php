@@ -1,117 +1,207 @@
 <?php
-//copyright 2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 //Generalized processing to display/set/unset element properties.
 
 //Instructions:
-//The calling module should have 2 states:
-//	The processing state (define 'PROPERTIES'?) will:
-//		include this module,
-//		$PROP_SETobject = PROP_SET_exec($_STATE, false);,
-//		'break 2'; to fall thru and display the properties
-//	The 'goback' state will:
-//		include this module,
-//		PROP_SET_exec($_STATE, true);,
-//		loopback to the caller's state,
-//		'break 1'; to go back around to the loopback state
-//This module expects to see:
-//	$_STATE as a parm to PROP_SET_exec;
-//	$_STATE->record_id pointing to the element;
-//	$_STATE->element = the 3-char element table prefix, eg. 'a21' for a21_account;
-//	$_STATE->forwho = the element name/description for msgGreet purposes.
-//	$_STATE->backup = the 'goback' state
-//Before calling $EX_pageStart() and if processing state set:
-//	get scripts from $PROP_SETobject->set_script();,
-//	get msgGreet from $PROP_SETobject->greeting();.
-//When creating HTML at processing state:
-//	$PROP_SETobject->set_HTML();
-//	note: when doing server call-back, $EX_pageStart() does not return to get here
-//See account.php for an example.
+//The calling module must interface in the Main State Gate and in Page_out().
 
-function PROP_SET_exec(&$state, $done) {
-	if (!isset($state->propset)) { //first time thru
-		$state->propset = serialize(new PROP_SET($state->element, $state->record_id, $state->forwho));
-		$status = $state->status; //save it
-		$state->status = $state->backup; //come back here on a goback
-		$state->push(); //put it into the stack so loopback() can find it
-		$state->status = $status; //restore
-		return unserialize($state->propset); //display table of properties
-	} elseif ($done) { //it's a 'goback'
-		$propset = unserialize($state->propset);
-		$propset->goback(); //all done with $propset
-		return;
-	} else {
-		$propset = unserialize($state->propset);
-		$propset->state_gate(); //PROP_SET does the heavy lifting
-		return $propset;
-	}
-}
+//Main State Gate
+//Create a case, typically, "PROPERTIES" that must
+// 1. Instantiate the object that creates a child state thread (="PROP_SET").  Then save our new
+//    PROP_SET object in the _MAIN state;
+// 2. Call the <PROP_SET>->state_gate() that will continue state processing on the child state;
+// 3. If state_gate() returns 'false', the processing is done; the caller can then take appropriate action.
+
+//Page_out()
+// The PROP_SET scripts must be set;
+// Call <PROP_SET>->get_page() that will echo the appropriate HTML then return a pointer to the
+// child state object used by PROP_SET.  This state object must then be returned to the executive's
+// EX_pageEnd(<state object>) function to implement gobacks.
+
+//See subtask_edit.php for an example.
 
 class PROP_SET {
 
-	public $element; //the 3char table id
-	public $element_id;
-	public $forwho; //element desc for msgGreet
-
-	private $state; //our thread
-	public $noSleep = array(); //clear out these user created vars when sleeping (to save memory)
+	private $element; //the 3char table id
+	private $element_id;
+	private $forwho; //element desc for msgGreet
+	private $HTML = "";
 	private $records = array();
 
-	const NAME_DISP		= STATE::INIT + 1;
-	const NAME_PICK		= STATE::INIT + 2;
-	const VALUE_DISP	= STATE::INIT + 3;
-	const VALUE_PICK	= STATE::INIT + 4;
-	const BUTTON_DISP	= STATE::INIT + 5;
-	const CHANGE		= STATE::CHANGE;
-	const CHANGED		= STATE::CHANGE + 1;
+	const START			= STATE::INIT + 1; //if 0, set_a_gate does not work
+	const LIST			= self::START + 1;
+	const SELECT		= self::START + 2;
 
-function __construct($element, $element_id, $forwho) {
+	const EDIT			= self::START + 10;
+	const NAME_DISP		= self::EDIT + 1;
+	const NAME_PICK		= self::EDIT + 2;
+	const VALUE_DISP	= self::EDIT + 3;
+	const VALUE_PICK	= self::EDIT + 4;
+	const BUTTON_DISP	= self::EDIT + 5;
+	const CHANGE		= self::EDIT + 6;
+	const CHANGED		= self::EDIT + 7;
+
+	const THREAD = 'PROP_SET';
+
+//$state=>_MAIN state; $element=>the table prefix, $element_id=>$element's record,
+//$forwho=>just a string to be displayed in the header:
+function __construct(&$state, $element, $element_id, $forwho) {
 	$this->element = $element;
 	$this->element_id = $element_id;
 	$this->forwho = $forwho;
-	$this->state = new STATE("PS", "PROP_SET");
-	$this->setNoSleep("state");
-	$this->get_recs();
+	$state->scion_start(self::THREAD, self::START);
 }
 
 function __sleep() { //don't save this stuff - temporary and too long
-	foreach ($this->noSleep as $temp) {
-		if (is_array($this->{$temp})) {
-			$this->{$temp} = array();
-		} else {
-			$this->{$temp} = false;
-		}
-	}
+	$this->HTML = "";
 	$this->records = array();
    	return array_keys(get_object_vars($this));
 }
 
-function __wakeup() {
-	$this->state = STATE_pull("PROP_SET");
-	$this->get_recs();
-}
+public function state_gate() {
 
-public function __set($key, $value) { //set dynamic vars
-	$this->$key = $value;
-}
+	$state = STATE_pull(self::THREAD);
 
-function goback() {
-	$this->state->cleanup($this->state->thread);
+	if (isset($_GET["reset"])) {
+		$state = $state->goback_to(self::LIST, true);
+	}
+	if (isset($_GET["getdesc"])) { //asking for the description of a cell
+		$this->cell_desc();;
+		return;
+	}
+
+	$response = "@"; //initialized to do an eval if servercall
+	while (1==1) { switch ($state->status) {
+
+	case self::START:
+		if ($state->set_a_gate(self::START)) {
+			return false; //all done here
+		}
+		$state->push(); //get it on the stack
+		$state = STATE_pull(self::THREAD); //stay up-to-date
+		$state->status = self::LIST;
+		break 1;
+
+	case self::LIST:
+		$state->set_a_gate(self::LIST);
+		$state->goback_to(self::START);
+		$this->get_recs();
+		$this->Page_out($state);
+		$state->status = self::SELECT;
+		break 2;
+
+	case self::SELECT:
+		if (!(isset($_GET["row"]) || isset($_POST["row"])))
+			throw_the_bum_out(NULL,"Evicted(".__LINE__."): PROP_SET GET/POST row not supplied");
+		$state->goback_to(self::LIST);
+		$this->get_recs();
+		$state->agent = $_GET["agent"];
+		$state->row = $_GET["row"]; //working on this displayed row
+		$state->record_id = $_GET["id"];
+		if ($state->row != 0)
+			$state->prop_id = $this->records[$state->record_id]["name_id"];
+		$state->path = array();
+		switch ($state->agent) {
+		case "BN": //button => adding/updating
+			if ($state->row == 0) { //adding
+				$state->path = array(self::NAME_DISP,);
+			}
+			$state->path[] = self::VALUE_DISP;
+			break;
+		case "VA": //value
+			$state->path[] = self::VALUE_DISP;
+			break;
+		default:
+			throw_the_bum_out(NULL,"Evicted(".__LINE__."): PROP_SET invalid agent ".$state->agent,true);
+		}
+		$state->path[] = self::BUTTON_DISP;
+		$response .= "document.getElementById('BN_".$state->row."')";
+		$response .= ".innerHTML = \"<button type='button' name='btnReset' onclick='Reset()'>Cancel</button>\";\n";
+		$state->status = array_shift($state->path);
+		break 1; //go back around to start down state->path[]
+
+	case self::NAME_DISP:
+		if ($this->prop_send($state, $response) == 1) {
+			$this->prop_select($state, $response, $state->prop_id);
+			$state->status = array_shift($state->path);
+			break 1; //go back around
+		}
+		$state->status = self::NAME_PICK;
+		echo $response;
+		break 2; //done
+
+	case self::NAME_PICK:
+		$this->prop_select($state, $response);
+		$state->status = array_shift($state->path);
+		break 1; //go back around
+
+	case self::VALUE_DISP:
+		if ($this->value_send($state, $response) == 1) {
+			$this->value_select($state, $response, $state->value_id);
+			$state->status = array_shift($state->path);
+			break 1; //go back around
+		}
+		$state->status = self::VALUE_PICK;
+		echo $response;
+		break 2; //done
+
+	case self::VALUE_PICK:
+		$this->value_select($state, $response);
+		$state->status = array_shift($state->path);
+		break 1; //go back around
+
+	case self::BUTTON_DISP:
+		include_once "callback/buttons.php";
+		$this->button_send($state, $response);
+		echo $response;
+		$state->status = self::CHANGE;
+		break 2; //break out
+
+	case self::CHANGE:
+		$this->changes($state, $response); //DO IT!
+		echo $response;
+		$this->state->status = self::CHANGED;
+		break 2; //break out
+
+	case self::CHANGED:
+		$state = $state->goback_to(self::LIST, true);
+		break 1;
+
+	default:
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): PROP_SET invalid state=".$state->status);
+	} }
+	$state->push();
+
 	return true;
 }
 
-function greeting() {
+private function Page_out(&$state) {
+
+	switch ($state->status) {
+
+	case self::LIST:
+		$this->HTML = $this->set_list();
+		break;
+
+	default:
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): PROP_SET invalid state=".$state->status);
+	}
+}
+
+public function get_page() {
+	echo $this->HTML;
+	return STATE_pull(self::THREAD);
+}
+
+public function greeting() {
 	return "Properties for ".$this->forwho.
 			"<br>To add or change: click on the lefthand column";
 }
 
-function set_script() {
+public function set_script() {
 	return array("call_server.js","propset.js");
-}
-
-function set_HTML() {
-	echo $this->set_list();
 }
 
 private function get_recs() {
@@ -142,10 +232,6 @@ private function get_recs() {
 		$this->records[$row->prop_element_id] = $record;
 	}
 	$stmt->closeCursor();
-}
-
-function setNoSleep($var) {
-	$this->noSleep[] = $var;
 }
 
 public function show_list() { //get the HTML for the list items
@@ -184,94 +270,6 @@ public function set_list() { //set up initial form and select
 	return $HTML;
 }
 
-function state_gate() {
-
-	if (($this->state->status == PROP_SET::CHANGED) || (isset($_GET["reset"]))) {
-		$this->state = $this->state->loopback(STATE::INIT);
-		return;
-	}
-	if (isset($_GET["getdesc"])) { //asking for the description of a cell
-		$this->cell_desc();;
-		return;
-	}
-
-	if (!(isset($_GET["row"]) || isset($_POST["row"])))
-		throw_the_bum_out(NULL,"Evicted(".__LINE__."): PROP_SET GET/POST row not supplied");
-
-	$response = "@"; //initialized to do an eval
-	//State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
-	while (1==1) { switch ($this->state->status) {
-	case STATE::INIT:
-		$this->state->agent = $_GET["agent"];
-		$this->state->row = $_GET["row"]; //working on this displayed row
-		$this->state->record_id = $_GET["id"];
-		if ($this->state->row != 0)
-			$this->state->prop_id = $this->records[$this->state->record_id]["name_id"];
-		$this->state->path = array();
-		switch ($this->state->agent) {
-		case "BN": //button => adding/updating
-			if ($this->state->row == 0) { //adding
-				$this->state->path = array(PROP_SET::NAME_DISP,);
-			}
-			$this->state->path[] = PROP_SET::VALUE_DISP;
-			break;
-		case "VA": //value
-			$this->state->path[] = PROP_SET::VALUE_DISP;
-			break;
-		default:
-			throw_the_bum_out(NULL,"Evicted(".__LINE__."): PROP_SET invalid agent ".$this->state->agent,true);
-		}
-		$this->state->path[] = PROP_SET::BUTTON_DISP;
-		$response .= "document.getElementById('BN_".$this->state->row."')";
-		$response .= ".innerHTML = \"<button type='button' name='btnReset' onclick='Reset()'>Cancel</button>\";\n";
-		$this->state->status = array_shift($this->state->path);
-		break 1; //go back around to start down state->path[]
-	case PROP_SET::NAME_DISP:
-		if ($this->prop_send($response) == 1) {
-			$this->prop_select($response, $this->state->prop_id);
-			$this->state->status = array_shift($this->state->path);
-			break 1; //go back around
-		}
-		$this->state->status = PROP_SET::NAME_PICK;
-		echo $response;
-		break 2; //done
-	case PROP_SET::NAME_PICK:
-		$this->prop_select($response);
-		$this->state->status = array_shift($this->state->path);
-		break 1; //go back around
-	case PROP_SET::VALUE_DISP:
-		if ($this->value_send($response) == 1) {
-			$this->value_select($response, $this->state->value_id);
-			$this->state->status = array_shift($this->state->path);
-			break 1; //go back around
-		}
-		$this->state->status = PROP_SET::VALUE_PICK;
-		echo $response;
-		break 2; //done
-	case PROP_SET::VALUE_PICK:
-		$this->value_select($response);
-		$this->state->status = array_shift($this->state->path);
-		break 1; //go back around
-	case PROP_SET::BUTTON_DISP:
-		include_once "callback/buttons.php";
-		$this->button_send($response);
-		echo $response;
-		$this->state->status = PROP_SET::CHANGE;
-		break 2; //break out
-	case PROP_SET::CHANGE:
-		$this->changes($response); //DO IT!
-		echo $response;
-		$this->state->status = PROP_SET::CHANGED;
-		break 2; //break out
-	default:
-		throw_the_bum_out(NULL,"Evicted(".__LINE__."): PROP_SET error");
-	} } //while & switch
-	//End Main State Gate
-	$this->state->push();
-
-	return;
-}
-
 //	CALL BACK SECTION
 //These routines handle the various server 'call-backs' not included from lib/callback.
 //A 'call-back' leaves the page intact while a request is sent back to the server and the response then handled via script.
@@ -302,10 +300,10 @@ private function cell_desc() {
 }
 
 //Populate the property name pulldown selection list then collect the response via server call-back:
-private function prop_list() {
+private function prop_list(&$state) {
 	global $_DB;
 
-	$this->state->records = array();
+	$state->records = array();
 
 	//show only those properties not already assigned:
 	$sql = "SELECT * FROM ".$_DB->prefix."e00_property
@@ -320,129 +318,129 @@ private function prop_list() {
 			ORDER BY name;";
 	$stmt = $_DB->query($sql);
 	while ($row = $stmt->fetchObject()) {
-		$this->state->records[strval($row->property_id)] = substr($row->name.": ".$row->description,0,25);
+		$state->records[strval($row->property_id)] = substr($row->name.": ".$row->description,0,25);
 	}
 	$stmt->closeCursor();
 }
 
-private function prop_send(&$HTML) {
+private function prop_send(&$state, &$HTML) {
 
-	$this->prop_list();
+	$this->prop_list($state);
 
 	$HTML .= "//Properties...\n"; //for debug display
-	if (count($this->state->records) == 1) {
-		reset($this->state->records);
-		$this->state->prop_id = key($this->state->records); //prop_select wants to see this
+	if (count($state->records) == 1) {
+		reset($state->records);
+		$state->prop_id = key($state->records); //prop_select wants to see this
 
 	} else {
     	$HTML .= "document.getElementById('msgGreet_ID').innerHTML = 'Properties for ".$this->forwho.
 				"<br>Select the property';\n";
 		$HTML .= "fill = \"<select name='selName' id='selName' size='1' onchange='proceed(this.parentNode,this.options[this.selectedIndex].value)'>\";\n";
-		foreach($this->state->records as $value => $name) {
+		foreach($state->records as $value => $name) {
 			$HTML .= "fill += \"<option value='".$value."'>".$name."\";\n";
 		}
 		$HTML .= "fill += \"</select>\";\n";
-		$HTML .= "cell = document.getElementById('NM_".$this->state->row."');\n";
+		$HTML .= "cell = document.getElementById('NM_".$state->row."');\n";
 		$HTML .= "cell.innerHTML = fill;\n";
 		$HTML .= "document.getElementById('selName').selectedIndex=-1;\n";
 	}
 
-	return count($this->state->records);
+	return count($state->records);
 }
 
-private function prop_select(&$HTML, $rec=-1) {
+private function prop_select(&$state, &$HTML, $rec=-1) {
 
 	if ($rec < 0) { //checking returned
 		if (!isset($_GET["row"])) return;
 		$rec = $_GET["row"]; //get row number
 	}
 
-	$this->prop_list(); //restore the record list
-	if (!array_key_exists($rec, $this->state->records)) {
+	$this->prop_list($state); //restore the record list
+	if (!array_key_exists($rec, $state->records)) {
 		throw_the_bum_out(NULL,"Evicted(".__LINE__."): PROP_SET invalid property id ".$rec,true);
 	}
-	$record = $this->state->records[$rec];
-	$this->state->prop_id = $rec;
-	$this->state->msgStatus = "";
-	$HTML .= "cell = document.getElementById('NM_".$this->state->row."');\n";
+	$record = $state->records[$rec];
+	$state->prop_id = $rec;
+	$state->msgStatus = "";
+	$HTML .= "cell = document.getElementById('NM_".$state->row."');\n";
 	$HTML .= "cell.innerHTML = '".$record."';\n";
 	$HTML .= "cell.setAttribute('data-recid',".$rec.");\n";
 }
 
 //Populate the property value pulldown selection list then collect the response via server call-back:
-private function value_list() {
+private function value_list(&$state) {
 	global $_DB;
 
-	$this->state->records = array();
-	if (($this->state->agent == "BN") && ($this->state->row != 0)) { //allow a delete
-		$this->state->records[0] = "--delete this property--";
+	$state->records = array();
+	if (($state->agent == "BN") && ($state->row != 0)) { //allow a delete
+		$state->records[0] = "--delete this property--";
 	}
 
 	$sql = "SELECT * FROM ".$_DB->prefix."e02_prop_value
-			WHERE property_idref=".$this->state->prop_id."
+			WHERE property_idref=".$state->prop_id."
 			ORDER BY name;";
 	$stmt = $_DB->query($sql);
 	while ($row = $stmt->fetchObject()) {
-		$this->state->records[strval($row->prop_value_id)] = substr($row->name.": ".$row->description,0,25);
+		$state->records[strval($row->prop_value_id)] = substr($row->name.": ".$row->description,0,25);
 	}
 	$stmt->closeCursor();
 }
 
-private function value_send(&$HTML) {
+private function value_send(&$state, &$HTML) {
 
-	$this->value_list();
+	$this->value_list($state);
 
 	$HTML .= "//Property values...\n"; //for debug display
-	if (count($this->state->records) == 1) {
-		reset($this->state->records);
-		$this->state->value_id = key($this->state->records); //value_select wants to see this
+	if (count($state->records) == 1) {
+		reset($state->records);
+		$state->value_id = key($state->records); //value_select wants to see this
 
 	} else {
     	$HTML .= "document.getElementById('msgGreet_ID').innerHTML = 'Properties for ".$this->forwho.
 				"<br>Select the value';\n";
 		$HTML .= "fill = \"<select name='selValue' id='selValue' size='1' onchange='proceed(this.parentNode,this.options[this.selectedIndex].value)'>\";\n";
-		foreach($this->state->records as $value => $name) {
+		foreach($state->records as $value => $name) {
 			$HTML .= "fill += \"<option value='".$value."'>".$name."\";\n";
 		}
 		$HTML .= "fill += \"</select>\";\n";
-		$HTML .= "cell = document.getElementById('VA_".$this->state->row."');\n";
+		$HTML .= "cell = document.getElementById('VA_".$state->row."');\n";
 		$HTML .= "cell.innerHTML = fill;\n";
 		$HTML .= "document.getElementById('selValue').selectedIndex=-1;\n";
 	}
 
-	return count($this->state->records);
+	return count($state->records);
 }
 
-private function value_select(&$HTML, $rec=-1) {
+private function value_select(&$state, &$HTML, $rec=-1) {
 
 	if ($rec < 0) { //checking returned
 		if (!isset($_GET["row"])) return;
 		$rec = $_GET["row"]; //get row number
 	}
 
-	$this->value_list(); //restore the record list
-	if (!array_key_exists($rec, $this->state->records)) {
+	$this->value_list($state); //restore the record list
+	if (!array_key_exists($rec, $state->records)) {
 		throw_the_bum_out(NULL,"Evicted(".__LINE__."): PROP_SET invalid value id ".$rec,true);
 	}
-	$record = $this->state->records[$rec];
-	$this->state->value_id = $rec;
-	$this->state->msgStatus = "";
-	$HTML .= "cell = document.getElementById('VA_".$this->state->row."');\n";
+	$record = $state->records[$rec];
+	$state->value_id = $rec;
+	$state->msgStatus = "";
+	$HTML .= "cell = document.getElementById('VA_".$state->row."');\n";
 	$HTML .= "cell.innerHTML = '".$record."';\n";
 	$HTML .= "cell.setAttribute('data-recid',".$rec.");\n";
 }
 
 //Send the enter/cancel buttons via server call-back:
-private function button_send( &$HTML) {
+private function button_send(&$state, &$HTML) {
 	$HTML .= "//Buttons...\n";
-	$HTML .= "cellID = 'BN_".$this->state->row."';\n";
+	$HTML .= "cellID = 'BN_".$state->row."';\n";
 	$HTML .= "cell = document.getElementById(cellID);\n";
 	$HTML .= "cell.title = '';\n";
    	$HTML .= "document.getElementById('msgGreet_ID').innerHTML = 'Properties for ".$this->forwho.
 			"<br>Select this property/value';\n";
 	//onclick=onmousedown + onmouseup; if audit_count() caused by onblur of numbers issues confirm(),
 	//onmouseup will not happen; in that case, mouseDown() will assure new_info() gets executed:
-	$HTML .= "fill = \"<button type='button' onclick='changes(".$this->state->row.")' onmousedown='mouseDown(".$this->state->row.")'>";
+	$HTML .= "fill = \"<button type='button' onclick='changes(".$state->row.")' onmousedown='mouseDown(".$state->row.")'>";
 	$HTML .= "Submit</button>";
 	$HTML .= "<br><button type='button' name='btnReset' onclick='Reset()'>Cancel</button>";
 	$HTML .= "\";\n";
@@ -450,40 +448,39 @@ private function button_send( &$HTML) {
 }
 //End CALL BACK SECTION
 
-private function changes(&$response) {
+private function changes(&$state, &$response) {
 	global $_DB;
 
 	$response = "-"; //initialize to reset page
 
 	//check that POSTed values = previously set in $this->state
-	if (!isset($_POST["row"]) || $_POST["row"] != $this->state->row ||
-		!isset($_POST["id"]) || $_POST["id"] != $this->state->record_id ||
-		!isset($_POST["name"]) || $_POST["name"] != $this->state->prop_id ||
-		!isset($_POST["value"]) || $_POST["value"] != $this->state->value_id) {
+	if (!isset($_POST["row"]) || $_POST["row"] != $state->row ||
+		!isset($_POST["id"]) || $_POST["id"] != $state->record_id ||
+		!isset($_POST["name"]) || $_POST["name"] != $state->prop_id ||
+		!isset($_POST["value"]) || $_POST["value"] != $state->value_id) {
 		throw_the_bum_out(NULL,"Evicted(".__LINE__."): PROP_SET invalid POST",true);
 	}
 
-	if ($this->state->row == 0) {
+	if ($state->row == 0) {
 		$sql = "INSERT INTO ".$_DB->prefix."e04_prop_element
 				(prop_value_idref, element_table, element_idref)
-				VALUES(".$this->state->value_id.",'".$this->element."',".$this->element_id.");";
+				VALUES(".$state->value_id.",'".$this->element."',".$this->element_id.");";
 		$_DB->exec($sql);
 		return;
 	}
 
-	if ($this->state->value_id == 0) {
+	if ($state->value_id == 0) {
 		$sql = "DELETE FROM ".$_DB->prefix."e04_prop_element
-				WHERE prop_element_id = ".$this->state->record_id.";";
+				WHERE prop_element_id = ".$state->record_id.";";
 		$_DB->exec($sql);
 		return;
 	}
 
 	$sql = "UPDATE ".$_DB->prefix."e04_prop_element
-			SET prop_value_idref = ".$this->state->value_id."
-			WHERE prop_element_id = ".$this->state->record_id.";";
+			SET prop_value_idref = ".$state->value_id."
+			WHERE prop_element_id = ".$state->record_id.";";
 	$_DB->exec($sql);
 	return;
 }
-
 } //end class
 ?>

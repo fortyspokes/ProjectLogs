@@ -8,9 +8,6 @@ class STATE {
 	public $thread;
 	public $status;
 	public $init = STATE::INIT; //the 'return to menu' status, ie no 'goback' button
-	public $backup = -2; //Status to return to on a 'goback', ie. this->loopback($backup);
-						//a neg $backup = # of levels to pop, ie. this->goback(-$backup);
-						//initially set to -2 until all processes adopt $backup.
 	public $heading = "";
 	public $record_id = 0;
 	public $records = array();
@@ -21,6 +18,7 @@ class STATE {
 	public $child = ""; //an operating subthread (the scion)
 	public $noSleep = array(); //clear out these user created vars when sleeping (to save memory)
 	public $sleepers; //truncate some objects, eg. DateTime
+	public $gatepost; //The status of an existing SSO to 'goback' to; set by goback_to()
 
 	const INIT = 0;
 	const SELECT = 10;
@@ -114,8 +112,7 @@ function cut() { //remove the stack
 	$parent->replace();
 }
 
-public function goback($levels) {
-//	$child = "";
+private function goback($levels) {
 	$pull = $this;
 	while ($levels > 0) {
 		if (count($_SESSION["STATE"][$this->thread]) < 2 ) break;
@@ -129,11 +126,37 @@ public function goback($levels) {
 	return $pull;
 }
 
-public function loopback($status) { //pop the stack until we find this state
+private function loopback($status) { //pop the stack until we find this state
 	do {
 		$state = $this->goback(1);
 	} while(($state->status != $status) && ($state->position > 0));
 	return $state;
+}
+
+//NOTE: setting a gate at status 0 will always return true:
+public function set_a_gate($set=null) {
+	if ($this->gatepost == -$this->status) { //doing the goback - as set by goback_to()
+		$this->gatepost = $this->status;
+		return true;
+	} else {
+		if (!is_null($set)) {
+			$this->status = $set;
+		}
+		$this->replace(); //now the goback can find it
+		return false;
+	}
+}
+
+public function goback_to($gate=null, $doit=false) {
+	if (is_null($gate)) $gate = $this->gatepost;
+	if (!$doit) {
+		$this->gatepost = $gate; //"goback" goes to this SSO status
+	} else {
+		$state = $this->loopback($gate); //loopback to given status
+		$state->gatepost = -$state->status;
+		$state->replace();
+		return $state;
+	}
 }
 
 public function push() { //push new SSO onto stack

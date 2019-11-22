@@ -79,9 +79,8 @@ case SELECT_PERSON: //select the person whose logs are to be editted (person_id=
 	$_STATE->person_select = serialize($persons);
 case SELECTED_PERSON:
 
-	$_STATE->status = LIST_PROJECTS; //our new starting point for goback
-	$_STATE->replace(); //so loopback() can find it
 case LIST_PROJECTS:
+	$_STATE->set_a_gate(LIST_PROJECTS); //for a 'goback' - sets status
 	require_once "lib/project_select.php";
 	$projects = new PROJECT_SELECT(get_projects($_SESSION["person_id"]), true);
 	$_STATE->project_select = serialize(clone($projects));
@@ -91,9 +90,9 @@ case LIST_PROJECTS:
 		break 1; //re-switch to SELECTED_PROJECT
 	}
 	$_STATE->msgGreet = "Select the ".ucfirst($projects->get_label("project"));
-	$_STATE->backup = LIST_PERSONS;
 	Page_out();
 	$_STATE->status = SELECT_PROJECT;
+	$_STATE->goback_to(LIST_PERSONS);
 	break 2; //return to executive
 
 case SELECT_PROJECT: //select the project
@@ -104,9 +103,8 @@ case SELECT_PROJECT: //select the project
 case SELECTED_PROJECT:
 	$_STATE->project_name = $projects->selected_name();
 
-	$_STATE->status = SHOW_SPECS; //our new starting point for goback
-	$_STATE->replace(); //so loopback() can find it
 case SHOW_SPECS:
+	$_STATE->set_a_gate(SHOW_SPECS); //for a 'goback' - sets status
 	require_once "lib/date_select.php";
 	$dates = new DATE_SELECT("wmp","p"); //show within week(w), month(m), period(p)(default)
 	$_STATE->date_select = serialize(clone($dates));
@@ -117,6 +115,7 @@ case SHOW_SPECS:
 	$_STATE->backup = LIST_PROJECTS; //set goback
 	Page_out();
 	$_STATE->status = SELECT_SPECS;
+	$_STATE->goback_to(LIST_PROJECTS);
 	break 2; //return to executive
 
 case SELECT_SPECS: //set the from and to dates
@@ -130,9 +129,8 @@ case SELECT_SPECS: //set the from and to dates
 		break 2;
 	}
 	set_state($dates);
-	$_STATE->status = SELECTED_SPECS; //for possible goback
-	$_STATE->replace();
 case SELECTED_SPECS:
+	$_STATE->set_a_gate(SELECTED_SPECS); //for a 'goback' - sets status
 	total_hours($_STATE); //for all projects
 	log_list($_STATE);
 	set_closedCols();
@@ -140,14 +138,14 @@ case SELECTED_SPECS:
 						"<br>To add or change hours: click on the lefthand column";
 	$_STATE->extension = "";
 	$_STATE->scion_start("SHEET"); //create the child state stack
-	$_STATE->backup = SHOW_SPECS; //set goback
+	$_STATE->goback_to(SHOW_SPECS); //set goback
 	$_STATE->status = SHEET_DISP;
 	Page_out();
 	break 2; //return to executive
 
 case SHEET_DISP:
 	if (isset($_GET["sheet"])) { //change displayed sheet
-		$_STATE = $_STATE->loopback(SELECTED_SPECS);
+		$_STATE = $_STATE->goback_to(SELECTED_SPECS, true);
 		require_once "lib/project_select.php";
 		$projects = unserialize($_STATE->project_select);
 		$projects->set_state($_GET["sheet"]);
@@ -156,7 +154,7 @@ case SHEET_DISP:
 		break 1;
 	}
 	if (isset($_POST["selPerson"])) { //change displayed person
-		$_STATE = $_STATE->loopback(SELECTED_SPECS);
+		$_STATE = $_STATE->goback_to(SELECTED_SPECS, true);
 		require_once "lib/person_select.php";
 		$persons = unserialize($_STATE->person_select);
 		$persons->set_state($_POST["selPerson"]);
@@ -165,13 +163,13 @@ case SHEET_DISP:
 		break 1;
 	}
 	if (isset($_POST["btnMode"])) { //switch modes
-		$_STATE = $_STATE->loopback(SELECTED_SPECS);
+		$_STATE = $_STATE->goback_to(SELECTED_SPECS, true);
 		$_STATE->mode = ($_STATE->mode == "l")?"t":"l";
 		$_STATE->replace();
 		break 1;
 	}
 	if (isset($_GET["reset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_SPECS);
+		$_STATE = $_STATE->goback_to(SELECTED_SPECS, true);
 		break 1;
 	}
 	if (isset($_GET["getdesc"])) { //server call: asking for the description of a cell
@@ -184,7 +182,7 @@ case SHEET_DISP:
 		break 2; //return to executive
 	}
 	if (!(isset($_GET["agent"]) || isset($_POST["row"])))
-		throw_the_bum_out(NULL,"Evicted(".__LINE__."): GET/POST row not supplied");
+		throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): GET/POST row not supplied");
 
 	//Add/Update a row of the displayed sheet:
 	$SCION = $_STATE->scion_pull(); //use the child thread
@@ -232,7 +230,7 @@ case SHEET_DISP:
 			$SCION->path[] = ACTIVITY_DISP;
 			break;
 		default:
-			throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid agent ".$SCION->agent,true);
+			throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid agent ".$SCION->agent,true);
 		}
 		$SCION->path[] = BUTTON_DISP;
 		$response .= "document.getElementById('BN_".$SCION->row."')";
@@ -329,7 +327,7 @@ case SHEET_DISP:
 	break 2; //return to executive
 
 default:
-	throw_the_bum_out(NULL,"Evicted(".__LINE__."): Invalid state=".$_STATE->status);
+	throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): Invalid state=".$_STATE->status);
 } } //while & switch
 //End Main State Gate & return to executive
 
@@ -1413,7 +1411,7 @@ this data for import into the timesheet template
 		break; //end SHEET_DISP status ----END STATUS PROCESSING----
 
 	default:
-		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+		throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
 
 	EX_pageEnd(); //standard end of page stuff

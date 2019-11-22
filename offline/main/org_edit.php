@@ -30,9 +30,8 @@ case LIST_ORGS:
 
 case SELECT_ORG:
 	org_select();
-	$_STATE->status = SELECTED_ORG; //for possible goback
-	$_STATE->replace(); //so loopback() can find it
 case SELECTED_ORG:
+	$_STATE->set_a_gate(SELECTED_ORG); //for a 'goback' - sets status
 	if ($_STATE->record_id == -1) {
 		state_fields(false);
 		$_STATE->msgGreet = "New organization record";
@@ -44,6 +43,7 @@ case SELECTED_ORG:
 		$_STATE->status = CHANGE_ORG;
 	}
 	Page_out();
+	$_STATE->goback_to(LIST_ORGS);
 	break 2; //return to executive
 
 case ADD_ORG:
@@ -55,7 +55,7 @@ case ADD_ORG:
 	}
 	if (new_audit()) {
 		$record_id = $_STATE->record_id;
-		$_STATE = $_STATE->loopback(SELECTED_ORG);
+		$_STATE = $_STATE->goback_to(SELECTED_ORG, true);
 		$_STATE->record_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
@@ -86,13 +86,13 @@ case DELETE_ORG:
 	if ($_POST["btnSubmit"] == "update") {
 		$_STATE->status = UPDATE_ORG;
 		if (update_audit()) {
-			$_STATE = $_STATE->loopback(SELECTED_ORG);
+			$_STATE = $_STATE->goback_to(SELECTED_ORG, true);
 			break 1; //re-switch
 		}
 	} elseif ($_POST["btnSubmit"] == "delete") {
 		$_STATE->status = DELETE_ORG;
 		if (delete_audit()) {
-			$_STATE = $_STATE->loopback(LIST_ORGS);
+			$_STATE = $_STATE->goback_to(LIST_ORGS, true);
 			break 1; //re-switch
 		}
 	} else {
@@ -101,7 +101,7 @@ case DELETE_ORG:
 	//will not get here
 
 case GET_LOGO:
-	$_STATE->backup = SELECTED_ORG; //set goback
+	$_STATE->goback_to(SELECTED_ORG); //set goback
 	logo_audit();
 	Page_out();
 	break 2; //return to executive
@@ -110,11 +110,13 @@ case PREFERENCES:
 	require_once "lib/preference_set.php";
 	if (!isset($_STATE->prefset)) { //first time thru
 		$category = ($_PERMITS->can_pass(PERMITS::_SUPERUSER)) ? PREF_SET::STRUCTURAL : PREF_SET::COSMETIC;
-		$_STATE->prefset = serialize(new PREF_SET($_STATE,"a00", $_STATE->record_id, $category, $_STATE->forwho));
+		$prefset = new PREF_SET($_STATE,"a00", $_STATE->record_id, $category, $_STATE->forwho);
+		$_STATE->prefset = serialize(clone($prefset));
+	} else {
+		$prefset = unserialize($_STATE->prefset);
 	}
-	$prefset = unserialize($_STATE->prefset);
 	if (!$prefset->state_gate($_STATE)) {
-		$_STATE = $_STATE->loopback(SELECTED_ORG);
+		$_STATE = $_STATE->goback_to(SELECTED_ORG, true);
 		break 1;
 	}
 	$_STATE->prefset = serialize(clone($prefset)); //leave $prefset intact for later services
@@ -123,7 +125,7 @@ case PREFERENCES:
 	break 2; //return to executive
 
 default:
-	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+	throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
 //End Main State Gate & return to executive
 
@@ -622,11 +624,13 @@ function fields_hold(cond) {
 		break; //end GET_LOGO status ----END STATUS PROCESSING----
 
 	case PREFERENCES: //show preferences and allow update:
-		$prefset->set_HTML();
+		$state = $prefset->get_page();
+		EX_pageEnd($state);
+		return;
 		break;
 
 	default:
-		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+		throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 
 	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
 

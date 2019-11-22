@@ -39,6 +39,7 @@ case SELECT_PROJECT:
 	$_STATE->status = SELECTED_PROJECT; //for possible goback
 	$_STATE->replace();
 case SELECTED_PROJECT:
+	$_STATE->set_a_gate(SELECTED_PROJECT); //for a 'goback' - sets status
 	state_fields(); //creates the accounting list for display
 	if ($_STATE->record_id == -1) {
 		$_STATE->msgGreet = "New ".$_STATE->projLabel." record";
@@ -48,6 +49,7 @@ case SELECTED_PROJECT:
 		$_STATE->msgGreet = "Edit ".$_STATE->projLabel." record";
 		$_STATE->status = UPDATE_PROJECT;
 	}
+	$_STATE->goback_to(LIST_PROJECTS);
 	Page_out();
 	break 2; //return to executive
 
@@ -55,12 +57,12 @@ case ADD_PROJECT:
 	state_fields(); //creates the accounting list for audit
 	$_STATE->msgGreet = "New ".$_STATE->projLabel." record";
 	if (isset($_POST["btnReset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_PROJECT);
+		$_STATE = $_STATE->goback_to(SELECTED_PROJECT, true);
 		break 1;
 	}
 	if (new_audit()) {
 		$record_id = $_STATE->record_id;
-		$_STATE = $_STATE->loopback(SELECTED_PROJECT);
+		$_STATE = $_STATE->goback_to(SELECTED_PROJECT, true);
 		$_STATE->record_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
@@ -75,11 +77,11 @@ case UPDATE_PROJECT:
 	state_fields(); //creates the accounting list for audit
 	$_STATE->msgGreet = "Edit ".$_STATE->projLabel." record";
 	if (isset($_POST["btnReset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_PROJECT);
+		$_STATE = $_STATE->goback_to(SELECTED_PROJECT, true);
 		break 1;
 	}
 	if (update_audit()) {
-		$_STATE = $_STATE->loopback(SELECTED_PROJECT);
+		$_STATE = $_STATE->goback_to(SELECTED_PROJECT, true);
 		break 1; //re-switch
 	}
 	Page_out(); //errors...
@@ -89,11 +91,13 @@ case PREFERENCES:
 	require_once "lib/preference_set.php";
 	if (!isset($_STATE->prefset)) { //first time thru
 		$category = ($_PERMITS->can_pass(PERMITS::_SUPERUSER)) ? PREF_SET::STRUCTURAL : PREF_SET::COSMETIC;
-		$_STATE->prefset = serialize(new PREF_SET($_STATE,"a10", $_STATE->record_id, $category, $_STATE->forwho));
+		$prefset = new PREF_SET($_STATE,"a10", $_STATE->record_id, $category, $_STATE->forwho);
+		$_STATE->prefset = serialize(clone($prefset));
+	} else {
+		$prefset = unserialize($_STATE->prefset);
 	}
-	$prefset = unserialize($_STATE->prefset);
 	if (!$prefset->state_gate($_STATE)) {
-		$_STATE = $_STATE->loopback(SELECTED_PROJECT);
+		$_STATE = $_STATE->goback_to(SELECTED_PROJECT, true);
 		break 1;
 	}
 	$_STATE->prefset = serialize(clone($prefset)); //leave $prefset intact for later services
@@ -102,7 +106,7 @@ case PREFERENCES:
 	break 2; //return to executive
 
 default:
-	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+	throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
 //End Main State Gate & return to executive
 
@@ -368,12 +372,14 @@ function Page_out() {
 		break; //end ADD/UPDATE_PROJECT status ----END STATUS PROCESSING----
 
 	case PREFERENCES: //show preferences and allow update:
-		$prefset->set_HTML();
+		$state = $prefset->get_page();
+		EX_pageEnd($state);
+		return;
 		break;
 
 	default:
 
-		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+		throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 
 	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
 

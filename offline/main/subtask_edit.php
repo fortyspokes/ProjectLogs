@@ -18,7 +18,6 @@ define('SELECTED_SUBTASK',		LIST_SUBTASKS + 2);
 define('ADD_SUBTASK',			LIST_SUBTASKS + 3);
 define('UPDATE_SUBTASK',		LIST_SUBTASKS + 4);
 define('PROPERTIES',		STATE::INIT + 30);
-define('PROPERTIES_GOBACK',		PROPERTIES + 1);
 
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
@@ -50,19 +49,18 @@ case SELECTED_PROJECT:
 	$_STATE->project_name = $projects->selected_name();
 	$_STATE->msgGreet_prefix = $_STATE->project_name."<br>";
 
-	$_STATE->status = LIST_TASKS; //our new starting point for goback
-	$_STATE->replace(); //so loopback() can find it
 case LIST_TASKS:
+	$_STATE->set_a_gate(LIST_TASKS); //for a 'goback' - sets status
 	task_list();
 	if (count($_STATE->records) == 1) { //solo task?
 		task_select(key($_STATE->records)); //select this one
 		$_STATE->status = SELECTED_TASK;
-		break 1; //re-switch to SELECTED_TASK
+		break 1; //re-switch
 	}
 	$_STATE->msgGreet = $_STATE->project_name."<br>Select the task for this subtask";
-	$_STATE->backup = LIST_PROJECTS; //set goback
 	Page_out();
 	$_STATE->status = SELECT_TASK;
+	$_STATE->goback_to(LIST_PROJECTS);
 	break 2; //return to executive
 
 case SELECT_TASK:
@@ -70,23 +68,20 @@ case SELECT_TASK:
 	$_STATE->heading .= "<br>Task: ".$_STATE->records[$_STATE->task_id]."<br>";
 case SELECTED_TASK:
 
-	$_STATE->status = LIST_SUBTASKS; //our new starting point for goback
-	$_STATE->replace(); //so loopback() can find it
 case LIST_SUBTASKS:
+	$_STATE->set_a_gate(LIST_SUBTASKS); //for a 'goback' - sets status
 	subtask_list();
 	$_STATE->msgGreet = $_STATE->project_name."<br>Select a subtask record to edit";
-	$_STATE->backup = LIST_TASKS; //set goback
 	Page_out();
 	$_STATE->status = SELECT_SUBTASK;
+	$_STATE->goback_to(LIST_TASKS);
 	break 2; //return to executive
 
 case SELECT_SUBTASK:
 	subtask_select();
-	$_STATE->status = SELECTED_SUBTASK; //for possible goback
-	$_STATE->replace(); //so loopback() can find it
 case SELECTED_SUBTASK:
+	$_STATE->set_a_gate(SELECTED_SUBTASK); //for a 'goback' - sets status
 	state_fields();
-	$_STATE->backup = LIST_SUBTASKS; //for goback
 	if ($_STATE->record_id == -1) {
 		$_STATE->msgGreet = "New subtask record";
 		$_STATE->status = ADD_SUBTASK;
@@ -96,17 +91,18 @@ case SELECTED_SUBTASK:
 		$_STATE->status = UPDATE_SUBTASK;
 	}
 	Page_out();
+	$_STATE->goback_to(LIST_SUBTASKS);
 	break 2; //return to executive
 
 case ADD_SUBTASK:
 	if (isset($_POST["btnReset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_SUBTASK);
+		$_STATE = $_STATE->goback_to(SELECTED_SUBTASK, True);
 		break 1;
 	}
 	state_fields();
 	if (new_audit()) {
 		$record_id = $_STATE->record_id;
-		$_STATE = $_STATE->loopback(SELECTED_SUBTASK);
+		$_STATE = $_STATE->goback_to(SELECTED_SUBTASK, True);
 		$_STATE->record_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
@@ -115,18 +111,16 @@ case ADD_SUBTASK:
 
 case UPDATE_SUBTASK:
 	if (isset($_POST["btnReset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_SUBTASK);
+		$_STATE = $_STATE->goback_to(SELECTED_SUBTASK, True);
 		break 1;
 	}
 	state_fields();
 	if (isset($_POST["btnProperties"])) {
 		$_STATE->status = PROPERTIES;
-		$_STATE->element = "a14"; //required by PROPERTIES
-		$_STATE->backup = PROPERTIES_GOBACK; //required by PROPERTIES
 		break 1; //re-switch to show property values
 	}
 	if (update_audit()) {
-		$_STATE = $_STATE->loopback(SELECTED_SUBTASK);
+		$_STATE = $_STATE->goback_to(SELECTED_SUBTASK, True);
 		break 1; //re-switch
 	}
 	Page_out(); //errors...
@@ -134,18 +128,22 @@ case UPDATE_SUBTASK:
 
 case PROPERTIES:
 	require_once "lib/prop_set.php";
-	$propset = PROP_SET_exec($_STATE, false);
+	if (!isset($_STATE->propset)) {
+		$propset = new PROP_SET($_STATE, "a14", $_STATE->record_id, $_STATE->forwho);
+		$_STATE->propset = serialize(clone($propset));
+	} else {
+		$propset = unserialize($_STATE->propset);
+	}
+	if (!$propset->state_gate()) { //let PROP_SET continue state gate processing
+		$_STATE = $_STATE->goback_to(SELECTED_SUBTASK, True);
+		break 1;
+	}
+	$_STATE->propset = serialize(clone($propset));
 	Page_out();
 	break 2; //return to executive
 
-case PROPERTIES_GOBACK:
-	require_once "lib/prop_set.php";
-	PROP_SET_exec($_STATE, true);
-	$_STATE = $_STATE->loopback(SELECTED_SUBTASK);
-	break 1;
-
 default:
-	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+	throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
 //End Main State Gate & return to executive
 
@@ -179,7 +177,7 @@ function task_select($ID=-1) {
 	if ($ID < 0) { //not yet selected
 		task_list(); //restore the record list
 		if (!array_key_exists(strval($_POST["selTask"]), $_STATE->records)) {
-			throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid task id ".$_POST["selTask"]); //we're being spoofed
+			throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid task id ".$_POST["selTask"]); //we're being spoofed
 		}
 		$ID = intval($_POST["selTask"]);
 	}
@@ -211,7 +209,7 @@ function subtask_select($ID=-1) {
 	if ($ID < 0) { //not yet selected
 		subtask_list(); //restore the record list
 		if (!array_key_exists(strval($_POST["selSubtask"]), $_STATE->records)) {
-			throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid subtask id ".$_POST["selSubtask"]); //we're being spoofed
+			throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid subtask id ".$_POST["selSubtask"]); //we're being spoofed
 		}
 		$ID = intval($_POST["selSubtask"]);
 	}
@@ -407,11 +405,13 @@ function Page_out() {
 		break; //end ADD/UPDATE_SUBTASK status ----END STATUS PROCESSING----
 
 	case PROPERTIES: //list properties and allow new entry:
-		$propset->set_HTML();
+		$state = $propset->get_page();
+		EX_pageEnd($state);
+		return;
 		break; //end PROPERTIES status ----END STATUS PROCESSING----
 
 	default:
-		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+		throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."):  invalid state=".$_STATE->status);
 
 	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
 

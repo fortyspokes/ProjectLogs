@@ -21,7 +21,6 @@ case STATE::INIT:
 case STATE::SELECT:
 	$_STATE->msgGreet = "Enter the up date criteria";
 	Page_out();
-	$_STATE->backup = STATE::INIT; //prepare a 'goback'
 	$_STATE->status = STATE::SELECTED;
 	break 2;
 case STATE::SELECTED:
@@ -47,7 +46,7 @@ case STATE::DONE:
 	$_STATE->status = STATE::INIT;
 	break 2;
 default:
-	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+	throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
 //End Main State Gate & return to the executive
 

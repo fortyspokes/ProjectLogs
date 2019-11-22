@@ -42,16 +42,15 @@ case SELECT_PERSON:
 	$persons->selected = false; //if only one in list, will be set true at object construct
 	$persons->set_state();
 	$_STATE->person_select = serialize(clone($persons));
-	$_STATE->status = SELECTED_PERSON; //for possible goback
-	$_STATE->replace();
 	if ($_STATE->person_id == -1) { //adding...
 		if (list_aliens()) { //aliens to connect
-			$_STATE->push(); //save this state for a loopback
+			$_STATE->set_a_gate(SELECTED_PERSON); //for a 'goback' - sets status
 			$_STATE->status = LIST_ALIENS; //new state to list aliens
 			break 1; //go list 'em
 		}
 	}
 case SELECTED_PERSON:
+	$_STATE->set_a_gate(SELECTED_PERSON); //for a 'goback' - sets status
 	state_fields();
 	$_STATE->record_id = $_STATE->person_id;
 	if ($_STATE->record_id == -1) {
@@ -64,18 +63,19 @@ case SELECTED_PERSON:
 		Page_out();
 		$_STATE->status = UPDATE_PERSON;
 	}
+	$_STATE->goback_to(LIST_PERSONS);
 	break 2; //return to executive
 
 case ADD_PERSON:
 	state_fields();
 	$_STATE->msgGreet = "New person record";
 	if (isset($_POST["btnReset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_PERSON);
+		$_STATE = $_STATE->goback_to(SELECTED_PERSON, true);
 		break  1;
 	}
 	if (new_audit()) {
 		$record_id = $_STATE->record_id;
-		$_STATE = $_STATE->loopback(SELECTED_PERSON);
+		$_STATE = $_STATE->goback_to(SELECTED_PERSON,true);
 		$_STATE->person_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
@@ -92,13 +92,13 @@ case DELETE_PERSON:
 	state_fields();
 	$_STATE->msgGreet = "Edit person record";
 	if (isset($_POST["btnReset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_PERSON);
+		$_STATE = $_STATE->goback_to(SELECTED_PERSON, true);
 		break  1;
 	}
 	if (isset($_POST["btnSubmit"])) {
 		if (update_audit()) {
 			$msg = $_STATE->msgStatus;
-			$_STATE = $_STATE->loopback(SELECTED_PERSON);
+			$_STATE = $_STATE->goback_to(SELECTED_PERSON, true);
 			$_STATE->msgStatus = $msg;
 			break 1; //re-switch
 		}
@@ -108,7 +108,7 @@ case DELETE_PERSON:
 	if (isset($_POST["btnRemove"])) {
 		if (remove_audit()) {
 			$msg = $_STATE->msgStatus;
-			$_STATE = $_STATE->loopback(LIST_PERSONS);
+			$_STATE = $_STATE->goback_to(LIST_PERSONS, true);
 			$_STATE->msgStatus = $msg;
 			break 1; //re-switch
 		}
@@ -118,7 +118,7 @@ case DELETE_PERSON:
 	if (isset($_POST["btnDelete"])) {
 		if (delete_audit()) {
 			$msg = $_STATE->msgStatus;
-			$_STATE = $_STATE->loopback(LIST_PERSONS);
+			$_STATE = $_STATE->goback_to(LIST_PERSONS, true);
 			$_STATE->msgStatus = $msg;
 			break 1; //re-switch
 		}
@@ -126,31 +126,35 @@ case DELETE_PERSON:
 		break 2; //return to executive
 	}
 	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid Submit");
-//	break 2;
+
 case LIST_ALIENS:
 	$_STATE->msgGreet = "Connect to this organization - or create a new person";
 	Page_out();
 	$_STATE->status = ADD_ALIEN;
 	break 2;
+
 case ADD_ALIEN:
 	if ($_POST["selPerson"][0] == -1) { //create a new person
-		$_STATE = $_STATE->loopback(SELECTED_PERSON);
+		$_STATE = $_STATE->goback_to(SELECTED_PERSON, true);
 		$_STATE->person_id = -1;		
 		break 1;
 	}
 	list_aliens();
 	connect_alien();
-	$_STATE = $_STATE->loopback(LIST_PERSONS);
+	$_STATE = $_STATE->goback_to(LIST_PERSONS, true);
 	break 1; //re-switch
+
 case PREFERENCES:
 	require_once "lib/preference_set.php";
 	if (!isset($_STATE->prefset)) { //first time thru
-		$category = PREF_SET::COSMETIC;
-		$_STATE->prefset = serialize(new PREF_SET($_STATE,"c10", $_STATE->record_id, $category, $_STATE->forwho));
+		$category = ($_PERMITS->can_pass(PERMITS::_SUPERUSER)) ? PREF_SET::STRUCTURAL : PREF_SET::COSMETIC;
+		$prefset = new PREF_SET($_STATE,"c10", $_STATE->record_id, $category, $_STATE->forwho);
+		$_STATE->prefset = serialize(clone($prefset));
+	} else {
+		$prefset = unserialize($_STATE->prefset);
 	}
-	$prefset = unserialize($_STATE->prefset);
 	if (!$prefset->state_gate($_STATE)) {
-		$_STATE = $_STATE->loopback(SELECTED_PERSON);
+		$_STATE = $_STATE->goback_to(SELECTED_PERSON, true);
 		break 1;
 	}
 	$_STATE->prefset = serialize(clone($prefset)); //leave $prefset intact for later services
@@ -159,7 +163,7 @@ case PREFERENCES:
 	break 2; //return to executive
 
 default:
-	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+	throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
 //End Main State Gate & return to executive
 
@@ -649,7 +653,13 @@ function DeleteBtn() {
 		break; //end LIST_ALIENS status
 
 	case PREFERENCES: //show preferences and allow update:
-		$prefset->set_HTML();
+		$state = $prefset->get_page();
+		EX_pageEnd($state);
+		return;
+		break;
+
+	default:
+		throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 
 	} //end select ($_STATE->status)
 

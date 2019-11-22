@@ -2,21 +2,9 @@
 //copyright 2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
-//Generalized processing to display/set/unset preferences.
-
-//Instructions:
-//The calling module's processing state (define 'PREFERENCES'?) must:
-//	include this module
-//	create and save an instance of the PREF_SET class on first time thru
-//	call $PREF_SETobject->state_gate()
-//	when state_gate() returns false, a Goback was initiated: take appropriate action (loopback?)
-//	before leaving the state, save the $PREF_SETobject
-//Before calling $EX_pageStart() and if processing state set:
-//	get scripts from $PREF_SETobject->set_script();,
-//	get msgGreet from $PREF_SETobject->greeting();.
-//When creating HTML at processing state:
-//	$PREF_SETobject->set_HTML();
-//See org_edit.php for an example.
+//Generalized processing to display/set/unset preferences.  Two processing classes:
+//	PREF_GET - retrieves the specified preference for the specified element and user;
+//	PREF_SET - processing to add/change/delete preferences
 
 class PREFERENCE {
 	public $name;
@@ -33,6 +21,8 @@ function __construct($name,$type,$default) {
 
 } //end class
 
+//Instructions for PREF_GET:
+//Create the object then access a specific preference - easy, peasy.
 class PREF_GET {
 	private $prefs = array(); //all preferences for this element/user as an array
 
@@ -129,58 +119,122 @@ public function preference($name, $item=null) { //a preference can be an array; 
 }
 } //end class PREF_GET
 
+//Instructions for PREF_SET:
+//The calling module must interface in the Main State Gate and in Page_out().
+
+//Main State Gate
+//Create a case, typically, "PREFERENCES" that must
+// 1. Instantiate the object that creates a child state thread (="PREF_SET").  Then save our new
+//    PREF_SET object in the _MAIN state;
+// 2. Call the <PREF_SET>->state_gate() that will continue state processing on the child state;
+// 3. If state_gate() returns 'false', the processing is done; the caller can then take appropriate action.
+
+//Page_out()
+// The PREF_SET scripts must be set;
+// Call <PREF_SET>->get_page() that will echo the appropriate HTML then return a pointer to the
+// child state object used by PREF_SET.  This state object must then be returned to the executive's
+// EX_pageEnd(<state object>) function to implement gobacks.
+
+//See org_edit.php for an example.
+
 class PREF_SET {
 
-	public $element; //the 3char table id
-	public $element_id;
-	public $category; //'cosmetic' or 'structural'
-	public $forwho; //element desc for msgGreet
-
-	public $pref_name;
-	private $status;
-	public $noSleep = array(); //clear out these user created vars when sleeping (to save memory)
+	private $element; //the 3char table id
+	private $element_id;
+	private $category; //'cosmetic' or 'structural'
+	private $forwho; //element desc for msgGreet
+	private $HTML = "";
 	private $records = array();
+	private $pref_name;
+
+	const START			= STATE::INIT + 1; //if 0, set_a_gate does not work
+	const LIST			= self::START + 1;
+	const SELECT		= self::START + 2;
+	const CHANGE		= self::START + 3;
 
 	const COSMETIC = -11;
 	const STRUCTURAL = -1;
+	const THREAD = 'PREF_SET';
 
-	const PREF_INIT =	0;
-	const PREF_DISP	=	1;
-	const PREF_CHANGE =	2;
-
+//$state=>_MAIN state; $element=>the table prefix, $element_id=>$element's record, $category,
+//$forwho=>just a string to be displayed in the header:
 function __construct(&$state, $element, $element_id, $category, $forwho) {
-
-	$state->PREFSETgoback = "n"; //must pass state_gate test first time thru
-
 	$this->element = $element;
 	$this->element_id = $element_id;
 	$this->category = $category;
 	$this->forwho = $forwho;
-	$this->status = PREF_SET::PREF_INIT;
-	$this->setNoSleep("records");
+	$state->scion_start(self::THREAD, self::START);
 }
 
 function __sleep() { //don't save this stuff - temporary and too long
-	foreach ($this->noSleep as $temp) {
-		if (is_array($this->{$temp})) {
-			$this->{$temp} = array();
-		} else {
-			$this->{$temp} = false;
-		}
-	}
+	$this->HTML = "";
+	$this->records = array();
    	return array_keys(get_object_vars($this));
 }
 
-function __wakeup() {
-	$this->get_recs();
-}
+function state_gate() {
 
-public function __set($key, $value) { //set dynamic vars
-	$this->$key = $value;
-}
+	$state= STATE_pull(self::THREAD);
 
-function goback() {
+	while (1==1) { switch ($state->status) {
+
+	case self::START:
+		if ($state->set_a_gate(self::START)) {
+			return false; //all done here
+		}
+		$state->push(); //get it on the stack
+		$state = STATE_pull(self::THREAD); //stay up-to-date
+		$state->status = self::LIST;
+		break 1;
+
+	case self::LIST:
+		$state->set_a_gate(self::LIST);
+		$state->goback_to(self::START);
+		$this->get_recs();
+		$this->Page_out($state);
+		$state->status = self::SELECT;
+		break 2;
+
+	case self::SELECT:
+		$state->set_a_gate(self::SELECT);
+		$this->pref_name = $_GET["who"];
+		$this->get_recs();
+		$state->status = self::CHANGE;
+		echo $this->display_back(); //prefset.js puts this into a popup
+		break 2;
+
+	case self::CHANGE:
+		if (isset($_GET["who"])) {
+			$state->goback_to(self::SELECT, true);
+			break 1;
+		}
+		echo $this->new_pref();
+		break 2;
+
+	default:
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): PREF_SET invalid state=".$state->status);
+	} }
+	$state->push();
+
 	return true;
+}
+
+private function Page_out(&$state) {
+
+	switch ($state->status) {
+
+	case self::LIST:
+		$this->HTML = $this->set_list();
+		break;
+
+	default:
+		throw_the_bum_out(NULL,"Evicted(".__LINE__."): PROP_SET invalid state=".$state->status);
+	}
+}
+
+public function get_page() {
+	echo $this->HTML;
+	return STATE_pull(self::THREAD);
 }
 
 function greeting() {
@@ -190,10 +244,6 @@ function greeting() {
 
 function set_script() {
 	return array("call_server.js","prefset.js");
-}
-
-function set_HTML() {
-	echo $this->set_list();
 }
 
 private function get_recs() {
@@ -219,10 +269,6 @@ private function get_recs() {
 		}
 	}
 	$stmt->closeCursor();
-}
-
-function setNoSleep($var) {
-	$this->noSleep[] = $var;
 }
 
 public function show_list() { //get the HTML for the list items
@@ -258,48 +304,6 @@ public function set_list() { //set up initial form and select
 	$list = $this->show_list();
 	foreach ($list as $line) $HTML .= $line."\n";
 	return $HTML;
-}
-
-function state_gate(&$state) {
-
-	if ($state->PREFSETgoback == "y") return false; //all done here
-
-	//State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
-	while (1==1) { switch ($this->status) {
-	case PREF_SET::PREF_INIT:
-		//All client interaction is via server_call which bypasses state maintenance in executive.php,
-		//hence, we must handle the state (fortunately, it's very simple):
-		$state->PREFSETgoback = "y";
-		$state->replace();
-		//put a new SSO on the state stack; we assume that we got here thru normal executive.php
-		//channels (ie. not via server_call) which will put yet another SSO on the stack; to get back
-		//to the SSO with PREFSETgoback="y", must now backup 2 entries:
-		$state->PREFSETgoback = "n";
-		$state->backup = -2; //minus => goback 2 entries (positive => goback to status)
-		$state->push();
-		$state = STATE_pull();
-
-		$this->get_recs();
-		$this->status = PREF_SET::PREF_DISP;
-		break 2;
-	case PREF_SET::PREF_DISP:
-		$this->pref_name = $_GET["who"];
-		$this->status = PREF_SET::PREF_CHANGE;
-		echo $this->display_back();
-		break 2;
-	case PREF_SET::PREF_CHANGE:
-		if (isset($_GET["who"])) {
-			$this->status = PREF_SET::PREF_DISP;
-			break 1;
-		}
-		echo $this->new_pref();
-		break 2;
-	default:
-		throw_the_bum_out(NULL,"Evicted(".__LINE__."): PREF_SET error");
-	} } //while & switch
-	//End Main State Gate
-
-	return true;
 }
 
 private function display_back() {

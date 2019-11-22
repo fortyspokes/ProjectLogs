@@ -31,16 +31,14 @@ case LIST_DEPOSITS:
 
 case SELECT_DEPOSIT:
 	deposit_select();
-	if ($_UPLOAD) {
-		$_STATE->status = SELECTED_DEPOSIT; //for possible goback
-		$_STATE->replace(); //so loopback() can find it
-	} else {
+	if (!$_UPLOAD) {
 		//we don't get back here and don't return to the executive because the file_put in
 		//deposit_download exits; that's why the status can stay unchanged waiting for the
 		//user to select another.
 		deposit_download($_STATE->record_id);
 	}
 case SELECTED_DEPOSIT:
+	$_STATE->set_a_gate(SELECTED_DEPOSIT); //for a 'goback' - sets status
 	if ($_STATE->record_id == -1) {
 		state_fields(false); //false=not disabled
 		$whois = "New Deposit...";
@@ -57,13 +55,13 @@ case SELECTED_DEPOSIT:
 
 case ADD_DEPOSIT:
 	if (isset($_POST["btnReset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_DEPOSIT);
+		$_STATE = $_STATE->goback_to(SELECTED_DEPOSIT, true);
 		break 1;
 	}
 	state_fields(false);
 	if (new_audit()) {
 		$record_id = $_STATE->record_id;
-		$_STATE = $_STATE->loopback(SELECTED_DEPOSIT);
+		$_STATE = $_STATE->goback_to(LIST_DEPOSITS, true);
 		$_STATE->record_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
@@ -81,19 +79,19 @@ case CHANGE_DEPOSIT:
 case UPDATE_DEPOSIT:
 case DELETE_DEPOSIT:
 	if (isset($_POST["btnReset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_DEPOSIT);
+		$_STATE = $_STATE->goback_to(SELECTED_DEPOSIT, true);
 		break 1;
 	}
 	state_fields();
 	if (isset($_POST["btnSubmit"])) {
 		if (update_audit()) {
-			$_STATE = $_STATE->loopback(SELECTED_DEPOSIT);
+			$_STATE = $_STATE->goback_to(SELECTED_DEPOSIT, true);
 			break 1; //re-switch
 		}
 		$_STATE->status = UPDATE_DEPOSIT; //come back here
 	} elseif (isset($_POST["btnDelete"])) {
 		if (delete_audit()) {
-			$_STATE = $_STATE->loopback(LIST_DEPOSITS);
+			$_STATE = $_STATE->goback_to(LIST_DEPOSITS, true);
 			break 1; //re-switch
 		}
 		$_STATE->status = DELETE_DEPOSIT;
@@ -104,13 +102,13 @@ case DELETE_DEPOSIT:
 	break 2; //return to executive
 
 case GET_DEPOSIT:
-	$_STATE->backup = SELECTED_DEPOSIT; //set goback
+	$_STATE->goback_to(SELECTED_DEPOSIT); //set goback
 	deposit_audit();
 	Page_out();
 	break 2; //return to executive
 
 default:
-	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+	throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
 //End Main State Gate & return to executive
 
@@ -413,7 +411,7 @@ function Page_out() {
 		break; //end SELECTED/ADD/UPDATE/DELETE_DEPOSIT status ----END STATUS PROCESSING----
 
 	default:
-		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+		throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 
 	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
 

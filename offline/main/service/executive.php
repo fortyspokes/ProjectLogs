@@ -12,8 +12,13 @@ $_STATE = STATE_pull(); //'pull' the working state
 //A non-blank $_GET["init"] tells us to replace the state object with new status & ID;
 //many processes rely on that STATE::INIT being set so they know to create initial setup:
 if (isset($_GET["init"])) {
-	while($_STATE->position > 0) { //if selecting from menu without 'return to menu',
-		$_STATE = $_STATE->goback(1); //  cut back the state stack
+	if ($_STATE->position > 0) { //if selecting from menu without 'return to menu',
+		$_STATE = STATE_pull($_STATE->thread, $_STATE->position); //gets position 0
+		$_STATE->init = 0;
+		$_STATE->child = "";
+		$_STATE->goback_to(0);
+		$_SESSION["STATE"] = array(); //re-start the thread
+		$_STATE->replace();
 	}
 	if (isset($_GET["head"])) {
 		$_STATE->heading = $_GET["head"];
@@ -25,12 +30,10 @@ if (isset($_GET["init"])) {
 
 } else {
 	if (isset($_GET["goback"])) {
-		if ($_GET["goback"] != "") $_STATE->backup = -($_GET["goback"]);
-		if ($_STATE->backup < 0) {
-			$_STATE = $_STATE->goback(-$_STATE->backup); //goback x levels
-		} else {
-			$_STATE = $_STATE->loopback($_STATE->backup); //loopback to given status
-		}
+		$state = STATE_PULL($_GET["goback"]);
+		$state = $state->goback_to(null, true);
+		if ($state->thread == $_STATE->thread) //if a goback on the "_MAIN" thread
+			$_STATE = $state;
 	} else if (isset($_GET["servercall"]) || isset($_POST["servercall"])) {
 		$EX_servercall = true;
 		ob_clean(); //server_call wants a clean buffer
@@ -50,18 +53,19 @@ if (!isset($EX_staff[$_STATE->ID])) {
 $_STATE->push();
 $_DB = NULL;
 
-function EX_pageStart($scripts=array()) {
+function EX_pageStart($scripts=array(), $state=null) {
 //The standardized HTML stuff at the top of the page:
 	global $_STATE, $EX_servercall, $_VERSION;
 	if ($EX_servercall) {
 		exit(); //server_call wants a clean buffer
 	}
+	if (is_null($state)) $state = $_STATE;
 //the !DOCTYPE below is necessary to get position:fixed working in IE!!
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html>
 <head>
-<title>SR2S Timesheets <?php echo $_STATE->heading; ?></title>
+<title>SR2S Timesheets <?php echo $state->heading; ?></title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <link rel="stylesheet" href="<?php echo $_SESSION["BUTLER"]; ?>?IAm=CG&file=main&ver=<?php echo $_VERSION; ?>" type="text/css">
 <script language="JavaScript">
@@ -71,7 +75,7 @@ window.onload = function() {
   for (var i = 0; i < LoaderS.length; i++) {
     eval (LoaderS[i]);
   }
-  top.frames['headframe'].document.getElementById('msgHead_ID').innerHTML = '<?php echo $_STATE->heading; ?>';
+  top.frames['headframe'].document.getElementById('msgHead_ID').innerHTML = '<?php echo $state->heading; ?>';
 }
 </script>
 <?php
@@ -80,29 +84,30 @@ window.onload = function() {
 	}
 } //end function EX_pageStart
 
-function EX_pageHead() {
+function EX_pageHead($state=null) {
 //The standardized stuff after scripts and at top of HTML body:
 	global $_STATE;
+	if (is_null($state)) $state = $_STATE;
 ?>
 </head>
 
 <body>
-<div id="msgGreet_ID" class="greet"><?php echo $_STATE->msgGreet; ?></div>
+<div id="msgGreet_ID" class="greet"><?php echo $state->msgGreet; ?></div>
 <?php
 } //end function EX_pageHead
 
-function EX_pageEnd() {
+function EX_pageEnd($state=null) {
 //The standardized stuff at the end of the page:
 //A neg $goback = # of levels to pop; pos is the actual status to return to.
 	global $_STATE;
+	if (is_null($state)) $state = $_STATE;
 ?>
-<div id="msgStatus_ID" class="status"><?php echo $_STATE->msgStatus ?></div>
+<div id="msgStatus_ID" class="status"><?php echo $state->msgStatus ?></div>
 <p>
 <button type="button" onclick="top.reload_main();">&lt&lt Return to menu</button>
 <?php
-	$state = STATE_pull(); //the state before changes
 	if ($state->status > $state->init) { ?>
-<button type="button" onclick="window.location.assign('<?php echo $_SESSION["IAm"] ?>&goback')">
+<button type="button" onclick="window.location.assign('<?php echo $_SESSION["IAm"] ?>&goback=<?php echo $state->thread?>')">
 	&lt Goback</button>
 <?php
 	}

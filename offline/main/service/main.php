@@ -7,13 +7,7 @@ require_once "lib/common.php";
 if (isset($state)) { //included within other code
 	$msgStatus = $state->msgStatus;
 } else { //location re-assign, ie. starting over
-	require_once "lib/state.php";
 	$msgStatus = "";
-	$_STATE = STATE_pull(); //'pull' the working state
-	while($_STATE->position > 0) { // & go back to the original
-		$_STATE = $_STATE->goback(1);
-	}
-	$_STATE = $_STATE->push(); //retain the original
 }
 ?>
 <html>

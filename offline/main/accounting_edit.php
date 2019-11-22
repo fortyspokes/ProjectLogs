@@ -15,7 +15,6 @@ define('UPDATE_ACCOUNTING',		LIST_ACCOUNTING + 6);
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
 case LIST_ACCOUNTING:
-	$_STATE->backup = LIST_ACCOUNTING; //set 'goback'
 	accounting_list();
 	$_STATE->msgGreet = "Select the accounting group to edit";
 	Page_out();
@@ -27,6 +26,7 @@ case SELECT_ACCOUNTING:
 	$_STATE->status = SELECTED_ACCOUNTING; //set for possible goback
 	$_STATE->replace(); //so loopback() can find it
 case SELECTED_ACCOUNTING:
+	$_STATE->set_a_gate(SELECTED_ACCOUNTING); //for a 'goback' - sets status
 	state_fields();
 	if ($_STATE->record_id == -1) {
 		$_STATE->msgGreet = "New accounting record";
@@ -38,17 +38,18 @@ case SELECTED_ACCOUNTING:
 		Page_out();
 		$_STATE->status = UPDATE_ACCOUNTING;
 	}
+	$_STATE->goback_to(LIST_ACCOUNTING);
 	break 2; //return to executive
 
 case ADD_ACCOUNTING:
 	if (isset($_POST["btnReset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_ACCOUNTING);
+		$_STATE = $_STATE->goback_to(SELECTED_ACCOUNTING, True);
 		break 1;
 	}
 	state_fields();
 	if (new_audit()) {
 		$record_id = $_STATE->record_id;
-		$_STATE = $_STATE->loopback(SELECTED_ACCOUNTING);
+		$_STATE = $_STATE->goback_to(SELECTED_ACCOUNTING, True);
 		$_STATE->record_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
@@ -57,19 +58,19 @@ case ADD_ACCOUNTING:
 
 case UPDATE_ACCOUNTING:
 	if (isset($_POST["btnReset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_ACCOUNTING);
+		$_STATE = $_STATE->goback_to(SELECTED_ACCOUNTING, True);
 		break 1;
 	}
 	state_fields();
 	if (update_audit()) {
-		$_STATE = $_STATE->loopback(SELECTED_ACCOUNTING);
+		$_STATE = $_STATE->goback_to(SELECTED_ACCOUNTING, True);
 		break 1; //re-switch
 	}
 	Page_out(); //errors...
 	break 2; //return to executive
 
 default:
-	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+	throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
 //End Main State Gate & return to executive
 
@@ -245,7 +246,7 @@ function Page_out() {
 		break; //end SELECTED_ACCOUNTING/ADD_ACCOUNTING/UPDATE_ACCOUNTING status
 
 	default:
-		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+		throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 
 	} //end select ($_STATE->status)
 

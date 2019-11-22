@@ -19,7 +19,6 @@ define('UPDATE_VALUE',			LIST_VALUES + 6);
 
 //Main State Gate: (the while (1==1) allows a loop back through the switch using a 'break 1')
 while (1==1) { switch ($_STATE->status) {
-//case STATE::INIT:
 case LIST_PROPERTIES:
 	list_properties();
 	$_STATE->msgGreet = "Select a property to edit";
@@ -29,9 +28,8 @@ case LIST_PROPERTIES:
 
 case SELECT_PROPERTY:
 	select_property();
-	$_STATE->status = SELECTED_PROPERTY; //for possible goback
-	$_STATE->replace(); //so loopback() can find it
 case SELECTED_PROPERTY:
+	$_STATE->set_a_gate(SELECTED_PROPERTY); //for a 'goback' - sets status
 	prop_fields();
 	if ($_STATE->record_id == -1) {
 		$_STATE->msgGreet = "New property";
@@ -42,17 +40,18 @@ case SELECTED_PROPERTY:
 		$_STATE->status = UPDATE_PROPERTY;
 	}
 	Page_out();
+	$_STATE->goback_to(LIST_PROPERTIES);
 	break 2; //return to executive
 
 case ADD_PROPERTY:
 	if (isset($_POST["btnReset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_PROPERTY);
+		$_STATE = $_STATE->goback_to(SELECTED_PROPERTY, true);
 		break 1;
 	}
 	prop_fields();
 	if (new_property_audit()) {
 		$record_id = $_STATE->record_id;
-		$_STATE = $_STATE->loopback(SELECTED_PROPERTY);
+		$_STATE = $_STATE->goback_to(SELECTED_PROPERTY, true);
 		$_STATE->record_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
@@ -61,42 +60,41 @@ case ADD_PROPERTY:
 
 case UPDATE_PROPERTY:
 	if (isset($_POST["btnReset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_PROJECT);
+		$_STATE = $_STATE->goback_to(SELECTED_PROJECT, true);
 		break 1;
 	}
 	prop_fields();
 	if (isset($_POST["btnDelete"])) {
 		delete_property();
-		$_STATE = $_STATE->loopback(LIST_PROPERTIES);
+		$_STATE = $_STATE->goback_to(LIST_PROPERTIES, true);
 		break 1; //re-switch
 	}
 	if (isset($_POST["btnValues"])) {
 		$_STATE->status = LIST_VALUES;
-		$_STATE->replace(); //so loopback() can find it
 		break 1; //re-switch to show property values
 	}
 	if (update_property_audit()) {
-		$_STATE = $_STATE->loopback(SELECTED_PROPERTY);
+		$_STATE = $_STATE->goback_to(SELECTED_PROPERTY, true);
 		break 1; //re-switch
 	}
 	Page_out(); //errors...
 	break 2; //return to executive
 
 case LIST_VALUES:
+	$_STATE->set_a_gate(LIST_VALUES); //for a 'goback' - sets status
 	$_STATE->msgGreet_prefix = $_STATE->property_name."<br>";
 	$_STATE->property_id = $_STATE->record_id; //save this guy for list_values()
 	list_values();
 	$_STATE->msgGreet = $_STATE->msgGreet_prefix."Select a value to edit";
-	$_STATE->backup = SELECTED_PROPERTY; //for goback
+	$_STATE->goback_to(SELECTED_PROPERTY);
 	Page_out();
 	$_STATE->status = SELECT_VALUE;
 	break 2; //return to executive
 
 case SELECT_VALUE:
 	select_value();
-	$_STATE->status = SELECTED_VALUE; //for possible goback
-	$_STATE->replace(); //so loopback() can find it
 case SELECTED_VALUE:
+	$_STATE->set_a_gate(SELECTED_VALUE); //for a 'goback' - sets status
 	prop_fields();
 	$_STATE->backup = LIST_VALUES; //for goback
 	if ($_STATE->record_id == -1) {
@@ -108,18 +106,19 @@ case SELECTED_VALUE:
 		$_STATE->status = UPDATE_VALUE;
 	}
 	Page_out();
+	$_STATE->goback_to(LIST_VALUES);
 	break 2; //return to executive
 
 case ADD_VALUE:
 	if (isset($_POST["btnReset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_VALUE);
+		$_STATE = $_STATE->goback_to(SELECTED_VALUE, true);
 		break 1;
 	}
 	prop_fields();
 	$_STATE->msgGreet = $_STATE->msgGreet_prefix."New property";
 	if (new_value_audit()) {
 		$record_id = $_STATE->record_id;
-		$_STATE = $_STATE->loopback(SELECTED_VALUE);
+		$_STATE = $_STATE->goback_to(SELECTED_VALUE, true);
 		$_STATE->record_id = $record_id;
 		break 1; //re-switch with new record_id
 	}
@@ -128,14 +127,14 @@ case ADD_VALUE:
 
 case UPDATE_VALUE:
 	if (isset($_POST["btnReset"])) {
-		$_STATE = $_STATE->loopback(SELECTED_VALUE);
+		$_STATE = $_STATE->goback_to(SELECTED_VALUE, true);
 		break 1;
 	}
 	prop_fields();
 	$_STATE->msgGreet = $_STATE->msgGreet_prefix."Edit property";
 	if (isset($_POST["btnDelete"])) {
 		delete_value();
-		$_STATE = $_STATE->loopback(LIST_VALUES);
+		$_STATE = $_STATE->goback_to(LIST_VALUES, true);
 		break 1; //re-switch
 	}
 	if (update_value_audit()) {
@@ -146,7 +145,7 @@ case UPDATE_VALUE:
 	break 2; //return to executive
 
 default:
-	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+	throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
 //End Main State Gate & return to executive
 
@@ -467,7 +466,7 @@ function check_delete() {
 		break; //end ADD/UPDATE_PROPERTY/VALUE status ----END STATUS PROCESSING----
 
 	default:
-		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+		throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 
 	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
 

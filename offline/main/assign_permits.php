@@ -57,9 +57,9 @@ case SELECT_PERSON:
 	$_STATE->status = SELECTED_PERSON;
 	$_STATE->person_select = serialize($persons);
 case SELECTED_PERSON:
-	$_STATE->status = LIST_PROJECTS; //our new starting point for goback
-	$_STATE->replace(); //so loopback() can find it
+
 case LIST_PROJECTS:
+	$_STATE->set_a_gate(LIST_PROJECTS); //for a 'goback' - sets status
 	require_once "lib/project_select.php";
 	$projects = new PROJECT_SELECT();
 	$_STATE->project_select = serialize(clone($projects));
@@ -69,9 +69,9 @@ case LIST_PROJECTS:
 		break 1; //re-switch to SELECTED_PROJECT
 	}
 	$_STATE->msgGreet = "Select the ".ucfirst($projects->get_label("project"));
-	$_STATE->backup = LIST_PERSONS;
 	Page_out();
 	$_STATE->status = SELECT_PROJECT;
+	$_STATE->goback_to(LIST_PERSONS);
 	break 2; //return to executive
 
 case SELECT_PROJECT:
@@ -82,28 +82,27 @@ case SELECT_PROJECT:
 case SELECTED_PROJECT:
 	$_STATE->project_name = $projects->selected_name();
 
-	$_STATE->status = LIST_PERMITS; //our new starting point for goback
-	$_STATE->replace(); //so loopback() can find it
 case LIST_PERMITS:
+	$_STATE->set_a_gate(LIST_PERMITS); //for a 'goback' - sets status
 	$_STATE->msgGreet = $_STATE->project_name."<br>Assign (check) or Un-assign permissions for <br>".
 						$_STATE->person_name;
 	permit_list($_PERMITS);
-	$_STATE->backup = LIST_PROJECTS; //set goback
 	Page_out();
 	$_STATE->status = UPDATE_PERMIT;
+	$_STATE->goback_to(LIST_PROJECTS);
 	break 2; //return to executive
 
 case UPDATE_PERMIT:
 	if (entry_audit($_PERMITS)) {
 		$_STATE->msgGreet = "New permissions for ".$_STATE->person_name;
-		$_STATE = $_STATE->loopback(LIST_PERMITS);
+		$_STATE = $_STATE->goback_to(LIST_PERMITS, true);
 		break 1; //re-switch
 	}
 	Page_out();
 	break 2; //return to executive
 
 default:
-	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+	throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
 //End Main State Gate & return to executive
 
@@ -213,6 +212,7 @@ function load_status() {
 	EX_pageHead(); //standard page headings - after any scripts
 
 	switch ($_STATE->status) {
+
 	case LIST_PERSONS:
 		global $persons;
 		echo $persons->set_list();
@@ -263,11 +263,11 @@ function load_status() {
 		break; //end LIST/UPDATE_PERMIT status ----END STATUS PROCESSING----
 
 	default:
-		throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+		throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 
 	} //end select ($_STATE->status) ----END STATE: EXITING FROM PROCESS----
 
 	EX_pageEnd(); //standard end of page stuff
 
-} //end function Page_out()
+} //end Page_out()
 ?>

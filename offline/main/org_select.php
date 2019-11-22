@@ -13,7 +13,6 @@ while (1==1) { switch ($_STATE->status) {
 case LIST_ORGS:
 	$_STATE->msgGreet = "Select an organization";
 	$_STATE->msgStatus = "";
-	$_STATE->status = SELECT_ORG; //prepare a 'goback'
 case SELECT_ORG:
 	init_setup();
 	Page_out();
@@ -25,11 +24,11 @@ case SELECTED_ORG:
 		$reload = TRUE; //reload the header to reflect these changes
 		$_STATE->msgGreet = "OK? If not, select again...";
 	}
-	$_STATE = $_STATE->loopback(LIST_ORGS);
+	$_STATE = $_STATE->goback_to(LIST_ORGS, true);
 	break 1;
 
 default:
-	throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid state=".$_STATE->status);
+	throw_the_bum_out(NULL,"Evicted(".$_STATE->ID."/".__LINE__."): invalid state=".$_STATE->status);
 } } //while & switch
 //End Main State Gate & return to executive
 
