@@ -1,4 +1,4 @@
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016, 2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 LoaderS.push('init_cells();');
@@ -146,44 +146,46 @@ function new_act(doit) {
 }
 
 var submitRow = -1;
-function mouseDown(row) {
+function mouseDown(row) { //called when the mouse is clicked on the submit button
 	submitRow = row;
 }
+//amounts are audited 'onblur' (lost focus);
+//the bluring action is probably clicking the submit button so both actions will fire;
+//'auditing' will stop the click action, changes(), from calling the server;
+//then audit_amount() can re-call changes() if appropriate.
+//(be sure to put the amount action first in the HTML code)
+var auditing = 0;
 function audit_amount(me, maxAmount) {
 	if (me.value == "") return true;
+	auditing = 1;
 	if (isNaN(me.value)) {
-		alert("Amounts must be numeric");
+		alert("Amounts must be numeric1");
 		me.value = me.parentNode.value;
 		me.focus
-		submitRow = -1;
 		return false;
 	} else if (me.value > maxAmount) {
-		if (!confirm(me.value+" seems high - are you sure?")) {
+		if (!confirm(me.value+" seems high - are you sure?1")) {
 			me.value = me.parentNode.value;
 			me.focus;
 			submitRow = -1;
 			return false;
-		}
-		if (submitRow > -1) {
-			changes(submitRow);
 		}
 	} else if (me.value < 0) {
-		alert("Please enter a valid amount");
+		alert("Please enter a valid amount1");
 		me.value = me.parentNode.value;
 		me.focus;
-		submitRow = -1;
 		return false;
 	} else if ((me.value == 0) && (me.defaultValue != 0)) {
-		if (!confirm("Are you sure you want to delete this record?")) {
+		if (!confirm("Are you sure you want to delete this record?1")) {
 			me.value = me.parentNode.value;
 			me.focus;
-			submitRow = -1;
 			return false;
 		}
-		if (submitRow > -1) {
-			changes(submitRow);
-		}
 	}
+	if (auditing == 2) {
+		changes(submitRow);
+	}
+	auditing = 0;
 	return true;
 }
 
@@ -196,6 +198,10 @@ function get_cell_recid(cellID) {
 var awaitingServer = false;
 function changes(row) {
 	if (awaitingServer) return;
+	if (auditing == 1) {
+		auditing = 2;
+		return; //let audit_amount() do it's thing
+	}
 	var content = "row="+row;
 	content += "&act="+encodeURIComponent(document.getElementById("txtActivity_ID").value);
 	content += "&task="+get_cell_recid("TK_"+row);

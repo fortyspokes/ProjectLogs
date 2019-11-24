@@ -48,6 +48,7 @@ case LIST_PERSONS:
 	$_STATE->accounting = "";
 	$_STATE->task_id = 0;
 	$_STATE->subtask_id = 0;
+	$_STATE->account_id = 0;
 	$_STATE->activity_id = 0;
 	$_STATE->columns = array(1,0,0,"");
 	$_STATE->type = "";
@@ -879,8 +880,8 @@ function audit_amount(&$state, $recID, $amount, $day) {
 			if (($recID == 0) && ($row->subtask_id == $state->subtask_id)
 			 && ($row->type == $state->type)
 			 && ($row->account_id == $state->account_id)) { //$recId=0 => adding
-				$state->msgStatus = "!You have hours previously logged to this subtask/".
-					$state->accounting." for ".$day."<br>To change those hours, use the update facility";
+				$state->msgStatus = "!You have expenses previously logged to this subtask/".
+					$state->accounting." for ".$day."<br>To change those expenses, use the update facility";
 				return false;
 			}
 		}
@@ -932,6 +933,24 @@ function audit_amounts(&$state, &$logdate, &$status) { //set status = '', 'a(dd)
 			$status[] = ''; //no change to this record
 		} else {
 			$status[] = 'u'; //update this record
+		}
+	}
+
+	if ($state->row > 0) { //updating (0 is add row)
+		$state->task_id = intval($_POST["task"]);
+		$state->subtask_id = intval($_POST["subtask"]);
+		$state->account_id = intval($_POST["account"]);
+		$state->type = $_POST["type"];
+		$state->activity_id = intval($_POST["activity"]);
+		$sql = "SELECT COUNT(*) AS count FROM ".$_DB->prefix."v01_expenselog
+				WHERE (person_id=".$state->person_id.") AND (project_id=".$state->project_id.")
+				AND (logdate BETWEEN '".$state->from_date->format('Y-m-d')."' AND '".$state->to_date->format('Y-m-d')."')
+				AND (task_id=".$state->task_id.") AND (subtask_id=".$state->subtask_id.")
+				AND (account_id=".$state->account_id.") AND(type='".$state->type."')
+				AND (activity_id=".$state->activity_id.");";
+		$stmt = $_DB->query($sql);
+		if ($stmt->fetchObject()->count == 0) {
+			throw_the_bum_out(NULL,"Evicted(".__LINE__."): invalid POST 5",true);
 		}
 	}
 
