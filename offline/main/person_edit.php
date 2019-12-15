@@ -23,8 +23,9 @@ case LIST_PERSONS:
 	$_STATE->backup = LIST_PERSONS;
 	require_once "lib/person_select.php";
 	$persons = new PERSON_SELECT();
-	if (!$_PERMITS->can_pass("person_edit")) {
+	if (!$_PERMITS->can_pass("person_edit")) { 
 		$persons->set_state($_SESSION["person_id"]);
+		$_STATE->init = SELECTED_PERSON;
 		$_STATE->status = SELECTED_PERSON;
 		break 1; //re-switch to SELECTED_PERSON
 	}

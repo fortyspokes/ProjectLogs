@@ -54,6 +54,7 @@ case LIST_TASKS:
 	task_list();
 	if (count($_STATE->records) == 1) { //solo task?
 		task_select(key($_STATE->records)); //select this one
+		$_STATE->init = SELECTED_TASK;
 		$_STATE->status = SELECTED_TASK;
 		break 1; //re-switch
 	}
