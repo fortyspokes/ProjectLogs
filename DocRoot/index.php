@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 if (!isset($_SERVER["HTTPS"])){
@@ -7,8 +7,10 @@ if (!isset($_SERVER["HTTPS"])){
 }
 
 session_start(); //always restart the session, even if (particularly if) doing a browser reload
-if (isset($_SESSION["_EVICTED_"])) { //prepend::throw_the_bum_out() set this
-	$evicted = $_SESSION["_EVICTED_"]; //save it while session is restarted
+if (isset($_SESSION["_STATUS"])) { //save for re-started session & head
+	$status = $_SESSION["_STATUS"];
+} else {
+	$status = 0;
 }
 $_SESSION = array();
 session_destroy();
@@ -20,9 +22,11 @@ if (isset($_GET['info'])) {
 }
 session_start();
 SiteConfig();
+$_SESSION['REQUEST_TIME'] = $_SERVER['REQUEST_TIME']; //track timeout
+$_SESSION["_STATUS"] = $status; //0=initial login;1=timed out;2=logged in;3=logged out;4=evicted
 
 $mod = "!showtime.php";
-require_once "pl.php";
+require "pl.php"; //can't be require_once because on timeout, pl.php recalls index.php
 
 function SiteConfig() {
 	if (isset($_GET['user'])) {

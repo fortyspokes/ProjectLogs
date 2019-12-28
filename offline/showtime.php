@@ -1,9 +1,9 @@
 <?php
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
-if (isset($evicted)) $_SESSION["_EVICTED"] = $evicted; //note _EVICTED != _EVICTED_
 $_SESSION["THEME"] = $_SESSION["_SITE_CONF"]["THEME"]; //THEME can be changed and can revert back
+
 ?>
 <html>
 <head>
@@ -11,8 +11,12 @@ $_SESSION["THEME"] = $_SESSION["_SITE_CONF"]["THEME"]; //THEME can be changed an
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
 <link rel="shortcut icon" href="<?php echo $_SESSION["BUTLER"]; ?>?IAm=IG&file=logo.ico&ver=<?php echo $_VERSION; ?>">
 <script language="JavaScript">
-if (top != self) {
-	top.location = "https://<?php echo($_SESSION["HOST"]); ?>";
+if (top != self) { //a timeout will force this
+	top.location = "https://<?php echo $_SESSION["HOST"]; ?>";
+}
+
+window.onload = function() {
+	reload_head();
 }
 
 function reload_head() {
@@ -50,7 +54,8 @@ function OnOff(owner, element) {
 <body>
 <table border="0" cellspacing="0" cellpadding="0" width="100%" height="100%">
 <tr><td colspan="2">
-<iframe name="headframe" scrolling="no" height="110" width="100%" frameborder="no" border="0" framespacing="0"></iframe>
+<iframe name="headframe" scrolling="no" height="110" width="100%" frameborder="no" border="0" framespacing="0">
+</iframe>
 </td></tr>
 <tr height="100%"><td height="100%" width="150">
 <iframe name="menuframe" height="100%" width="150" frameborder="no" marginwidth="5"

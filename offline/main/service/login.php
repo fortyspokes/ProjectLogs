@@ -25,12 +25,12 @@ if (isset($_SESSION["user"])) {
 	$_STATE->fields["txtName"] = "";
 }
 
-$reload = FALSE;
 $_STATE->msgGreet = "Please login:";
 $_STATE->msgStatus = "";
+$reload = false;
 switch ($_STATE->status) {
 case STATE::INIT:
-	$reload = TRUE; //make sure other frames load after me
+	$reload = FALSE;
 	$_STATE->status = STATE::ENTRY;
 	break;
 case STATE::ENTRY:
@@ -39,6 +39,7 @@ case STATE::ENTRY:
 		$_STATE->msgGreet = "";
 		$_STATE->msgStatus = "";
 		$reload = TRUE; //reload other frames to get current login info
+		$_SESSION["_STATUS"] = 2; //2=loggedin
 		$_STATE->ID = "MA"; //re-load main.php instead of this mod
 		$_STATE->status = STATE::DONE;
 	} else {

@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 function You_Are_Here() { //returns the full directory path of the system includes
@@ -7,22 +7,21 @@ function You_Are_Here() { //returns the full directory path of the system includ
 }
 
 function throw_the_bum_out($publicmsg=NULL, $privatemsg=NULL, $script=false) {
-	ob_clean(); //remove any previous headers
-	if (!is_null($privatemsg)) error_log($privatemsg.": ".$_SERVER['SCRIPT_NAME']);
+	$_SESSION["_STATUS"] = 4;
+	if (!is_null($privatemsg)) {
+		global $_STATE;
+		if (isset($_STATE)) {
+			$ID = $_STATE->ID;
+		} else {
+			$ID = "NULL";
+		}
+		error_log($privatemsg.": ID=".$ID.": ".$_SERVER['SCRIPT_NAME']);
+	}
 	if (!is_null($publicmsg)) {
-		$_SESSION["_EVICTED_"] = $publicmsg;
+		$_SESSION["_STATUS"] .= ":".$publicmsg;
 	}
-	$protocol = "http"; if (isset($_SERVER["HTTPS"])) $protocol .= "s";
-	if ($script) {
-		echo "top.location=\"".
-			$protocol."://".$_SESSION["HOST"]."?user=".$_SESSION["user"].
-			"\";document.close();\n";
-	} else {
-		echo "<html><head><script>top.location=\"".
-			$protocol."://".$_SESSION["HOST"]."?user=".$_SESSION["user"].
-			"\";document.close();</script></head></html>";
-	}
-	exit();
+	require_once "lib/reload.php";
+	reload_top($script); //does not return
 }
 
 function errorButler($errno, $errstr, $errfile, $errline) {
