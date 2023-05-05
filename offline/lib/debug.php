@@ -14,7 +14,10 @@ function debug_session() { //display the session and state
 
 	$HTML = "<table cellpadding=2>\n";
 	$HTML .= "<tr><td align='right' valign='top'>Session: </td><td align='left'>\n";
-	foreach ($_SESSION as $key=>$value) $HTML .= $key.";"; $HTML .= "</td></tr>\n";
+	foreach ($_SESSION as $key=>$value) {
+		$HTML .= $key."=".session_value($value).";<br>";
+	}
+	$HTML .= "</td></tr>\n";
 	$HTML .= "<tr><td align='right' valign='top'>Permits: </td>\n";
 	$HTML .= "<td align='left'>\n";
 	$HTML .= serialize($_SESSION["UserPermits"])."\n";
@@ -34,5 +37,13 @@ function debug_session() { //display the session and state
 	}
 	$HTML .= "</table>\n";
 	return $HTML;
+}
+function session_value($value) {
+	if (is_array($value)) {
+		return "[array]";
+//		return serialize($value);
+	} else {
+		return $value;
+	}
 }
 ?>

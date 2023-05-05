@@ -1,5 +1,5 @@
 <?php
-//copyright 2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2016,2019,2023 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 if (session_id() == "") { //index.php will start the session first time
@@ -13,7 +13,12 @@ if (!isset($_SESSION["REQUEST_TIME"])) { //PHP session timeout
 	exit;
 }
 ini_set('include_path', implode(":",$_SESSION["_SITE_CONF"]["_INCLUDE"]).":".ini_get('include_path'));
-if (($_SERVER["REQUEST_TIME"] - $_SESSION["REQUEST_TIME"]) < 1800) { //30 mins
+if (isset($_SESSION["_SITE_CONF"]["IDLE"])) {
+	$idle = $_SESSION["_SITE_CONF"]["IDLE"];
+} else {
+	$idle = 1800;	//30 mins
+}
+if (($_SERVER["REQUEST_TIME"] - $_SESSION["REQUEST_TIME"]) < $idle) {
 	$_SESSION["REQUEST_TIME"] = $_SERVER["REQUEST_TIME"]; //re-start timer
 	//For testing purposes, comment out this include:
 	//require "main/service/show_parms.php";
