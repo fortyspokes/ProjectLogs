@@ -1,5 +1,5 @@
 ; <?php header("Location: https://".$_SERVER["HTTP_HOST"]); ?> prevents hacking
-;copyright 2015-2016,2018 C.D.Price. Licensed under Apache License, Version 2.0
+;copyright 2015-2016,2018,2023 C.D.Price. Licensed under Apache License, Version 2.0
 ;See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 ;                          The site specific configuration file
@@ -53,6 +53,10 @@ RUNLEVEL=1
 
 TZO=-5 ;US East Coast
 ;TimeZoneOffset from Greenwich, in hours, of the server time; west is negative
+
+IDLE=300	;5 mins
+;In seconds.  If the session is inactive for this time limit, the next attempt to access the page will
+;revert to the login page.  Optional, default is 1800 seconds or 30 mins.
 
 DBMANAGER=pgsql
 ;DBMANAGER=mysql
