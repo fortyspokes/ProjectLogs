@@ -1,5 +1,5 @@
 <?php
-//copyright 2015 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015, 2022 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 class CALENDAR {
@@ -44,7 +44,7 @@ public function generate_calendar(&$date, $tblName, $newline="\n"){
     // for instance, mktime(0,0,0,12,32,1997) will be the date for Jan 1, 1998
     // this provides a built in "rounding" feature to generate_calendar()
     $first_of_month = gmmktime(0,0,0,$month,1,$year);
-    list($year, $month_name, $weekday) = explode(',',gmstrftime('%Y,%B,%w',$first_of_month));
+    list($year, $month_name, $weekday) = explode(',',gmdate('Y,F,w',$first_of_month));
 	$days_in_month=gmdate('t',$first_of_month);
 
     $day_names = array("S","M","T","W","T","F","S");

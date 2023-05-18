@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016,2019,2022 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 if (!$_PERMITS->can_pass("set_rates")) throw_the_bum_out(NULL,"Evicted(".__LINE__."): no permit");
 
@@ -644,7 +644,13 @@ Show inactive persons
 ?>
   <tr title='<?php echo($title.$inact); ?>' style='opacity:<?php echo $opacity; ?>'>
     <td ID='<?php echo($person_id);?>' onclick='return select_person(this);'><?php echo($record["name"]);?></td>
-    <td><?php echo(number_format($record["rates"][0]["rate"],2));?></td>
+    <td><?php
+    		if (is_null($record["rates"][0]["rate"])) {
+    			echo "N/A";
+    		} else {
+    			echo(number_format($record["rates"][0]["rate"],2));
+    		}
+    	?></td>
     <td><?php echo($record["rates"][0]["eff"]->format());?></td>
     <td><?php echo($record["rates"][0]["exp"]->format());?></td>
   </tr>

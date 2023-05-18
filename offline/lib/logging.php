@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2016,2019 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2016,2019,2023 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 function entry_audit() {
@@ -49,7 +49,12 @@ function entry_audit() {
 	} else {
 		$today = new DateTime(); //can't do TZO offset until org set - may be a few hours off
 		while (1 == 1) {
-			if (new DateTime($row->inactive_asof) >= $today) break;
+			if (is_null($row->inactive_asof)) {
+				$inactive = $today;
+			} else {
+				$inactive = new DateTime($row->inactive_asof);
+			}
+			if ($inactive >= $today) break;
 			if(!($row = $stmt->fetchObject())) {
 				$_STATE->msgStatus .= " +";
 				return false;

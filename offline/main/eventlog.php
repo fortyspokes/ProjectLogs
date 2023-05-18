@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2017,2019 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2017,2019-2020 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 require_once "lib/field_edit.php";
@@ -410,7 +410,7 @@ function log_put() {
 			JOIN ".$_DB->prefix."a21_account AS a21 ON a21.account_id = b10.account_idref
 			WHERE ".$sql_logs."(logdate BETWEEN :fromdate AND :todate)";
 
-	$sql = $sql_logs." AND (a30.project_idref IN (".implode($_STATE->project_ids,",")."))
+	$sql = $sql_logs." AND (a30.project_idref IN (".implode(",",$_STATE->project_ids)."))
 			ORDER BY logdate, a30.event_id, a21.account_id LIMIT 1;";
 	$stmt = $_DB->prepare($sql);
 	$stmt->bindValue(':fromdate', $from, db_connect::PARAM_DATE);

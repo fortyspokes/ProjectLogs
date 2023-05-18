@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2017,2019 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2017,2019, 2022 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 require_once "lib/field_edit.php";
@@ -462,7 +462,7 @@ function total_amounts(&$state) { //for all selected projects (won't work in lis
 			FROM ".$_DB->prefix."v11_expensereport AS v11
 			INNER JOIN ".$_DB->prefix."a10_project AS a10 ON a10.project_id = v11.project_id
 			WHERE (person_id=".$state->person_id.") AND (v11.project_id IN (".
-			implode($state->project_ids,",").
+			implode(",",$state->project_ids).
 			")) AND (logdate BETWEEN :fromdate AND :todate)
 			ORDER BY logdate;";
 	$stmt = $_DB->prepare($sql);

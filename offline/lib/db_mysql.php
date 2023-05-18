@@ -1,5 +1,5 @@
 <?php
-//copyright 2015,2017 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015,2017,2022 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 class db_connect extends PDO {
@@ -25,19 +25,19 @@ function __construct($userstr,$dbconn="") {
 */
 }
 
-function beginTransaction() {
+function beginTransaction(): bool {
 	$this->in_trans = TRUE;
-	parent::beginTransaction();
+	return parent::beginTransaction();
 }
 
-function commit() {
+function commit(): bool {
 	$this->in_trans = FALSE;
-	parent::commit();
+	return parent::commit();
 }
 
-function rollBack() {
+function rollBack(): bool {
 	$this->in_trans = FALSE;
-	parent::rollBack();
+	return parent::rollBack();
 }
 
 function BLOB_to_page(&$blob) {

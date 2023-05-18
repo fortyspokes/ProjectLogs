@@ -1,5 +1,5 @@
 <?php
-//copyright 2015-2017,2019 C.D.Price. Licensed under Apache License, Version 2.0
+//copyright 2015-2017,2019-2020 C.D.Price. Licensed under Apache License, Version 2.0
 //See license text at http://www.apache.org/licenses/LICENSE-2.0
 
 require_once "lib/field_edit.php";
@@ -442,7 +442,7 @@ function total_hours(&$state) { //for all selected projects (won't work in list 
 	for ($ndx=0; $ndx<$state->columns[COL_COUNT]; $ndx++) $totals[] = 0;
 	$sql = "SELECT logdate, amount, project_id FROM ".$_DB->prefix."v10_timereport
 			WHERE (person_id=".$state->person_id.") AND (project_id IN (".
-			implode($state->project_ids,",").
+			implode(",",$state->project_ids,).
 			")) AND (logdate BETWEEN :fromdate AND :todate)
 			ORDER BY logdate;";
 	$stmt = $_DB->prepare($sql);
@@ -578,8 +578,8 @@ function log_put() {
 	$to = $_STATE->to_date->format('Y-m-d');
 
 	$sql = "SELECT * FROM ".$_DB->prefix."v10_timereport
-			WHERE (person_id IN(".implode($_STATE->person_ids,",")."))
-			AND (project_id IN (".implode($_STATE->project_ids,",")."))
+			WHERE (person_id IN(".implode(",",$_STATE->person_ids)."))
+			AND (project_id IN (".implode(",",$_STATE->project_ids)."))
 			AND (logdate BETWEEN :fromdate AND :todate)
 			ORDER BY logdate LIMIT 1;";
 	$stmt = $_DB->prepare($sql);
